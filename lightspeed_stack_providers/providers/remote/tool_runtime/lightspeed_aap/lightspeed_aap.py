@@ -1,0 +1,120 @@
+from typing import Any
+from urllib.parse import urlparse
+
+from mcp import ClientSession
+from mcp.client.sse import sse_client
+
+from llama_stack.apis.common.content_types import URL
+from llama_stack.apis.tools import (
+    ListToolDefsResponse,
+    Tool,
+    ToolDef,
+    ToolInvocationResult,
+    ToolParameter,
+    ToolRuntime,
+)
+from llama_stack.distribution.request_headers import NeedsRequestProviderData
+from llama_stack.providers.datatypes import ToolsProtocolPrivate
+
+from .auth_type import AuthType
+from .config import LightspeedAAPToolConfig
+
+
+class LightspeedAAPToolRuntimeImp(
+    ToolsProtocolPrivate, ToolRuntime, NeedsRequestProviderData
+):
+    def __init__(self, config: LightspeedAAPToolConfig):
+        self.config = config
+
+    async def initialize(self):
+        pass
+
+    async def register_tool(self, tool: Tool) -> None:
+        pass
+
+    async def unregister_tool(self, tool_id: str) -> None:
+        pass
+
+    def _get_auth_headers(self) -> dict[str, str]:
+        headers = {}
+        # a global api_key can be passed via configuration
+        api_key = self.config.api_key
+        provider_data = self.get_request_provider_data()
+
+        if (
+            provider_data is not None
+            and provider_data.lightspeed_aap_api_key is not None
+        ):
+            if provider_data.lightspeed_aap_auth_type == AuthType.Bearer:
+                headers["Authorization"] = (
+                    f"Bearer {provider_data.lightspeed_aap_api_key}"
+                )
+            elif provider_data.lightspeed_aap_auth_type == AuthType.AAP_JWT:
+                headers["X-DAB-JW-TOKEN"] = provider_data.lightspeed_aap_api_key
+        elif api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        # Note: Do not raise exception when headers is empty as some mcp endpoints may be public
+        # and do not support authentication
+
+        return headers
+
+    async def list_runtime_tools(
+        self, tool_group_id: str | None = None, mcp_endpoint: URL | None = None
+    ) -> ListToolDefsResponse:
+        if mcp_endpoint is None:
+            raise ValueError("mcp_endpoint is required")
+
+        headers = self._get_auth_headers()
+
+        tools = []
+        async with sse_client(mcp_endpoint.uri, headers=headers) as streams:
+            async with ClientSession(*streams) as session:
+                await session.initialize()
+                tools_result = await session.list_tools()
+                for tool in tools_result.tools:
+                    parameters = []
+                    for param_name, param_schema in tool.inputSchema.get(
+                        "properties", {}
+                    ).items():
+                        parameters.append(
+                            ToolParameter(
+                                name=param_name,
+                                parameter_type=param_schema.get("type", "string"),
+                                description=param_schema.get("description", ""),
+                            )
+                        )
+                    tools.append(
+                        ToolDef(
+                            name=tool.name,
+                            description=tool.description,
+                            parameters=parameters,
+                            metadata={
+                                "endpoint": mcp_endpoint.uri,
+                            },
+                        )
+                    )
+
+        return ListToolDefsResponse(data=tools)
+
+    async def invoke_tool(
+        self, tool_name: str, kwargs: dict[str, Any]
+    ) -> ToolInvocationResult:
+        tool = await self.tool_store.get_tool(tool_name)
+        if tool.metadata is None or tool.metadata.get("endpoint") is None:
+            raise ValueError(f"Tool {tool_name} does not have metadata")
+        endpoint = tool.metadata.get("endpoint")
+        if urlparse(endpoint).scheme not in ("http", "https"):
+            raise ValueError(f"Endpoint {endpoint} is not a valid HTTP(S) URL")
+
+        headers = self._get_auth_headers()
+
+        async with sse_client(endpoint, headers=headers) as streams:
+            async with ClientSession(*streams) as session:
+                await session.initialize()
+                result = await session.call_tool(tool.identifier, kwargs)
+
+        return ToolInvocationResult(
+            content="\n".join([result.model_dump_json() for result in result.content]),
+            error_code=1 if result.isError else 0,
+        )
