@@ -17,13 +17,13 @@ from llama_stack.distribution.request_headers import NeedsRequestProviderData
 from llama_stack.providers.datatypes import ToolsProtocolPrivate
 
 from .auth_type import AuthType
-from .config import LightspeedAAPToolConfig
+from .config import LightspeedToolConfig
 
 
-class LightspeedAAPToolRuntimeImp(
+class LightspeedToolRuntimeImp(
     ToolsProtocolPrivate, ToolRuntime, NeedsRequestProviderData
 ):
-    def __init__(self, config: LightspeedAAPToolConfig):
+    def __init__(self, config: LightspeedToolConfig):
         self.config = config
 
     async def initialize(self):
@@ -41,16 +41,13 @@ class LightspeedAAPToolRuntimeImp(
         api_key = self.config.api_key
         provider_data = self.get_request_provider_data()
 
-        if (
-            provider_data is not None
-            and provider_data.lightspeed_aap_api_key is not None
-        ):
-            if provider_data.lightspeed_aap_auth_type == AuthType.Bearer:
-                headers["Authorization"] = (
-                    f"Bearer {provider_data.lightspeed_aap_api_key}"
+        if provider_data is not None and provider_data.lightspeed_api_key is not None:
+            if provider_data.lightspeed_auth_type == AuthType.Bearer:
+                headers["Authorization"] = f"Bearer {provider_data.lightspeed_api_key}"
+            elif provider_data.lightspeed_auth_type == AuthType.Header:
+                headers[provider_data.lightspeed_auth_header] = (
+                    provider_data.lightspeed_api_key
                 )
-            elif provider_data.lightspeed_aap_auth_type == AuthType.AAP_JWT:
-                headers["X-DAB-JW-TOKEN"] = provider_data.lightspeed_aap_api_key
         elif api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 

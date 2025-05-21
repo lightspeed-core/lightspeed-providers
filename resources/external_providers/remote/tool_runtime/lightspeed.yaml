@@ -1,0 +1,9 @@
+api: Api.tool_runtime
+adapter:
+  adapter_type: lightspeed
+  pip_packages: ["mcp"]
+  config_class: lightspeed_stack_providers.providers.remote.tool_runtime.lightspeed.config.LightspeedToolConfig
+  module: lightspeed_stack_providers.providers.remote.tool_runtime.lightspeed
+  provider_data_validator: lightspeed_stack_providers.providers.remote.tool_runtime.lightspeed.LightspeedToolProviderDataValidator
+api_dependencies: []
+optional_api_dependencies: []
