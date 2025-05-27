@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from string import Template
 
@@ -20,57 +21,18 @@ from llama_stack.apis.inference import (
     UserMessage,
 )
 
+log = logging.getLogger(__name__)
+
+
 SUBJECT_REJECTED = "REJECTED"
 SUBJECT_ALLOWED = "ALLOWED"
-
-# [TODO] manstis: It should be possible to _inject_ the prompt
-PROMPT_TASK = """
-Instructions:
-- You are a question classifying tool
-- You are an expert in kubernetes and openshift
-- Your job is to determine where or a user's question is related to kubernetes and/or openshift technologies and to provide a one-word response.
-- If a question appears to be related to kubernetes or openshift technologies, answer with the word ${allowed}, otherwise answer with the word ${rejected}.
-- Do not explain your answer, just provide the one-word response. Do not give any other response.
-
-
-Example Question:
-Why is the sky blue?
-Example Response:
-${rejected}
-
-Example Question:
-Why is the grass green?
-Example Response:
-${rejected}
-
-Example Question:
-Why is sand yellow?
-Example Response:
-${rejected}
-
-Example Question:
-Can you help configure my cluster to automatically scale?
-Example Response:
-${allowed}
-
-Question:
-${message}
-Response:
-"""
-
-# [TODO] manstis: It should be possible to _inject_ the invalid message
-INVALID_MESSAGE = (
-    "Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, "
-    "please ask me a question related to OpenShift."
-)
-
-PROMPT_TEMPLATE = Template(f"{PROMPT_TASK}")
 
 
 class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
 
     def __init__(self, config: QuestionValidityShieldConfig, deps) -> None:
         self.config = config
+        self.model_prompt_template = Template(f"{self.config.model_prompt}")
         self.inference_api = deps[Api.inference]
 
     async def initialize(self) -> None:
@@ -95,10 +57,12 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         messages = messages.copy()
         # [TODO] manstis: Ensure this is the latest User message
         message: UserMessage = messages[len(messages) - 1 :][0]
-        model_id = self.config.model_id
+        log.debug(f"Shield UserMessage: {message.content}")
 
         impl = QuestionValidityRunner(
-            model_id=model_id,
+            model_id=self.config.model_id,
+            model_prompt_template=self.model_prompt_template,
+            invalid_question_response=self.config.invalid_question_response,
             inference_api=self.inference_api,
         )
 
@@ -109,38 +73,44 @@ class QuestionValidityRunner:
     def __init__(
         self,
         model_id: str,
+        model_prompt_template: Template,
+        invalid_question_response: str,
         inference_api: Inference,
     ):
         self.model_id = model_id
+        self.model_prompt_template = model_prompt_template
+        self.invalid_question_response = invalid_question_response
         self.inference_api = inference_api
 
-    @staticmethod
-    def build_text_shield_input(message: UserMessage) -> UserMessage:
-        return UserMessage(content=QuestionValidityRunner.build_prompt(message))
+    def build_text_shield_input(self, message: UserMessage) -> UserMessage:
+        return UserMessage(content=self.build_prompt(message))
 
-    @staticmethod
-    def build_prompt(message: UserMessage) -> str:
-        return PROMPT_TEMPLATE.substitute(
+    def build_prompt(self, message: UserMessage) -> str:
+        prompt = self.model_prompt_template.substitute(
             allowed=SUBJECT_ALLOWED,
             rejected=SUBJECT_REJECTED,
             message=message.content,
         )
+        log.debug(f"Shield prompt: {prompt}")
+        return prompt
 
-    @staticmethod
-    def get_shield_response(response: str) -> RunShieldResponse:
+    def get_shield_response(self, response: str) -> RunShieldResponse:
         response = response.strip()
+        log.debug(f"Shield response: {response}")
+
         if response == SUBJECT_ALLOWED:
             return RunShieldResponse(violation=None)
 
         return RunShieldResponse(
             violation=SafetyViolation(
                 violation_level=ViolationLevel.ERROR,
-                user_message=INVALID_MESSAGE,
+                user_message=self.invalid_question_response,
             ),
         )
 
     async def run(self, message: UserMessage) -> RunShieldResponse:
-        shield_input_message = QuestionValidityRunner.build_text_shield_input(message)
+        shield_input_message = self.build_text_shield_input(message)
+        log.debug(f"Shield input message: {shield_input_message}")
 
         response = await self.inference_api.chat_completion(
             model_id=self.model_id,
@@ -149,4 +119,4 @@ class QuestionValidityRunner:
         )
         content = response.completion_message.content
         content = content.strip()
-        return QuestionValidityRunner.get_shield_response(content)
+        return self.get_shield_response(content)
