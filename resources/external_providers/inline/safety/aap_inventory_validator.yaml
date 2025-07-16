@@ -1,0 +1,7 @@
+api: Api.safety
+provider_type: inline::aap_inventory_validator
+config_class: lightspeed_stack_providers.providers.inline.safety.aap_inventory_validator.config.InventoryValidatorConfig
+module: lightspeed_stack_providers.providers.inline.safety.aap_inventory_validator
+pip_packages: ["lightspeed_stack_providers"]
+api_dependencies: []
+optional_api_dependencies: []
