@@ -15,14 +15,18 @@ from llama_stack.apis.safety import (
     Safety,
 )
 
-from lightspeed_stack_providers.providers.inline.safety.aap_inventory_validator.aap_inventory_tool import InventoryValidator
-from lightspeed_stack_providers.providers.inline.safety.aap_inventory_validator.config import InventoryValidatorConfig
+from lightspeed_stack_providers.providers.inline.safety.aap_inventory_validator.aap_inventory_tool import (
+    InventoryValidator,
+)
+from lightspeed_stack_providers.providers.inline.safety.aap_inventory_validator.config import (
+    InventoryValidatorConfig,
+)
 
 log = logging.getLogger(__name__)
 
 
 class InventoryValidatorImpl(Safety):
-    INI_FILE_PATTERN = re.compile(r'```ini\s*\n(.+)\n```', re.DOTALL)
+    INI_FILE_PATTERN = re.compile(r"```ini\s*\n(.+)\n```", re.DOTALL)
 
     def __init__(self, config: InventoryValidatorConfig) -> None:
         self.config = config
@@ -50,24 +54,31 @@ class InventoryValidatorImpl(Safety):
                 fp.write(inventory_string.encode(encoding="utf-8"))
                 fp.close()
 
-                validator = InventoryValidator('containerized', 'growth')  # TODO
+                validator = InventoryValidator("containerized", "growth")  # TODO
                 result = validator.validate_inventory(fp.name)
 
                 log.debug(result)
                 if len(validator.errors) > 0:
                     violation = SafetyViolation(
                         violation_level=ViolationLevel.ERROR,
-                        user_message="\n".join(validator.errors)
+                        user_message=self.format_validator_errors(validator.errors),
                     )
 
         return RunShieldResponse(violation=violation)
+
+    def format_validator_errors(self, errors: list[str]):
+        s = "\n\nFollowing validation errors were found:"
+        for error in errors:
+            s += f"\n* {error}"
+        s += "\n"
+        return s
 
     def extract_inventory_string(self, messages: list[Message]) -> str | None:
         if not messages:
             log.debug("No messages are found to validate.")
             return None
 
-        last_message: CompletionMessage = messages[- 1]
+        last_message: CompletionMessage = messages[-1]
         if not isinstance(last_message, CompletionMessage):
             log.debug("The last message received is not a CompletionMessage.")
             return None
@@ -77,8 +88,8 @@ class InventoryValidatorImpl(Safety):
             log.debug("No inventory file was found in the last message.")
             return None
         elif len(m) > 1:
-            log.warning("More than one ({len(m}) inventory files were found in the last message.")
+            log.warning(
+                "More than one ({len(m}) inventory files were found in the last message."
+            )
 
         return m[0]
-
-

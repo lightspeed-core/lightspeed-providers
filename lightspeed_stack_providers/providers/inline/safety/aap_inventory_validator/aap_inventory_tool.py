@@ -25,40 +25,84 @@ class InventoryProcessor:
 
         # Define required sections for each platform/topology combination
         self.required_sections = {
-            'containerized': {
-                'growth': ['automationgateway', 'automationcontroller', 'automationhub', 'automationeda', 'database'],
-                'enterprise': ['automationgateway', 'automationcontroller', 'automationhub', 'automationeda',
-                               'execution_nodes', 'redis']
+            "containerized": {
+                "growth": [
+                    "automationgateway",
+                    "automationcontroller",
+                    "automationhub",
+                    "automationeda",
+                    "database",
+                ],
+                "enterprise": [
+                    "automationgateway",
+                    "automationcontroller",
+                    "automationhub",
+                    "automationeda",
+                    "execution_nodes",
+                    "redis",
+                ],
             },
-            'rpm': {
-                'growth': ['automationgateway', 'automationcontroller', 'execution_nodes', 'automationhub',
-                           'automationedacontroller', 'database'],
-                'enterprise': ['automationgateway', 'automationcontroller', 'execution_nodes', 'automationhub',
-                               'automationedacontroller', 'redis']
-            }
+            "rpm": {
+                "growth": [
+                    "automationgateway",
+                    "automationcontroller",
+                    "execution_nodes",
+                    "automationhub",
+                    "automationedacontroller",
+                    "database",
+                ],
+                "enterprise": [
+                    "automationgateway",
+                    "automationcontroller",
+                    "execution_nodes",
+                    "automationhub",
+                    "automationedacontroller",
+                    "redis",
+                ],
+            },
         }
 
         # Define required variables for each platform
         self.required_vars = {
-            'containerized': {
-                'common': ['postgresql_admin_password'],
-                'gateway': ['gateway_admin_password', 'gateway_pg_host', 'gateway_pg_password'],
-                'controller': ['controller_admin_password', 'controller_pg_host', 'controller_pg_password'],
-                'hub': ['hub_admin_password', 'hub_pg_host', 'hub_pg_password'],
-                'eda': ['eda_admin_password', 'eda_pg_host', 'eda_pg_password']
+            "containerized": {
+                "common": ["postgresql_admin_password"],
+                "gateway": [
+                    "gateway_admin_password",
+                    "gateway_pg_host",
+                    "gateway_pg_password",
+                ],
+                "controller": [
+                    "controller_admin_password",
+                    "controller_pg_host",
+                    "controller_pg_password",
+                ],
+                "hub": ["hub_admin_password", "hub_pg_host", "hub_pg_password"],
+                "eda": ["eda_admin_password", "eda_pg_host", "eda_pg_password"],
             },
-            'rpm': {
-                'common': [],
-                'gateway': ['automationgateway_admin_password', 'automationgateway_pg_host',
-                            'automationgateway_pg_password'],
-                'controller': ['admin_password', 'pg_host', 'pg_password'],
-                'hub': ['automationhub_admin_password', 'automationhub_pg_host', 'automationhub_pg_password'],
-                'eda': ['automationedacontroller_admin_password', 'automationedacontroller_pg_host',
-                        'automationedacontroller_pg_password']
-            }
+            "rpm": {
+                "common": [],
+                "gateway": [
+                    "automationgateway_admin_password",
+                    "automationgateway_pg_host",
+                    "automationgateway_pg_password",
+                ],
+                "controller": ["admin_password", "pg_host", "pg_password"],
+                "hub": [
+                    "automationhub_admin_password",
+                    "automationhub_pg_host",
+                    "automationhub_pg_password",
+                ],
+                "eda": [
+                    "automationedacontroller_admin_password",
+                    "automationedacontroller_pg_host",
+                    "automationedacontroller_pg_password",
+                ],
+            },
         }
 
-    def parse_inventory(self, inventory_path: str) -> Tuple[Dict[str, List[str]], Dict[str, str]]:
+    def parse_inventory(
+        self, inventory_path: str
+    ) -> Tuple[Dict[str, List[str]], Dict[str, str]]:
         """Parse inventory file and return sections and variables."""
         # Check if file exists first
         if not Path(inventory_path).exists():
@@ -75,19 +119,21 @@ class InventoryProcessor:
 
         return sections, variables
 
-    def _extract_sections(self, config: configparser.ConfigParser) -> Dict[str, List[str]]:
+    def _extract_sections(
+        self, config: configparser.ConfigParser
+    ) -> Dict[str, List[str]]:
         """Extract Ansible group sections from the INI config."""
         sections = {}
 
         for section_name in config.sections():
             # Skip variable sections
-            if section_name.endswith(':vars'):
+            if section_name.endswith(":vars"):
                 continue
 
             # Extract hosts from the section
             hosts = []
             for key, value in config.items(section_name):
-                if value is None or value.strip() == '':
+                if value is None or value.strip() == "":
                     # Host without variables
                     hosts.append(key.strip())
                 else:
@@ -102,18 +148,15 @@ class InventoryProcessor:
         """Extract variables from the [all:vars] section."""
         variables = {}
 
-        if 'all:vars' in config:
-            for key, value in config['all:vars'].items():
+        if "all:vars" in config:
+            for key, value in config["all:vars"].items():
                 variables[key] = value
 
         return variables
 
     def get_results(self) -> Dict[str, List[str]]:
         """Get processing results."""
-        return {
-            'errors': self.errors,
-            'warnings': self.warnings
-        }
+        return {"errors": self.errors, "warnings": self.warnings}
 
 
 class InventoryValidator(InventoryProcessor):
@@ -141,7 +184,9 @@ class InventoryValidator(InventoryProcessor):
     def _validate_sections(self, sections: Dict[str, List[str]]):
         """Validate that all required sections are present."""
         if not self.platform or not self.topology:
-            self.warnings.append("Platform and topology not specified, skipping section validation")
+            self.warnings.append(
+                "Platform and topology not specified, skipping section validation"
+            )
             return
 
         required = self.required_sections[self.platform][self.topology]
@@ -161,16 +206,18 @@ class InventoryValidator(InventoryProcessor):
         required_vars = self.required_vars[self.platform]
 
         # Check common variables
-        for var in required_vars['common']:
+        for var in required_vars["common"]:
             if var not in variables:
                 self.errors.append(f"Missing required variable: {var}")
 
         # Check component-specific variables
-        for component in ['gateway', 'controller', 'hub', 'eda']:
+        for component in ["gateway", "controller", "hub", "eda"]:
             if component in required_vars:
                 for var in required_vars[component]:
                     if var not in variables:
-                        self.errors.append(f"Missing required {component} variable: {var}")
+                        self.errors.append(
+                            f"Missing required {component} variable: {var}"
+                        )
 
         # Validate password variables specifically
         self._validate_password_variables(variables)
@@ -189,16 +236,20 @@ class InventoryValidator(InventoryProcessor):
         # Collect all password variables from all components
         for component_vars in required_vars.values():
             if isinstance(component_vars, list):
-                password_vars.extend([var for var in component_vars if 'password' in var.lower()])
+                password_vars.extend(
+                    [var for var in component_vars if "password" in var.lower()]
+                )
 
         for var in password_vars:
             if var not in variables:
                 self.errors.append(f"Missing required password variable: {var}")
-            elif not variables[var] or variables[var].strip() == '':
+            elif not variables[var] or variables[var].strip() == "":
                 self.errors.append(f"Password variable '{var}' is empty")
             elif self._is_variable_placeholder(variables[var]):
                 # Allow parameterized variables but warn about them
-                self.warnings.append(f"Password variable '{var}' appears to be parameterized: {variables[var]}")
+                self.warnings.append(
+                    f"Password variable '{var}' appears to be parameterized: {variables[var]}"
+                )
 
     def _is_variable_placeholder(self, value: str) -> bool:
         """Check if a variable value is a placeholder/template."""
@@ -206,25 +257,29 @@ class InventoryValidator(InventoryProcessor):
             return False
 
         # Only consider Jinja2 variables as placeholders
-        return '{{' in value
+        return "{{" in value
 
     def _validate_redis_mode(self, variables: Dict[str, str]):
         """Validate redis_mode settings based on topology."""
         if not self.topology:
             return
 
-        if 'redis_mode' in variables:
-            redis_mode = variables['redis_mode'].strip()
+        if "redis_mode" in variables:
+            redis_mode = variables["redis_mode"].strip()
 
-            if self.topology == 'growth':
-                if redis_mode != 'standalone':
-                    self.errors.append(f"Growth topology requires redis_mode=standalone, found: {redis_mode}")
-            elif self.topology == 'enterprise':
-                if redis_mode != 'cluster':
-                    self.errors.append(f"Enterprise topology requires redis_mode=cluster, found: {redis_mode}")
+            if self.topology == "growth":
+                if redis_mode != "standalone":
+                    self.errors.append(
+                        f"Growth topology requires redis_mode=standalone, found: {redis_mode}"
+                    )
+            elif self.topology == "enterprise":
+                if redis_mode != "cluster":
+                    self.errors.append(
+                        f"Enterprise topology requires redis_mode=cluster, found: {redis_mode}"
+                    )
         else:
             # redis_mode is required for growth topology
-            if self.topology == 'growth':
+            if self.topology == "growth":
                 self.errors.append("Growth topology requires redis_mode=standalone")
 
     def _validate_topology_requirements(self, sections: Dict[str, List[str]]):
@@ -232,39 +287,54 @@ class InventoryValidator(InventoryProcessor):
         if not self.topology:
             return
 
-        if self.topology == 'growth':
+        if self.topology == "growth":
             # Growth topology should have single hosts in most sections
-            for section in ['automationgateway', 'automationcontroller', 'automationhub']:
+            for section in [
+                "automationgateway",
+                "automationcontroller",
+                "automationhub",
+            ]:
                 if section in sections and len(sections[section]) > 1:
                     self.warnings.append(
-                        f"Growth topology typically has single host in [{section}], found {len(sections[section])}")
+                        f"Growth topology typically has single host in [{section}], found {len(sections[section])}"
+                    )
 
             # For containerized growth, all hostnames/IPs should be the same (all-in-one)
-            if self.platform == 'containerized':
+            if self.platform == "containerized":
                 self._validate_containerized_growth_all_in_one(sections)
 
-        elif self.topology == 'enterprise':
+        elif self.topology == "enterprise":
             # Enterprise topology requires multiple hosts for HA
-            enterprise_sections = ['automationgateway', 'automationcontroller', 'automationhub']
+            enterprise_sections = [
+                "automationgateway",
+                "automationcontroller",
+                "automationhub",
+            ]
 
             # For RPM, check automationedacontroller instead of automationeda
-            if self.platform == 'rpm':
-                enterprise_sections.append('automationedacontroller')
+            if self.platform == "rpm":
+                enterprise_sections.append("automationedacontroller")
             else:
-                enterprise_sections.append('automationeda')
+                enterprise_sections.append("automationeda")
 
             for section in enterprise_sections:
                 if section in sections and len(sections[section]) < 2:
                     self.errors.append(
-                        f"Enterprise topology requires at least 2 hosts in [{section}] for HA, found {len(sections[section])}")
+                        f"Enterprise topology requires at least 2 hosts in [{section}] for HA, found {len(sections[section])}"
+                    )
 
     def _validate_containerized_growth_all_in_one(self, sections: Dict[str, List[str]]):
         """Validate that containerized growth topology uses the same hostname/IP for all components (all-in-one)."""
         # Extract hostnames from each section (ignore host variables)
         hostnames = {}
         for section_name, hosts in sections.items():
-            if section_name in ['automationgateway', 'automationcontroller', 'automationhub', 'automationeda',
-                                'database']:
+            if section_name in [
+                "automationgateway",
+                "automationcontroller",
+                "automationhub",
+                "automationeda",
+                "database",
+            ]:
                 if hosts:
                     # Extract just the hostname part (before any variables)
                     host = hosts[0].split()[0]
@@ -275,7 +345,8 @@ class InventoryValidator(InventoryProcessor):
             unique_hostnames = set(hostnames.values())
             if len(unique_hostnames) > 1:
                 self.errors.append(
-                    f"Containerized growth topology should use the same hostname/IP for all components (all-in-one). Found different hostnames: {dict(hostnames)}")
+                    f"Containerized growth topology should use the same hostname/IP for all components (all-in-one). Found different hostnames: {dict(hostnames)}"
+                )
 
 
 class InventoryComparator(InventoryProcessor):
@@ -298,7 +369,9 @@ class InventoryComparator(InventoryProcessor):
 
         return sections_equal and variables_equal and len(self.errors) == 0
 
-    def _compare_sections(self, sections1: Dict[str, List[str]], sections2: Dict[str, List[str]]) -> bool:
+    def _compare_sections(
+        self, sections1: Dict[str, List[str]], sections2: Dict[str, List[str]]
+    ) -> bool:
         """Compare sections between two inventories."""
         all_sections = set(sections1.keys()) | set(sections2.keys())
         sections_equal = True
@@ -316,14 +389,18 @@ class InventoryComparator(InventoryProcessor):
                 hosts2 = sorted(sections2[section])
 
                 if hosts1 != hosts2:
-                    self.errors.append(f"Section [{section}] differs between inventories")
+                    self.errors.append(
+                        f"Section [{section}] differs between inventories"
+                    )
                     self.errors.append(f"  First inventory: {hosts1}")
                     self.errors.append(f"  Second inventory: {hosts2}")
                     sections_equal = False
 
         return sections_equal
 
-    def _compare_variables(self, variables1: Dict[str, str], variables2: Dict[str, str]) -> bool:
+    def _compare_variables(
+        self, variables1: Dict[str, str], variables2: Dict[str, str]
+    ) -> bool:
         """Compare variables between two inventories."""
         all_vars = set(variables1.keys()) | set(variables2.keys())
         variables_equal = True
@@ -362,24 +439,26 @@ def validate_command(args):
     results = validator.get_results()
 
     # Print results
-    print(f"Validating {args.inventory} for {args.platform} {args.topology} topology...")
+    print(
+        f"Validating {args.inventory} for {args.platform} {args.topology} topology..."
+    )
     print()
 
-    if results['errors']:
+    if results["errors"]:
         print("ERRORS:")
-        for error in results['errors']:
+        for error in results["errors"]:
             print(f"  {error}")
         print()
 
-    if results['warnings']:
+    if results["warnings"]:
         print("WARNINGS:")
-        for warning in results['warnings']:
+        for warning in results["warnings"]:
             print(f"  {warning}")
         print()
 
     if is_valid:
         print("Inventory validation passed!")
-        if results['warnings']:
+        if results["warnings"]:
             print("   (with warnings)")
         sys.exit(0)
     else:
@@ -408,15 +487,15 @@ def compare_command(args):
     print(f"Comparing {args.inventory1} and {args.inventory2}...")
     print()
 
-    if results['errors']:
+    if results["errors"]:
         print("DIFFERENCES:")
-        for error in results['errors']:
+        for error in results["errors"]:
             print(f"  {error}")
         print()
 
-    if results['warnings']:
+    if results["warnings"]:
         print("WARNINGS:")
-        for warning in results['warnings']:
+        for warning in results["warnings"]:
             print(f"  {warning}")
         print()
 
@@ -431,55 +510,53 @@ def compare_command(args):
 def main():
     """Main CLI function."""
     parser = argparse.ArgumentParser(
-        description='AAP Inventory Tool - Validate and compare AAP inventory files'
+        description="AAP Inventory Tool - Validate and compare AAP inventory files"
     )
 
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Validate subcommand
-    validate_parser = subparsers.add_parser('validate', help='Validate an inventory file')
-    validate_parser.add_argument(
-        '--inventory',
-        required=True,
-        help='Path to the inventory file to validate'
+    validate_parser = subparsers.add_parser(
+        "validate", help="Validate an inventory file"
     )
     validate_parser.add_argument(
-        '--platform',
-        required=True,
-        choices=['containerized', 'rpm'],
-        help='Platform type (containerized or rpm)'
+        "--inventory", required=True, help="Path to the inventory file to validate"
     )
     validate_parser.add_argument(
-        '--topology',
+        "--platform",
         required=True,
-        choices=['growth', 'enterprise'],
-        help='Topology type (growth or enterprise)'
+        choices=["containerized", "rpm"],
+        help="Platform type (containerized or rpm)",
+    )
+    validate_parser.add_argument(
+        "--topology",
+        required=True,
+        choices=["growth", "enterprise"],
+        help="Topology type (growth or enterprise)",
     )
 
     # Compare subcommand
-    compare_parser = subparsers.add_parser('compare', help='Compare two inventory files')
-    compare_parser.add_argument(
-        '--inventory1',
-        required=True,
-        help='Path to the first inventory file'
+    compare_parser = subparsers.add_parser(
+        "compare", help="Compare two inventory files"
     )
     compare_parser.add_argument(
-        '--inventory2',
-        required=True,
-        help='Path to the second inventory file'
+        "--inventory1", required=True, help="Path to the first inventory file"
+    )
+    compare_parser.add_argument(
+        "--inventory2", required=True, help="Path to the second inventory file"
     )
 
     # Parse arguments
     args = parser.parse_args()
 
-    if args.command == 'validate':
+    if args.command == "validate":
         validate_command(args)
-    elif args.command == 'compare':
+    elif args.command == "compare":
         compare_command(args)
     else:
         parser.print_help()
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
