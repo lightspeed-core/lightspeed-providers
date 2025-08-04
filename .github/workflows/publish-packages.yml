@@ -1,0 +1,187 @@
+name: Publish Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 0.1.13)'
+        required: true
+        default: '0.1.13'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for version detection
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+          make install-deps
+      
+      - name: Get version from tag or input
+        id: get-version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            # Extract version from git tag
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          else
+            # Use input version for manual dispatch
+            VERSION="${{ github.event.inputs.version }}"
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          fi
+          echo "Using version: ${VERSION}"
+      
+      - name: Update version in pyproject.toml
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          # Remove 'v' prefix if present
+          VERSION=${VERSION#v}
+          echo "Setting version to: ${VERSION}"
+          
+          # Update version in main pyproject.toml
+          sed -i "s/version = \".*\"/version = \"${VERSION}\"/" pyproject.toml
+          
+          # Show the updated file
+          echo "Updated pyproject.toml:"
+          cat pyproject.toml
+      
+      - name: Build all packages
+        run: |
+          echo "Building all packages..."
+          make build-all
+          
+          # List built packages
+          echo "Built packages:"
+          find providers -name "*.whl" -o -name "*.tar.gz" | sort
+      
+      - name: Test built packages
+        run: |
+          echo "Testing built packages..."
+          make test-build
+      
+      - name: Verify package structure
+        run: |
+          echo "Verifying package structure..."
+          
+          # Check that all expected packages were built
+          EXPECTED_PACKAGES=(
+            "lightspeed-inline-agent"
+            "lightspeed-agent"
+            "lightspeed-question-validity"
+            "lightspeed-redaction"
+            "lightspeed-tool-runtime"
+          )
+          
+          for package in "${EXPECTED_PACKAGES[@]}"; do
+            echo "Checking package: ${package}"
+            
+            # Find the package directory
+            package_dir=$(find providers -name "${package}" -type d | head -1)
+            if [ -z "$package_dir" ]; then
+              echo "❌ Package directory not found: ${package}"
+              exit 1
+            fi
+            
+            # Check for dist directory
+            if [ ! -d "${package_dir}/dist" ]; then
+              echo "❌ No dist directory found for: ${package}"
+              exit 1
+            fi
+            
+            # Check for wheel and source distribution
+            wheel_count=$(find "${package_dir}/dist" -name "*.whl" | wc -l)
+            source_count=$(find "${package_dir}/dist" -name "*.tar.gz" | wc -l)
+            
+            if [ "$wheel_count" -eq 0 ] || [ "$source_count" -eq 0 ]; then
+              echo "❌ Missing wheel or source distribution for: ${package}"
+              exit 1
+            fi
+            
+            echo "✅ Package ${package} verified"
+          done
+          
+          echo "✅ All packages verified successfully"
+      
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          echo "Publishing packages to PyPI..."
+          
+          # Publish all packages
+          make publish-all
+          
+          echo "✅ All packages published successfully"
+      
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            ## Release ${{ github.ref }}
+            
+            ### Packages Published
+            
+            - **lightspeed-inline-agent** - Inline agent provider for llama-stack
+            - **lightspeed-agent** - Remote agent provider for llama-stack
+            - **lightspeed-question-validity** - Safety provider for content validation
+            - **lightspeed-redaction** - Safety provider for content redaction
+            - **lightspeed-tool-runtime** - Tool runtime provider for MCP integration
+            
+            ### Installation
+            
+            ```bash
+            # Install individual packages
+            pip install lightspeed-inline-agent
+            pip install lightspeed-agent
+            pip install lightspeed-question-validity
+            pip install lightspeed-redaction
+            pip install lightspeed-tool-runtime
+            ```
+            
+            ### Changes
+            
+            See the commit history for detailed changes.
+          draft: false
+          prerelease: false
+      
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "🎉 Release completed successfully!"
+          echo "Version: ${{ steps.get-version.outputs.version }}"
+          echo "All packages published to PyPI"
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Release failed!"
+          echo "Please check the logs for details" 
