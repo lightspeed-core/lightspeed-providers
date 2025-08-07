@@ -141,7 +141,11 @@ class LightspeedChatAgent(ChatAgent):
             if step.step_type == StepType.tool_execution
             for tool_call in step.tool_calls
         }
-        logger.debug(
+        # add knowledge_search tool as hotfix,
+        # this will need a rework to be customisable from agent filter configuration to include the tools
+        # that we should always include.
+        already_called_tool_names.add("knowledge_search")
+        logger.info(
             "already called toll names >>>>>>> %s ",
             already_called_tool_names,
         )
@@ -178,7 +182,7 @@ class LightspeedChatAgent(ChatAgent):
             list_str = content[content.rfind("[") : content.rfind("]") + 1]
             try:
                 filtered_tools_names = json.loads(list_str)
-                logger.debug("the filtered list is >>>>>> %s ", filtered_tools_names)
+                logger.info("the filtered list is >>>>>> %s ", filtered_tools_names)
             except Exception as exp:
                 filtered_tools_names = []
                 logger.error(exp)
@@ -197,11 +201,11 @@ class LightspeedChatAgent(ChatAgent):
                 for key, value in self.tool_name_to_args.items()
                 if key in filtered_tools_names or key in already_called_tool_names
             }
-            logger.debug(
+            logger.info(
                 "filtered tools count (how much tools was removed):  >>>>>>> %d ",
                 original_tools_count - len(self.tool_defs),
             )
-            logger.debug(
+            logger.info(
                 "new tool names to args keys:  >>>>>>> %s ",
                 list(self.tool_name_to_args.keys()),
             )
