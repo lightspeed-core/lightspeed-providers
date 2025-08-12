@@ -71,6 +71,10 @@ Relevant Tools (JSON list):
     ]
 """
 
+# a tool filtering limiting variable, if there is more tools than this value we enter the filtering function
+# this is a hot fix and will be refactored to be included in agent filtering configuration
+TOOLS_LIMIT_WITHOUT_FILTERING = 10
+
 
 class LightspeedChatAgent(ChatAgent):
     def __init__(
@@ -120,8 +124,11 @@ class LightspeedChatAgent(ChatAgent):
 
         await self._initialize_tools(request.toolgroups)
         # after tools initialization filter them by prompt request
-        if self.tools_filter_enabled:
+        tools_number = len(self.tool_defs) if self.tool_defs else 0
+        if self.tools_filter_enabled and tools_number > TOOLS_LIMIT_WITHOUT_FILTERING:
             await self._filter_tools_with_request(request)
+        else:
+            logger.info("skip tools filtering, number of tools >>>>> %d", tools_number)
 
         async for chunk in self._run_turn(request, turn_id):
             yield chunk
@@ -146,7 +153,7 @@ class LightspeedChatAgent(ChatAgent):
         # that we should always include.
         already_called_tool_names.add("knowledge_search")
         logger.info(
-            "already called toll names >>>>>>> %s ",
+            "already called tool names >>>>>>> %s ",
             already_called_tool_names,
         )
         message = "\n".join([message.content for message in request.messages])
