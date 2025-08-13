@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -615,7 +615,7 @@ wheels = [
 
 [[package]]
 name = "lightspeed-stack-providers"
-version = "0.1.12"
+version = "0.1.14"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
