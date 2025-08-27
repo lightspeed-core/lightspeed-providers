@@ -63,6 +63,5 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             ),
             created_at=agent_info.created_at,
             policy=self.policy,
-            tools_filter_model_id=self.config.tools_filter.model_id,
-            tools_filter_enabled=self.config.tools_filter.enabled,
+            tools_filter_config=self.config.tools_filter,
         )
