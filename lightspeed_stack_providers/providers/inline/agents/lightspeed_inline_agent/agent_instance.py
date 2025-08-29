@@ -19,61 +19,9 @@ from llama_stack.apis.tools import ToolGroups, ToolRuntime
 from llama_stack.apis.vector_io import VectorIO
 from llama_stack.providers.utils.kvstore import KVStore
 
+from .config import ToolsFilter
+
 logger = get_logger(name=__name__, category="agents")
-
-INSTRUCTIONS = """
-You are an intelligent assistant that helps filter a list of available tools based on a user's prompt.
-The tools will be used at later stage for tool calling with the same User Prompt.
-Each tool is provided with its "tool_name" and a "description".
-Your task is to identify which tools are relevant to the user's prompt by considering both the tool_name and description.
-Return only the 'tool_name' of the relevant tools as a JSON list of strings.
-If no tools are relevant, return an empty JSON list.
-
-Example 1:
-Tools List:
-    [
-        {"tool_name": "create_user", "description": "create a user and return the new user information"},
-        {"tool_name": "delete_user", "description": "delete the supplied user"},
-        {"tool_name": "read_user_data", "description": "read a user data"}
-    ]
-User Prompt: "get user information"
-Relevant Tools (JSON list): 
-    [
-        "read_user_data"
-    ]
-
-Example 2:
-Tools List:
-    [
-        {"tool_name": "jobs_list", "description": "List Jobs"},
-        {"tool_name": "workflow_jobs_list", "description": "List workflow Jobs"},
-        {"tool_name": "read_user_data", "description": "read a user data"}
-    ]
-User Prompt: "get jobs list"
-Relevant Tools (JSON list):
-    [
-        "jobs_list",
-        "workflow_jobs_list"
-    ]
-
-Example 3:
-Tools List:
-    [
-        {"tool_name": "job_templates_list", "description": "List Job Templates"}, 
-        {"tool_name": "workflow_job_templates_list", "description": "List Workflow Job Templates"},
-        {"tool_name": "read_user_data", "description": "read a user data"}
-    ]
-User Prompt: "get job templates list"
-Relevant Tools (JSON list):
-    [
-        "job_templates_list",
-        "workflow_job_templates_list"
-    ]
-"""
-
-# a tool filtering limiting variable, if there is more tools than this value we enter the filtering function
-# this is a hot fix and will be refactored to be included in agent filtering configuration
-TOOLS_LIMIT_WITHOUT_FILTERING = 10
 
 
 class LightspeedChatAgent(ChatAgent):
@@ -89,8 +37,7 @@ class LightspeedChatAgent(ChatAgent):
         persistence_store: KVStore,
         created_at: str,
         policy: list[AccessRule],
-        tools_filter_model_id: str | None = None,
-        tools_filter_enabled: bool = False,
+        tools_filter_config: ToolsFilter = None,
     ):
         super().__init__(
             agent_id,
@@ -104,8 +51,7 @@ class LightspeedChatAgent(ChatAgent):
             created_at,
             policy,
         )
-        self.tools_filter_enabled = tools_filter_enabled
-        self.tools_filter_model_id = tools_filter_model_id
+        self.tools_filter_config = tools_filter_config
 
     async def create_and_execute_turn(
         self, request: AgentTurnCreateRequest
@@ -125,7 +71,11 @@ class LightspeedChatAgent(ChatAgent):
         await self._initialize_tools(request.toolgroups)
         # after tools initialization filter them by prompt request
         tools_number = len(self.tool_defs) if self.tool_defs else 0
-        if self.tools_filter_enabled and tools_number > TOOLS_LIMIT_WITHOUT_FILTERING:
+        if (
+            self.tools_filter_config.enabled
+            and tools_number > 0
+            and tools_number > self.tools_filter_config.min_tools
+        ):
             await self._filter_tools_with_request(request)
         else:
             logger.info("skip tools filtering, number of tools >>>>> %d", tools_number)
@@ -137,7 +87,8 @@ class LightspeedChatAgent(ChatAgent):
         """
         filter self.tool_defs, self.tool_name_to_args to correspond to user prompt
         """
-
+        # get the tools to always include from the configuration
+        always_included_tools = set(self.tools_filter_config.always_include_tools)
         # define the list of already called tool names as it may happen that llm will decide to call them again
         # and the new prompt does not contain specific hints to detect/guess them from the current prompt message
         turns = await self.storage.get_session_turns(request.session_id)
@@ -148,24 +99,28 @@ class LightspeedChatAgent(ChatAgent):
             if step.step_type == StepType.tool_execution
             for tool_call in step.tool_calls
         }
-        # add knowledge_search tool as hotfix,
-        # this will need a rework to be customisable from agent filter configuration to include the tools
-        # that we should always include.
-        already_called_tool_names.add("knowledge_search")
+        # already called tools should be always included
+        always_included_tools.update(already_called_tool_names)
+
         logger.info(
-            "already called tool names >>>>>>> %s ",
-            already_called_tool_names,
+            "always included tool names >>>>>>> %s ",
+            always_included_tools,
         )
         message = "\n".join([message.content for message in request.messages])
         tools = [
             dict(tool_name=tool.tool_name, description=tool.description)
             for tool in self.tool_defs
         ]
-        tools_filter_model_id = self.tools_filter_model_id or self.agent_config.model
+        tools_filter_model_id = (
+            self.tools_filter_config.model_id or self.agent_config.model
+        )
+        logger.debug(
+            "tools filter system prompt: %s", self.tools_filter_config.system_prompt
+        )
         response = await self.inference_api.chat_completion(
             tools_filter_model_id,
             [
-                UserMessage(content=INSTRUCTIONS),
+                UserMessage(content=self.tools_filter_config.system_prompt),
                 UserMessage(
                     content="Filter the following tools list, the list is a list of dictionaries "
                     "that contain the tool name and it's corresponding description \n"
@@ -194,19 +149,19 @@ class LightspeedChatAgent(ChatAgent):
                 filtered_tools_names = []
                 logger.error(exp)
 
-        if filtered_tools_names or already_called_tool_names:
+        if filtered_tools_names or always_included_tools:
             original_tools_count = len(self.tool_defs)
             self.tool_defs = list(
                 filter(
                     lambda tool: tool.tool_name in filtered_tools_names
-                    or tool.tool_name in already_called_tool_names,
+                    or tool.tool_name in always_included_tools,
                     self.tool_defs,
                 )
             )
             self.tool_name_to_args = {
                 key: value
                 for key, value in self.tool_name_to_args.items()
-                if key in filtered_tools_names or key in already_called_tool_names
+                if key in filtered_tools_names or key in always_included_tools
             }
             logger.info(
                 "filtered tools count (how much tools was removed):  >>>>>>> %d ",
