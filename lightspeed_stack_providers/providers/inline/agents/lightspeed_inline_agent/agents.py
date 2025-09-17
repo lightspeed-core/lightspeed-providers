@@ -9,7 +9,7 @@ from llama_stack.apis.inference import Inference
 from llama_stack.apis.safety import Safety
 from llama_stack.apis.tools import ToolGroups, ToolRuntime
 from llama_stack.apis.vector_io import VectorIO
-from llama_stack.distribution.datatypes import AccessRule
+from llama_stack.apis.datatypes import AccessRule
 
 from .config import LightspeedAgentsImplConfig
 

@@ -3,7 +3,7 @@ import uuid
 from collections.abc import AsyncGenerator
 
 from llama_stack.apis.agents import AgentConfig, AgentTurnCreateRequest, StepType
-from llama_stack.distribution.datatypes import AccessRule
+from llama_stack.apis.datatypes import AccessRule
 from llama_stack.log import get_logger
 from llama_stack.providers.inline.agents.meta_reference.agent_instance import ChatAgent
 from llama_stack.providers.utils.telemetry import tracing
