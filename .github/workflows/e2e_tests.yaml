@@ -1,0 +1,189 @@
+# .github/workflows/e2e_tests.yaml
+name: E2E Tests
+
+on: 
+  [push, pull_request_target]
+
+jobs:
+  e2e_tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      EXTERNAL_PROVIDERS_DIR: ./resources/external_providers
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Verify OpenAI API Key
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "❌ OPENAI_API_KEY is not set"
+            exit 1
+          fi
+          echo "✅ OPENAI_API_KEY is configured"
+
+      - name: Create run.yaml configuration
+        run: |
+          cat > run.yaml << EOF
+          version: '2'
+          image_name: llama-stack-e2e
+          apis:
+            - inference
+            - safety
+          
+          external_providers_dir: ./resources/external_providers
+          
+          inference_store:
+            type: sqlite
+            db_path: /tmp/inference_store.db
+          
+          metadata_store:
+            type: sqlite
+            db_path: /tmp/registry.db
+          
+          providers:
+            inference:
+              - provider_id: openai
+                provider_type: remote::openai
+                config:
+                  api_key: ${OPENAI_API_KEY}
+            
+            safety:
+              - provider_id: lightspeed_question_validity
+                provider_type: inline::lightspeed_question_validity
+                config:
+                  model_id: openai/gpt-4o
+                  temperature: 0.0
+                  invalid_question_response: |
+                    Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, 
+                    please ask me a question related to OpenShift.
+          
+          models:
+            - model_id: gpt-4o
+              provider_id: openai
+              model_type: llm
+              provider_model_id: gpt-4o
+          
+          shields:
+            - shield_id: lightspeed_question_validity-shield
+              provider_id: lightspeed_question_validity
+          
+          server:
+            host: 0.0.0.0
+            port: 8321
+          
+          logging:
+            level: DEBUG
+          EOF
+
+      - name: Install dependencies
+        run: |
+          echo "Installing project dependencies..."
+          uv sync --group dev --group test
+          
+          echo "Installing lightspeed providers package..."
+          uv pip install -e .
+
+      - name: Start llama-stack
+        run: |
+          echo "Starting llama-stack with docker-compose..."
+          docker compose version
+          docker compose up -d
+          
+          echo "Waiting for services to start..."
+          sleep 30
+
+      - name: Check service health
+        run: |
+          echo "Checking service health..."
+          max_attempts=10
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Health check attempt $attempt/$max_attempts..."
+            
+            if curl -f http://localhost:8321/v1/health; then
+              echo "✅ Service is healthy!"
+              break
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+              echo "❌ Service failed to become healthy after $max_attempts attempts"
+              echo "Showing docker compose logs:"
+              docker compose logs
+              exit 1
+            fi
+            
+            echo "Service not ready yet, waiting..."
+            sleep 10
+            attempt=$((attempt + 1))
+          done
+
+      - name: Run E2E tests
+        run: |
+          echo "Running e2e tests..."
+          make test-e2e
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "❌ Tests failed - showing detailed diagnostics:"
+          
+          echo "=== Service Status ==="
+          docker compose ps
+          
+          echo "=== Full llama-stack Logs ==="
+          docker compose logs llama-stack
+          
+          echo "=== Provider Loading Errors ==="
+          docker compose logs llama-stack | grep -i "error\|fail\|exception" | grep -v "routing table" || echo "No provider loading errors found"
+          
+          echo "=== Health Check ==="
+          curl -f http://localhost:8321/v1/health || echo "Health check failed"
+          
+          echo "=== Available Providers ==="
+          docker compose exec llama-stack uv run llama stack list-providers || echo "Failed to list providers"
+          
+          echo "=== Check for our custom provider ==="
+          docker compose exec llama-stack uv run llama stack list-providers | grep -i lightspeed || echo "Custom provider not found in registry"
+          
+          echo "=== Available Shields ==="
+          curl http://localhost:8321/v1/shields || echo "Failed to get shields"
+          
+          echo "=== Available Models ==="
+          curl http://localhost:8321/v1/models || echo "Failed to get models"
+          
+          echo "=== External Provider Files ==="
+          docker compose exec llama-stack ls -la /app-root/resources/external_providers/inline/safety/ || echo "Failed to list external provider files"
+          echo "=== lightspeed_question_validity.yaml content ==="
+          docker compose exec llama-stack cat /app-root/resources/external_providers/inline/safety/lightspeed_question_validity.yaml || echo "Failed to read provider file"
+          
+          echo "=== Python Module Import Test ==="
+          docker compose exec llama-stack uv run python -c "
+          try:
+              import lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity
+              print('✅ Module imported successfully')
+              from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity import get_provider_impl
+              print('✅ get_provider_impl found')
+          except Exception as e:
+              print(f'❌ Import failed: {e}')
+          " || echo "Failed to test module import"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Cleaning up services..."
+          docker compose down -v || true

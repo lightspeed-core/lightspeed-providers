@@ -34,6 +34,7 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         self.config = config
         self.model_prompt_template = Template(f"{self.config.model_prompt}")
         self.inference_api = deps[Api.inference]
+        self.shield_store = {}
 
     async def initialize(self) -> None:
         pass
@@ -42,7 +43,7 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         pass
 
     async def register_shield(self, shield: Shield) -> None:
-        pass
+        self.shield_store[shield.identifier] = shield
 
     async def run_shield(
         self,
@@ -50,7 +51,7 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         messages: list[Message],
         params: dict[str, Any] = None,
     ) -> RunShieldResponse:
-        shield = await self.shield_store.get_shield(shield_id)
+        shield = self.shield_store.get(shield_id)
         if not shield:
             raise ValueError(f"Unknown shield {shield_id}")
 
