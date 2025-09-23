@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Any
 from string import Template
 
@@ -7,13 +8,17 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_vali
 )
 
 from llama_stack.apis.shields import Shield
-from llama_stack.distribution.datatypes import Api
+from llama_stack.apis.datatypes import Api
 from llama_stack.providers.datatypes import ShieldsProtocolPrivate
 from llama_stack.apis.safety import (
     SafetyViolation,
     ViolationLevel,
     RunShieldResponse,
     Safety,
+)
+from llama_stack.apis.safety.safety import (
+    ModerationObject,
+    ModerationObjectResults,
 )
 from llama_stack.apis.inference import (
     Inference,
@@ -44,6 +49,64 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
 
     async def register_shield(self, shield: Shield) -> None:
         self.shield_store[shield.identifier] = shield
+
+    async def run_moderation(self, input: str | list[str], model: str) -> ModerationObject:
+        """Run moderation on input text to check if it's a valid question."""
+        inputs = input if isinstance(input, list) else [input]
+        results = []
+
+        for text_input in inputs:
+            log.info(f"Running QuestionValidityShield moderation on input: {text_input[:100]}...")
+            try:
+                user_msg = UserMessage(content=text_input)
+                
+                impl = QuestionValidityRunner(
+                    model_id=self.config.model_id,
+                    model_prompt_template=self.model_prompt_template,
+                    invalid_question_response=self.config.invalid_question_response,
+                    inference_api=self.inference_api,
+                )
+
+                run_shield_response = await impl.run(user_msg)
+                moderation_result = self._get_moderation_object_results(run_shield_response)
+                
+            except Exception as e:
+                log.error(f"QuestionValidityShield moderation failed: {e}")
+                # Create safe fallback response on failure to avoid blocking legitimate requests
+                moderation_result = ModerationObjectResults(
+                    flagged=False,
+                    categories={},
+                    category_scores={},
+                    category_applied_input_types={},
+                    user_message=None,
+                    metadata={"moderation_error": str(e)},
+                )
+            results.append(moderation_result)
+
+        return ModerationObject(id=str(uuid.uuid4()), model=model, results=results)
+
+    def _get_moderation_object_results(self, run_shield_response: RunShieldResponse) -> ModerationObjectResults:
+        """Convert RunShieldResponse to ModerationObjectResults."""
+        if run_shield_response.violation is None:
+            # Safe result - question is valid
+            return ModerationObjectResults(
+                flagged=False,
+                categories={},
+                category_scores={"question_validity": 0.0},
+                category_applied_input_types={},
+                user_message=None,
+                metadata={},
+            )
+        else:
+            # Unsafe result - question is invalid
+            return ModerationObjectResults(
+                flagged=True,
+                categories={"question_validity": run_shield_response.violation.violation_level.value},
+                category_scores={"question_validity": 1.0},
+                category_applied_input_types={"question_validity": "text"},
+                user_message=run_shield_response.violation.user_message,
+                metadata={"violation_level": run_shield_response.violation.violation_level.value},
+            )
 
     async def run_shield(
         self,
