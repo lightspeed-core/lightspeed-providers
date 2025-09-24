@@ -50,16 +50,20 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
     async def register_shield(self, shield: Shield) -> None:
         self.shield_store[shield.identifier] = shield
 
-    async def run_moderation(self, input: str | list[str], model: str) -> ModerationObject:
+    async def run_moderation(
+        self, input: str | list[str], model: str
+    ) -> ModerationObject:
         """Run moderation on input text to check if it's a valid question."""
         inputs = input if isinstance(input, list) else [input]
         results = []
 
         for text_input in inputs:
-            log.info(f"Running QuestionValidityShield moderation on input: {text_input[:100]}...")
+            log.info(
+                f"Running QuestionValidityShield moderation on input: {text_input[:100]}..."
+            )
             try:
                 user_msg = UserMessage(content=text_input)
-                
+
                 impl = QuestionValidityRunner(
                     model_id=self.config.model_id,
                     model_prompt_template=self.model_prompt_template,
@@ -68,8 +72,10 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
                 )
 
                 run_shield_response = await impl.run(user_msg)
-                moderation_result = self._get_moderation_object_results(run_shield_response)
-                
+                moderation_result = self._get_moderation_object_results(
+                    run_shield_response
+                )
+
             except Exception as e:
                 log.error(f"QuestionValidityShield moderation failed: {e}")
                 # Create safe fallback response on failure to avoid blocking legitimate requests
@@ -85,7 +91,9 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
 
         return ModerationObject(id=str(uuid.uuid4()), model=model, results=results)
 
-    def _get_moderation_object_results(self, run_shield_response: RunShieldResponse) -> ModerationObjectResults:
+    def _get_moderation_object_results(
+        self, run_shield_response: RunShieldResponse
+    ) -> ModerationObjectResults:
         """Convert RunShieldResponse to ModerationObjectResults."""
         if run_shield_response.violation is None:
             # Safe result - question is valid
@@ -101,11 +109,15 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
             # Unsafe result - question is invalid
             return ModerationObjectResults(
                 flagged=True,
-                categories={"question_validity": run_shield_response.violation.violation_level.value},
+                categories={
+                    "question_validity": run_shield_response.violation.violation_level.value
+                },
                 category_scores={"question_validity": 1.0},
                 category_applied_input_types={"question_validity": "text"},
                 user_message=run_shield_response.violation.user_message,
-                metadata={"violation_level": run_shield_response.violation.violation_level.value},
+                metadata={
+                    "violation_level": run_shield_response.violation.violation_level.value
+                },
             )
 
     async def run_shield(
