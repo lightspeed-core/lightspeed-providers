@@ -1,0 +1,49 @@
+version: '2'
+image_name: llama-stack-local
+apis:
+  - inference
+  - safety
+
+external_providers_dir: ./resources/external_providers
+
+inference_store:
+  type: sqlite
+  db_path: /tmp/inference_store.db
+
+metadata_store:
+  type: sqlite
+  db_path: /tmp/registry.db
+
+providers:
+  inference:
+    - provider_id: openai
+      provider_type: remote::openai
+      config:
+        api_key: ${OPENAI_API_KEY}
+  
+  safety:
+    - provider_id: lightspeed_question_validity
+      provider_type: inline::lightspeed_question_validity
+      config:
+        model_id: openai/gpt-4o
+        temperature: 0.0
+        invalid_question_response: |
+          Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, 
+          please ask me a question related to OpenShift.
+
+models:
+  - model_id: gpt-4o
+    provider_id: openai
+    model_type: llm
+    provider_model_id: gpt-4o
+
+shields:
+  - shield_id: lightspeed_question_validity-shield
+    provider_id: lightspeed_question_validity
+
+server:
+  host: 0.0.0.0
+  port: 8321
+
+logging:
+  level: DEBUG

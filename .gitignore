@@ -8,3 +8,4 @@ env/
 
 build/
 dist/
+pretty.output

@@ -1,0 +1,21 @@
+services:
+  llama-stack:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llama-stack
+    ports:
+      - "8321:8321"
+    volumes:
+      - ./run.yaml:/app/run.yaml
+      - ./resources/external_providers:/app/providers.d
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - EXTERNAL_PROVIDERS_DIR=/app/providers.d
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8321/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
