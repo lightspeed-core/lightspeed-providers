@@ -110,7 +110,6 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         return await impl.run(message)
 
 
-
 class QuestionValidityRunner:
     def __init__(
         self,
