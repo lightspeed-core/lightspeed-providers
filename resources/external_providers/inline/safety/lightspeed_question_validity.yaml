@@ -3,6 +3,5 @@ config_class: lightspeed_stack_providers.providers.inline.safety.lightspeed_ques
 pip_packages: ["lightspeed_stack_providers"]
 api_dependencies:
   - inference
-  - safety
 optional_api_dependencies: []
 

@@ -1,6 +1,6 @@
 from typing import Any
 
-from llama_stack.distribution.datatypes import AccessRule, Api
+from llama_stack.apis.datatypes import AccessRule, Api
 
 from .config import LightspeedAgentsImplConfig
 
