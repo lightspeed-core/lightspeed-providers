@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from llama_stack.distribution.datatypes import Api
+from llama_stack.apis.datatypes import Api
 
 
 from .config import LightspeedToolConfig
