@@ -1,12 +1,12 @@
 from typing import Any
 
-from llama_stack.apis.datatypes import AccessRule, Api
+from llama_stack.providers.datatypes import Api
 
 from .config import LightspeedAgentsImplConfig
 
 
 async def get_provider_impl(
-    config: LightspeedAgentsImplConfig, deps: dict[Api, Any], policy: list[AccessRule]
+    config: LightspeedAgentsImplConfig, deps: dict[Api, Any]
 ):
     from .agents import LightspeedAgentsImpl
 
@@ -17,7 +17,7 @@ async def get_provider_impl(
         deps[Api.safety],
         deps[Api.tool_runtime],
         deps[Api.tool_groups],
-        policy,
+        [],
     )
     await impl.initialize()
     return impl
