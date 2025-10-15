@@ -35,7 +35,7 @@ Manual procedure, assuming an existing PyPI API token available:
 ### Prerequisites
 
 - Python >= 3.12
-- Llama Stack >= 0.2.16
+- Llama Stack == 0.2.22
 - pydantic >= 2.10.6
 
 ### Installation

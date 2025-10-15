@@ -4,11 +4,9 @@ from typing import Any, Optional
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.config import (
     RedactionShieldConfig,
-    PatternReplacement,
 )
 
 from llama_stack.apis.shields import Shield
-from llama_stack.apis.datatypes import Api
 from llama_stack.providers.datatypes import ShieldsProtocolPrivate
 from llama_stack.apis.safety import (
     RunShieldResponse,

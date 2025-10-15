@@ -9,7 +9,6 @@ from llama_stack.apis.inference import Inference
 from llama_stack.apis.safety import Safety
 from llama_stack.apis.tools import ToolGroups, ToolRuntime
 from llama_stack.apis.vector_io import VectorIO
-from llama_stack.apis.datatypes import AccessRule
 
 from .config import LightspeedAgentsImplConfig
 
@@ -23,8 +22,11 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         safety_api: Safety,
         tool_runtime_api: ToolRuntime,
         tool_groups_api: ToolGroups,
-        policy: list[AccessRule],
+        policy: list = None,
     ):
+        if policy is None:
+            policy = []
+
         super().__init__(
             config,
             inference_api,
@@ -35,6 +37,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             policy,
         )
         self.config = config
+        self.policy = policy
 
     async def _get_agent_impl(self, agent_id: str) -> LightspeedChatAgent:
         agent_info_json = await self.persistence_store.get(
