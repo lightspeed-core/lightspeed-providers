@@ -5,9 +5,7 @@ from llama_stack.providers.datatypes import Api
 from .config import LightspeedAgentsImplConfig
 
 
-async def get_provider_impl(
-    config: LightspeedAgentsImplConfig, deps: dict[Api, Any]
-):
+async def get_provider_impl(config: LightspeedAgentsImplConfig, deps: dict[Api, Any]):
     from .agents import LightspeedAgentsImpl
 
     impl = LightspeedAgentsImpl(

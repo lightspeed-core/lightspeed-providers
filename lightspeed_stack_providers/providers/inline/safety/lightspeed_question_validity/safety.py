@@ -6,7 +6,6 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_vali
     QuestionValidityShieldConfig,
 )
 
-from llama_stack.apis.shields import Shield
 from llama_stack.apis.datatypes import Api
 from llama_stack.providers.datatypes import ShieldsProtocolPrivate
 from llama_stack.apis.safety import (
@@ -33,7 +32,6 @@ SUBJECT_ALLOWED = "ALLOWED"
 
 
 class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
-
     def __init__(self, config: QuestionValidityShieldConfig, deps) -> None:
         self.config = config
         self.model_prompt_template = Template(f"{self.config.model_prompt}")

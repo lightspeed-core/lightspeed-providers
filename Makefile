@@ -21,13 +21,13 @@ test-e2e:
 
 # Lint code
 lint:
-	uv run black --check .
 	uv run ruff check .
+	uv run black --check .
 
 # Format code
 format:
+	uv run ruff format .
 	uv run black .
-	uv run ruff --fix .
 
 # Clean build artifacts
 clean:
