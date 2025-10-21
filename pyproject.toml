@@ -29,3 +29,7 @@ test = [
     "parse>=1.19.0",
     "parse-type>=0.6.0",
 ]
+
+[tool.ruff]
+[tool.ruff.lint.flake8-tidy-imports]
+banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }
