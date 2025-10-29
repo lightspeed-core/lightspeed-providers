@@ -15,12 +15,13 @@ dependencies = [
     "litellm>=1.75.5.post1",
     "sqlalchemy>=2.0.0",
     "numpy>=1.24.0",
+    "mcp",
 ]
 
 [tool.setuptools.packages]
 find = {}
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "black>=25.1.0",
     "ruff>=0.8.0",
@@ -30,6 +31,10 @@ test-e2e = [
     "requests>=2.31.0",
     "parse>=1.19.0",
     "parse-type>=0.6.0",
+    "pytest>=8.3.2",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-asyncio>=1.0.0",
 ]
 test-solr = [
     "pytest>=8.0.0",
@@ -41,3 +46,4 @@ test-solr = [
 [tool.ruff]
 [tool.ruff.lint.flake8-tidy-imports]
 banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }
+
