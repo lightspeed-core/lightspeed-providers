@@ -61,11 +61,11 @@ class LightspeedChatAgent(ChatAgent):
         # Note: This function is the same as the base class one,
         # except we call _filter_tools_with_request AFTER _initialize_tools
         span = tracing.get_current_span()
+        turn_id = str(uuid.uuid4())
         if span:
             span.set_attribute("session_id", request.session_id)
             span.set_attribute("agent_id", self.agent_id)
             span.set_attribute("request", request.model_dump_json())
-            turn_id = str(uuid.uuid4())
             span.set_attribute("turn_id", turn_id)
             if self.agent_config.name:
                 span.set_attribute("agent_name", self.agent_config.name)
@@ -110,7 +110,7 @@ class LightspeedChatAgent(ChatAgent):
         )
         message = "\n".join([message.content for message in request.messages])
         tools = [
-            dict(tool_name=tool.tool_name, description=tool.description)
+            dict(tool_name=tool.name, description=tool.description)
             for tool in self.tool_defs
         ]
         tools_filter_model_id = (
@@ -155,8 +155,8 @@ class LightspeedChatAgent(ChatAgent):
             original_tools_count = len(self.tool_defs)
             self.tool_defs = list(
                 filter(
-                    lambda tool: tool.tool_name in filtered_tools_names
-                    or tool.tool_name in always_included_tools,
+                    lambda tool: tool.name in filtered_tools_names
+                    or tool.name in always_included_tools,
                     self.tool_defs,
                 )
             )
