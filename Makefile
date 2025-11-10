@@ -14,7 +14,7 @@ help:
 
 # Install dependencies
 install:
-	uv sync
+	uv pip install -e .[dev,test]
 
 # Run unit tests
 test: test-unit
