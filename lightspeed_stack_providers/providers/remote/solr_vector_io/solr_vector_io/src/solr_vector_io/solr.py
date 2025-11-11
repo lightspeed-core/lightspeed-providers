@@ -910,9 +910,7 @@ class SolrIndex(EmbeddingIndex):
             return None
 
 
-class SolrVectorIOAdapter(
-    OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPrivate
-):
+class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPrivate):
     """
     Read-only Solr VectorIO adapter.
 

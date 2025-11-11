@@ -245,7 +245,6 @@ class TestPersistence:
         # Check that OpenAI API support was initialized
         assert hasattr(adapter, "openai_vector_stores")
         assert adapter.openai_vector_stores is not None
-        # Note: openai_file_batches is a 0.3+ feature, not available in 0.2.22
 
         await adapter.shutdown()
 
@@ -390,7 +389,6 @@ class TestOpenAIAPI:
         # OpenAI attributes ARE initialized (in the mixin's __init__) but empty
         assert hasattr(adapter, "openai_vector_stores")
         assert adapter.openai_vector_stores == {}  # Empty dict
-        # Note: openai_file_batches is a 0.3+ feature, not available in 0.2.22
 
         # The API method should still work (just returns empty results)
         response = await adapter.openai_list_vector_stores()

@@ -7,15 +7,6 @@ import requests
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_kvstore_backend(tmp_path_factory):
-    """
-    No-op fixture for 0.2.22 compatibility.
-    In 0.2.22, kvstore config is passed directly to the adapter.
-    """
-    yield
-
-
-@pytest.fixture(scope="session", autouse=True)
 def check_solr_running():
     """
     Pre-test check to ensure Solr is running before executing any tests.
