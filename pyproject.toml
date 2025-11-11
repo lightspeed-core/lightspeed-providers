@@ -8,12 +8,13 @@ version = "0.1.17"
 description = "Lightspeed Stack providers for llama-stack"
 requires-python = ">=3.12"
 dependencies = [
-    "llama-stack==0.2.22",
-    "llama-stack-client==0.2.22",
+    "llama-stack==0.3.1",
+    "llama-stack-client==0.3.1",
     "httpx",
     "pydantic>=2.10.6",
     "litellm>=1.75.5.post1",
-    "sqlalchemy>=2.0.0"
+    "sqlalchemy>=2.0.0",
+    "numpy>=1.24.0",
 ]
 
 [tool.setuptools.packages]
@@ -24,11 +25,17 @@ dev = [
     "black>=25.1.0",
     "ruff>=0.8.0",
 ]
-test = [
+test-e2e = [
     "behave>=1.2.6",
     "requests>=2.31.0",
     "parse>=1.19.0",
     "parse-type>=0.6.0",
+]
+test-solr = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "transformers>=4.40.0",
+    "torch>=2.0.0",
 ]
 
 [tool.ruff]

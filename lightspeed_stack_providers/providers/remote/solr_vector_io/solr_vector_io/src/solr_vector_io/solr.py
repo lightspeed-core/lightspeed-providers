@@ -1,4 +1,3 @@
-import json
 from typing import Any
 
 import httpx
@@ -11,11 +10,7 @@ from llama_stack.apis.vector_io import Chunk, QueryChunksResponse, VectorIO
 from llama_stack.apis.vector_stores import VectorStore
 from llama_stack.log import get_logger
 from llama_stack.providers.datatypes import VectorStoresProtocolPrivate
-from llama_stack.providers.utils.inference.prompt_adapter import (
-    interleaved_content_as_str,
-)
 from llama_stack.providers.utils.kvstore import kvstore_impl
-from llama_stack.providers.utils.kvstore.api import KVStore
 from llama_stack.providers.utils.memory.openai_vector_store_mixin import (
     OpenAIVectorStoreMixin,
 )
@@ -276,7 +271,7 @@ class SolrIndex(EmbeddingIndex):
                 )
 
             try:
-                log.debug(f"Sending keyword query to Solr using edismax parser")
+                log.debug("Sending keyword query to Solr using edismax parser")
                 response = await client.get(
                     f"{self.base_url}/select", params=solr_params
                 )
@@ -647,8 +642,8 @@ class SolrIndex(EmbeddingIndex):
 
                 if parent_id is None or matched_chunk_index is None:
                     log.warning(
-                        f"Chunk missing parent_id or chunk_index fields, "
-                        f"skipping chunk window expansion"
+                        "Chunk missing parent_id or chunk_index fields, "
+                        "skipping chunk window expansion"
                     )
                     expanded_chunks.append(chunk)
                     expanded_scores.append(score)
@@ -725,8 +720,8 @@ class SolrIndex(EmbeddingIndex):
 
                     if match_pos is None:
                         log.warning(
-                            f"Matched chunk not found in context window, "
-                            f"using original chunk"
+                            "Matched chunk not found in context window, "
+                            "using original chunk"
                         )
                         expanded_chunks.append(chunk)
                         expanded_scores.append(score)
@@ -939,7 +934,7 @@ class SolrVectorIOAdapter(
         log.debug("SolrVectorIOAdapter instance created")
 
     async def initialize(self) -> None:
-        log.info(f"Initializing Solr vector_io adapter")
+        log.info("Initializing Solr vector_io adapter")
         log.debug(
             f"Configuration: solr_url={self.config.solr_url}, "
             f"collection={self.config.collection_name}, "

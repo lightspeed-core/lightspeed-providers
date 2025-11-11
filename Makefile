@@ -19,6 +19,11 @@ test-e2e:
 	@echo "Running BDD tests with Behave..."
 	PYTHONDONTWRITEBYTECODE=1 uv run behave --tags=@question_validity -D dump_errors=true tests/features
 
+# Run solr_vector_io tests (requires running RHOKP as RAG index)
+test-solr:
+	@echo "Running solr_vector_io tests..."
+	uv run lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/tests.py
+
 # Lint code
 lint:
 	uv run ruff check .

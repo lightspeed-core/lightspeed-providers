@@ -29,7 +29,7 @@ from src.solr_vector_io import (
 from llama_stack.apis.vector_stores import VectorStore
 from llama_stack.apis.vector_io import Chunk
 from llama_stack.providers.utils.memory.vector_store import ChunkForDeletion
-from llama_stack.providers.utils.kvstore.config import SqliteKVStoreConfig
+from llama_stack.core.storage.datatypes import KVStoreReference
 
 
 # ============================================================================
@@ -150,7 +150,8 @@ def config_with_persistence(tmp_path):
         vector_field=VECTOR_FIELD,
         content_field=CONTENT_FIELD,
         embedding_dimension=EMBEDDING_DIM,
-        persistence=SqliteKVStoreConfig(
+        persistence=KVStoreReference(
+            backend="test_sqlite",  # Registered in conftest.py
             namespace="test_vector_io",
         ),
     )
@@ -335,9 +336,9 @@ class TestPersistence:
         )
 
         # Verify we get results (persistence shouldn't affect search)
-        assert len(response.chunks) > 0, (
-            "Search should return results with persistence enabled"
-        )
+        assert (
+            len(response.chunks) > 0
+        ), "Search should return results with persistence enabled"
         assert len(response.scores) == len(response.chunks)
 
         # Clean up
@@ -448,9 +449,9 @@ class TestVectorSearch:
             embedding=random_embedding, k=10, score_threshold=0.0
         )
 
-        assert len(all_results.chunks) > 0, (
-            "Zero score threshold should return all results"
-        )
+        assert (
+            len(all_results.chunks) > 0
+        ), "Zero score threshold should return all results"
 
         if len(all_results.chunks) > 0:
             # Set threshold to median score
@@ -486,9 +487,9 @@ class TestKeywordSearch:
             query_string="Linux Red Hat", k=5, score_threshold=0.0
         )
 
-        assert len(response.chunks) > 0, (
-            "Keyword search should return results for 'Linux Red Hat'"
-        )
+        assert (
+            len(response.chunks) > 0
+        ), "Keyword search should return results for 'Linux Red Hat'"
         assert len(response.scores) == len(response.chunks)
 
     @pytest.mark.asyncio
@@ -603,9 +604,9 @@ class TestChunkWindowExpansion:
 
         # Verify NO chunks have chunk window expansion metadata
         for chunk in response.chunks:
-            assert chunk.metadata.get("chunk_window_expanded") != True, (
-                "Chunk window expansion should NOT happen without chunk_window_config"
-            )
+            assert not chunk.metadata.get(
+                "chunk_window_expanded"
+            ), "Chunk window expansion should NOT happen without chunk_window_config"
 
         await adapter_basic.unregister_vector_store("test-no-config")
 
@@ -628,9 +629,7 @@ class TestChunkWindowExpansion:
 
         if len(response.chunks) > 0:
             expanded_chunks = [
-                c
-                for c in response.chunks
-                if c.metadata.get("chunk_window_expanded") == True
+                c for c in response.chunks if c.metadata.get("chunk_window_expanded")
             ]
             if len(expanded_chunks) > 0:
                 first_expanded = expanded_chunks[0]
@@ -690,7 +689,6 @@ class TestRealEmbeddings:
         """Load granite embedding model (cached at class scope)."""
         try:
             from transformers import AutoTokenizer, AutoModel
-            import torch
 
             model_name = EMBEDDING_MODEL
             tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -740,9 +738,9 @@ class TestRealEmbeddings:
 
         assert len(response.chunks) > 0, "Real embedding search should return results"
         # Real embeddings should have better scores than random
-        assert response.scores[0] > 0.1, (
-            "Top result should have decent similarity score"
-        )
+        assert (
+            response.scores[0] > 0.1
+        ), "Top result should have decent similarity score"
 
     @pytest.mark.asyncio
     async def test_real_embedding_hybrid_search(
@@ -765,9 +763,9 @@ class TestRealEmbeddings:
             reranker_params={"vector_boost": 1.5, "keyword_boost": 1.0},
         )
 
-        assert len(response.chunks) > 0, (
-            "Hybrid search with real embeddings should return results"
-        )
+        assert (
+            len(response.chunks) > 0
+        ), "Hybrid search with real embeddings should return results"
 
 
 # ============================================================================
@@ -781,4 +779,5 @@ if __name__ == "__main__":
     #   uv run tests.py -m basic
     #   uv run tests.py --help
     import sys
+
     pytest.main([__file__, "-v", "--tb=short"] + sys.argv[1:])
