@@ -9,32 +9,10 @@ import requests
 @pytest.fixture(scope="session", autouse=True)
 def setup_kvstore_backend(tmp_path_factory):
     """
-    Register a KV store backend for persistence tests.
-    This runs before all tests in the session.
+    No-op fixture for 0.2.22 compatibility.
+    In 0.2.22, kvstore config is passed directly to the adapter.
     """
-    from llama_stack.providers.utils.kvstore.kvstore import register_kvstore_backends
-    from llama_stack.core.storage.datatypes import SqliteKVStoreConfig
-    import os
-
-    # Create a temporary database file that persists across adapter instances
-    tmp_dir = tmp_path_factory.mktemp("kvstore")
-    db_path = str(tmp_dir / "test_kvstore.db")
-
-    # Register a test SQLite backend
-    backends = {
-        "test_sqlite": SqliteKVStoreConfig(
-            namespace="test",
-            db_path=db_path,  # Use persistent file instead of :memory:
-        ),
-    }
-    register_kvstore_backends(backends)
-
     yield
-
-    # Cleanup: clear registered backends and remove database file
-    register_kvstore_backends({})
-    if os.path.exists(db_path):
-        os.remove(db_path)
 
 
 @pytest.fixture(scope="session", autouse=True)

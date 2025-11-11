@@ -26,10 +26,10 @@ from src.solr_vector_io import (
     SolrVectorIOAdapter,
     SolrVectorIOConfig,
 )
-from llama_stack.apis.vector_stores import VectorStore
+from llama_stack.apis.vector_dbs import VectorDB
 from llama_stack.apis.vector_io import Chunk
 from llama_stack.providers.utils.memory.vector_store import ChunkForDeletion
-from llama_stack.core.storage.datatypes import KVStoreReference
+from llama_stack.providers.utils.kvstore.config import SqliteKVStoreConfig
 
 
 # ============================================================================
@@ -109,30 +109,30 @@ async def adapter_with_chunk_window(config_with_chunk_window):
 async def vector_store_basic(adapter_basic):
     """Registered vector store with basic config."""
     # adapter_basic is already awaited by pytest-asyncio
-    vector_store = VectorStore(
+    vector_store = VectorDB(
         identifier="test-basic-store",
         embedding_dimension=EMBEDDING_DIM,
         embedding_model=EMBEDDING_MODEL,
         provider_id="solr",
     )
-    await adapter_basic.register_vector_store(vector_store)
+    await adapter_basic.register_vector_db(vector_store)
     yield vector_store
-    await adapter_basic.unregister_vector_store("test-basic-store")
+    await adapter_basic.unregister_vector_db("test-basic-store")
 
 
 @pytest.fixture
 async def vector_store_chunk_window(adapter_with_chunk_window):
     """Registered vector store with chunk window config."""
     # adapter_with_chunk_window is already awaited by pytest-asyncio
-    vector_store = VectorStore(
+    vector_store = VectorDB(
         identifier="test-chunk-window-store",
         embedding_dimension=EMBEDDING_DIM,
         embedding_model=EMBEDDING_MODEL,
         provider_id="solr",
     )
-    await adapter_with_chunk_window.register_vector_store(vector_store)
+    await adapter_with_chunk_window.register_vector_db(vector_store)
     yield vector_store
-    await adapter_with_chunk_window.unregister_vector_store("test-chunk-window-store")
+    await adapter_with_chunk_window.unregister_vector_db("test-chunk-window-store")
 
 
 @pytest.fixture
@@ -150,8 +150,7 @@ def config_with_persistence(tmp_path):
         vector_field=VECTOR_FIELD,
         content_field=CONTENT_FIELD,
         embedding_dimension=EMBEDDING_DIM,
-        persistence=KVStoreReference(
-            backend="test_sqlite",  # Registered in conftest.py
+        persistence=SqliteKVStoreConfig(
             namespace="test_vector_io",
         ),
     )
@@ -186,16 +185,16 @@ class TestBasicFunctionality:
     @pytest.mark.asyncio
     async def test_vector_store_registration(self, adapter_basic):
         """Test vector store registration and unregistration."""
-        vector_store = VectorStore(
+        vector_store = VectorDB(
             identifier="test-registration",
             embedding_dimension=EMBEDDING_DIM,
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_basic.register_vector_store(vector_store)
+        await adapter_basic.register_vector_db(vector_store)
         assert "test-registration" in adapter_basic.cache
 
-        await adapter_basic.unregister_vector_store("test-registration")
+        await adapter_basic.unregister_vector_db("test-registration")
         assert "test-registration" not in adapter_basic.cache
 
     @pytest.mark.asyncio
@@ -245,9 +244,8 @@ class TestPersistence:
 
         # Check that OpenAI API support was initialized
         assert hasattr(adapter, "openai_vector_stores")
-        assert hasattr(adapter, "openai_file_batches")
         assert adapter.openai_vector_stores is not None
-        assert adapter.openai_file_batches is not None
+        # Note: openai_file_batches is a 0.3+ feature, not available in 0.2.22
 
         await adapter.shutdown()
 
@@ -257,13 +255,13 @@ class TestPersistence:
         from src.solr_vector_io.solr import VECTOR_DBS_PREFIX
 
         # Register a vector store
-        vector_store = VectorStore(
+        vector_store = VectorDB(
             identifier="test-persisted-store",
             embedding_dimension=EMBEDDING_DIM,
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_with_persistence.register_vector_store(vector_store)
+        await adapter_with_persistence.register_vector_db(vector_store)
 
         # Verify it's in the cache
         assert "test-persisted-store" in adapter_with_persistence.cache
@@ -274,7 +272,7 @@ class TestPersistence:
         assert persisted_data is not None
 
         # Clean up
-        await adapter_with_persistence.unregister_vector_store("test-persisted-store")
+        await adapter_with_persistence.unregister_vector_db("test-persisted-store")
 
     @pytest.mark.asyncio
     async def test_vector_store_reload_from_persistence(self, config_with_persistence):
@@ -285,13 +283,13 @@ class TestPersistence:
         )
         await adapter1.initialize()
 
-        vector_store = VectorStore(
+        vector_store = VectorDB(
             identifier="test-reload-store",
             embedding_dimension=EMBEDDING_DIM,
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter1.register_vector_store(vector_store)
+        await adapter1.register_vector_db(vector_store)
 
         # Verify it's registered
         assert "test-reload-store" in adapter1.cache
@@ -309,7 +307,7 @@ class TestPersistence:
         assert "test-reload-store" in adapter2.cache
 
         # Clean up
-        await adapter2.unregister_vector_store("test-reload-store")
+        await adapter2.unregister_vector_db("test-reload-store")
         await adapter2.shutdown()
 
     @pytest.mark.asyncio
@@ -318,13 +316,13 @@ class TestPersistence:
     ):
         """Test that search works with persistence enabled."""
         # Register a vector store
-        vector_store = VectorStore(
+        vector_store = VectorDB(
             identifier="test-search-persisted",
             embedding_dimension=EMBEDDING_DIM,
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_with_persistence.register_vector_store(vector_store)
+        await adapter_with_persistence.register_vector_db(vector_store)
 
         # Get the index and perform a search
         index = await adapter_with_persistence._get_and_cache_vector_store_index(
@@ -342,7 +340,7 @@ class TestPersistence:
         assert len(response.scores) == len(response.chunks)
 
         # Clean up
-        await adapter_with_persistence.unregister_vector_store("test-search-persisted")
+        await adapter_with_persistence.unregister_vector_db("test-search-persisted")
 
 
 # ============================================================================
@@ -361,18 +359,18 @@ class TestOpenAIAPI:
         # Call the OpenAI API method
         response = await adapter_with_persistence.openai_list_vector_stores()
         assert response is not None
-        # VectorStoreListResponse has a data attribute
+        # VectorDBListResponse has a data attribute
         assert hasattr(response, "data")
         assert isinstance(response.data, list)
 
         # Register a vector store
-        vector_store = VectorStore(
+        vector_store = VectorDB(
             identifier="test-openai-store",
             embedding_dimension=EMBEDDING_DIM,
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_with_persistence.register_vector_store(vector_store)
+        await adapter_with_persistence.register_vector_db(vector_store)
 
         # List should still work (though this provider is read-only for Solr data)
         response = await adapter_with_persistence.openai_list_vector_stores()
@@ -380,7 +378,7 @@ class TestOpenAIAPI:
         assert isinstance(response.data, list)
 
         # Clean up
-        await adapter_with_persistence.unregister_vector_store("test-openai-store")
+        await adapter_with_persistence.unregister_vector_db("test-openai-store")
 
     @pytest.mark.asyncio
     async def test_openai_api_without_persistence(self, config_basic):
@@ -391,9 +389,8 @@ class TestOpenAIAPI:
 
         # OpenAI attributes ARE initialized (in the mixin's __init__) but empty
         assert hasattr(adapter, "openai_vector_stores")
-        assert hasattr(adapter, "openai_file_batches")
         assert adapter.openai_vector_stores == {}  # Empty dict
-        assert adapter.openai_file_batches == {}  # Empty dict
+        # Note: openai_file_batches is a 0.3+ feature, not available in 0.2.22
 
         # The API method should still work (just returns empty results)
         response = await adapter.openai_list_vector_stores()
@@ -586,13 +583,13 @@ class TestChunkWindowExpansion:
         self, adapter_basic, random_embedding
     ):
         """Test that chunk window expansion does NOT happen without chunk_window_config."""
-        vector_store = VectorStore(
+        vector_store = VectorDB(
             identifier="test-no-config",
             embedding_dimension=EMBEDDING_DIM,
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_basic.register_vector_store(vector_store)
+        await adapter_basic.register_vector_db(vector_store)
 
         index = await adapter_basic._get_and_cache_vector_store_index("test-no-config")
 
@@ -608,7 +605,7 @@ class TestChunkWindowExpansion:
                 "chunk_window_expanded"
             ), "Chunk window expansion should NOT happen without chunk_window_config"
 
-        await adapter_basic.unregister_vector_store("test-no-config")
+        await adapter_basic.unregister_vector_db("test-no-config")
 
     @pytest.mark.asyncio
     async def test_chunk_window_expansion_enabled(
