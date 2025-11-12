@@ -2,7 +2,7 @@ import logging
 import re
 from typing import Any, Optional
 
-from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.config import (
+from .config import (
     RedactionShieldConfig,
 )
 
