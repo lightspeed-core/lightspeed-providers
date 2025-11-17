@@ -1037,24 +1037,24 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
         log.info(f"Successfully unregistered vector DB: {vector_db_id}")
 
     async def insert_chunks(
-        self, vector_store_id: str, chunks: list[Chunk], ttl_seconds: int | None = None
+        self, vector_db_id: str, chunks: list[Chunk], ttl_seconds: int | None = None
     ) -> None:
         """Not implemented - this is a read-only provider."""
         log.warning(
             f"Attempted to insert {len(chunks)} chunks into read-only provider "
-            f"(vector_store_id={vector_store_id})"
+            f"(vector_db_id={vector_db_id})"
         )
         raise NotImplementedError("SolrVectorIO is read-only.")
 
     async def query_chunks(
         self,
-        vector_store_id: str,
+        vector_db_id: str,
         query: InterleavedContent,
         params: dict[str, Any] | None = None,
     ) -> QueryChunksResponse:
         """Query chunks from the Solr collection."""
-        log.debug(f"Query chunks request for vector_store_id={vector_store_id}")
-        index = await self._get_and_cache_vector_store_index(vector_store_id)
+        log.debug(f"Query chunks request for vector_db_id={vector_db_id}")
+        index = await self._get_and_cache_vector_store_index(vector_db_id)
         result = await index.query_chunks(query, params)
         log.debug(f"Query returned {len(result.chunks)} chunks")
         return result
