@@ -4,12 +4,12 @@ import httpx
 from numpy.typing import NDArray
 
 from llama_stack.apis.common.errors import VectorStoreNotFoundError
-from llama_stack.apis.files import Files
-from llama_stack.apis.inference import Inference, InterleavedContent
+from llama_stack.apis.files.files import Files
+from llama_stack.apis.inference import InterleavedContent
 from llama_stack.apis.vector_io import Chunk, QueryChunksResponse, VectorIO
 from llama_stack.apis.vector_dbs import VectorDB
 from llama_stack.log import get_logger
-from llama_stack.providers.datatypes import VectorDBsProtocolPrivate
+from llama_stack.providers.datatypes import Api, VectorDBsProtocolPrivate
 from llama_stack.providers.utils.kvstore import kvstore_impl
 from llama_stack.providers.utils.memory.openai_vector_store_mixin import (
     OpenAIVectorStoreMixin,
@@ -25,7 +25,7 @@ from .config import SolrVectorIOConfig
 log = get_logger(name=__name__, category="vector_io::solr")
 
 VERSION = "v1"
-VECTOR_DBS_PREFIX = f"vector_stores:solr:{VERSION}::"
+VECTOR_DBS_PREFIX = f"vector_dbs:solr:{VERSION}::"
 
 
 class SolrIndex(EmbeddingIndex):
@@ -36,7 +36,7 @@ class SolrIndex(EmbeddingIndex):
 
     def __init__(
         self,
-        vector_store: VectorDB,
+        vector_db: VectorDB,
         solr_url: str,
         collection_name: str,
         vector_field: str,
@@ -46,7 +46,7 @@ class SolrIndex(EmbeddingIndex):
         request_timeout: int = 30,
         chunk_window_config=None,
     ):
-        self.vector_store = vector_store
+        self.vector_db = vector_db
         self.solr_url = solr_url.rstrip("/")
         self.collection_name = collection_name
         self.vector_field = vector_field
@@ -921,7 +921,7 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
     def __init__(
         self,
         config: SolrVectorIOConfig,
-        inference_api: Inference,
+        inference_api: Api.inference,
         files_api: Files | None = None,
     ) -> None:
         self.config = config
@@ -930,7 +930,7 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
         self.kvstore = None
         self.cache = {}
         self.openai_vector_stores = {}
-        self.vector_store_table = None
+        self.vector_db_store = None
         log.debug("SolrVectorIOAdapter instance created")
 
     async def initialize(self) -> None:
@@ -954,25 +954,25 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
                 "No persistence configured, skipping KV store and OpenAI vector store initialization"
             )
 
-        # Load any persisted vector stores
+        # Load any persisted vector DBs
         if self.kvstore is not None:
             start_key = VECTOR_DBS_PREFIX
             end_key = f"{VECTOR_DBS_PREFIX}\xff"
-            stored_vector_stores = await self.kvstore.values_in_range(
+            stored_vector_dbs = await self.kvstore.values_in_range(
                 start_key, end_key
             )
 
             log.info(
                 f"Loading {
-                    len(stored_vector_stores)
-                } persisted vector stores from KV store"
+                    len(stored_vector_dbs)
+                } persisted vector DBs from KV store"
             )
-            for vector_store_data in stored_vector_stores:
-                vector_store = VectorDB.model_validate_json(vector_store_data)
-                log.debug(f"Loading vector store: {vector_store.identifier}")
+            for vector_db_data in stored_vector_dbs:
+                vector_db = VectorDB.model_validate_json(vector_db_data)
+                log.debug(f"Loading vector DB: {vector_db.identifier}")
 
                 index = SolrIndex(
-                    vector_store=vector_store,
+                    vector_db=vector_db,
                     solr_url=self.config.solr_url,
                     collection_name=self.config.collection_name,
                     vector_field=self.config.vector_field,
@@ -983,8 +983,8 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
                     chunk_window_config=self.config.chunk_window_config,
                 )
                 await index.initialize()
-                self.cache[vector_store.identifier] = VectorDBWithIndex(
-                    vector_store, index, self.inference_api
+                self.cache[vector_db.identifier] = VectorDBWithIndex(
+                    vector_db, index, self.inference_api
                 )
 
         log.info("Solr vector_io adapter initialization complete")
@@ -1006,7 +1006,7 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
             log.debug("No KV store configured, skipping persistence")
 
         index = SolrIndex(
-            vector_store=vector_db,
+            vector_db=vector_db,
             solr_url=self.config.solr_url,
             collection_name=self.config.collection_name,
             vector_field=self.config.vector_field,
@@ -1054,7 +1054,7 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
     ) -> QueryChunksResponse:
         """Query chunks from the Solr collection."""
         log.debug(f"Query chunks request for vector_db_id={vector_db_id}")
-        index = await self._get_and_cache_vector_store_index(vector_db_id)
+        index = await self._get_and_cache_vector_db_index(vector_db_id)
         result = await index.query_chunks(query, params)
         log.debug(f"Query returned {len(result.chunks)} chunks")
         return result
@@ -1071,27 +1071,27 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
         )
         raise NotImplementedError("SolrVectorIO is read-only.")
 
-    async def _get_and_cache_vector_store_index(
-        self, vector_store_id: str
+    async def _get_and_cache_vector_db_index(
+        self, vector_db_id: str
     ) -> VectorDBWithIndex:
-        if vector_store_id in self.cache:
-            log.debug(f"Retrieved vector store from cache: {vector_store_id}")
-            return self.cache[vector_store_id]
+        if vector_db_id in self.cache:
+            log.debug(f"Retrieved vector DB from cache: {vector_db_id}")
+            return self.cache[vector_db_id]
 
-        log.debug(f"Vector store not in cache, loading from table: {vector_store_id}")
+        log.debug(f"Vector DB not in cache, loading from store: {vector_db_id}")
 
-        if self.vector_store_table is None:
-            log.error(f"Vector store table not set, cannot find: {vector_store_id}")
-            raise VectorStoreNotFoundError(vector_store_id)
+        if self.vector_db_store is None:
+            log.error(f"Vector DB store not set, cannot find: {vector_db_id}")
+            raise VectorStoreNotFoundError(vector_db_id)
 
-        vector_store = await self.vector_store_table.get_vector_store(vector_store_id)
-        if not vector_store:
-            log.error(f"Vector store not found: {vector_store_id}")
-            raise VectorStoreNotFoundError(vector_store_id)
+        vector_db = await self.vector_db_store.get_vector_db(vector_db_id)
+        if not vector_db:
+            log.error(f"Vector DB not found: {vector_db_id}")
+            raise VectorStoreNotFoundError(vector_db_id)
 
-        log.info(f"Loaded vector store from table: {vector_store_id}")
+        log.info(f"Loaded vector DB from store: {vector_db_id}")
         index = SolrIndex(
-            vector_store=vector_store,
+            vector_db=vector_db,
             solr_url=self.config.solr_url,
             collection_name=self.config.collection_name,
             vector_field=self.config.vector_field,
@@ -1102,7 +1102,7 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
             chunk_window_config=self.config.chunk_window_config,
         )
         await index.initialize()
-        self.cache[vector_store_id] = VectorDBWithIndex(
-            vector_store, index, self.inference_api
+        self.cache[vector_db_id] = VectorDBWithIndex(
+            vector_db, index, self.inference_api
         )
-        return self.cache[vector_store_id]
+        return self.cache[vector_db_id]
