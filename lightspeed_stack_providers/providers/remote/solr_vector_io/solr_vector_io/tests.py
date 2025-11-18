@@ -202,7 +202,7 @@ class TestBasicFunctionality:
         """Test that insert operations raise NotImplementedError."""
         with pytest.raises(NotImplementedError, match="read-only"):
             await adapter_basic.insert_chunks(
-                vector_store_id="test-basic-store",
+                vector_db_id="test-basic-store",
                 chunks=[
                     Chunk(content="test", metadata={}, embedding=[0.1] * EMBEDDING_DIM)
                 ],
@@ -324,7 +324,7 @@ class TestPersistence:
         await adapter_with_persistence.register_vector_db(vector_store)
 
         # Get the index and perform a search
-        index = await adapter_with_persistence._get_and_cache_vector_store_index(
+        index = await adapter_with_persistence._get_and_cache_vector_db_index(
             "test-search-persisted"
         )
 
@@ -413,7 +413,7 @@ class TestVectorSearch:
         self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
     ):
         """Test basic vector search returns results."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -435,7 +435,7 @@ class TestVectorSearch:
         self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
     ):
         """Test vector search with score threshold filtering."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -474,7 +474,7 @@ class TestKeywordSearch:
         self, adapter_with_chunk_window, vector_store_chunk_window
     ):
         """Test keyword search with specific query."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -492,7 +492,7 @@ class TestKeywordSearch:
         self, adapter_with_chunk_window, vector_store_chunk_window
     ):
         """Test keyword search with wildcard."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -518,7 +518,7 @@ class TestHybridSearch:
         self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
     ):
         """Test basic hybrid search."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -539,7 +539,7 @@ class TestHybridSearch:
         self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
     ):
         """Test hybrid search with different boost weights."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -589,7 +589,7 @@ class TestChunkWindowExpansion:
         )
         await adapter_basic.register_vector_db(vector_store)
 
-        index = await adapter_basic._get_and_cache_vector_store_index("test-no-config")
+        index = await adapter_basic._get_and_cache_vector_db_index("test-no-config")
 
         response = await index.index.query_vector(
             embedding=random_embedding,
@@ -610,7 +610,7 @@ class TestChunkWindowExpansion:
         self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
     ):
         """Test chunk window expansion when enabled."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -637,7 +637,7 @@ class TestChunkWindowExpansion:
         self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
     ):
         """Test chunk window expansion works with all search modes."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -720,7 +720,7 @@ class TestRealEmbeddings:
         self, adapter_with_chunk_window, vector_store_chunk_window, get_embedding
     ):
         """Test vector search with real embeddings."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 
@@ -742,7 +742,7 @@ class TestRealEmbeddings:
         self, adapter_with_chunk_window, vector_store_chunk_window, get_embedding
     ):
         """Test hybrid search with real embeddings."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
             "test-chunk-window-store"
         )
 

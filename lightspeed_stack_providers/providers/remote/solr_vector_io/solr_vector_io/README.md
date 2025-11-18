@@ -153,7 +153,7 @@ config = SolrVectorIOConfig(
 
 # Queries automatically use chunk window expansion
 response = await adapter.query_chunks(
-    vector_store_id="my-store",
+    vector_db_id="my-store",
     query="How to fix security issues?",
     params={
         "k": 5,
