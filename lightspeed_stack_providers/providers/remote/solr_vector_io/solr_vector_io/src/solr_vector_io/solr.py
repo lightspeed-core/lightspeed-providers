@@ -1075,7 +1075,8 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
 
         # see docstring for query_hybrid. tl;dr: the "reranker type" is a llama-stack thing and may not be applicable to Solr (if it is applicable, we will implement it later)
         solr_reranker_type = "doesntmatter"
-        solr_reranker_params = {vector_boost, keyword_boost}
+        solr_reranker_params = {
+            vector_boost: vector_boost, keyword_boost: keyword_boost}
 
         query_string = interleaved_content_as_str(query)
 
@@ -1089,8 +1090,22 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
             query_vector = np.array(embedding, dtype=np.float32)
 
             if mode == "hybrid":
+
+                # self,
+                # embedding: NDArray,
+                # query_string: str,
+                # k: int,
+                # score_threshold: float,
+                # reranker_type: str,
+                # reranker_params: dict[str, Any] | None = None,
+
                 result = await index.index.query_hybrid(
-                    query_vector, query_string, k, score_threshold, solr_reranker_type, solr_reranker_params
+                    embedding=query_vector,
+                    query_string=query_string,
+                    k=k,
+                    score_threshold=score_threshold,
+                    reranker_type=solr_reranker_type,
+                    reranker_params=solr_reranker_params
                 )
             else:
                 result = await index.index.query_vector(query_vector, k, score_threshold)
