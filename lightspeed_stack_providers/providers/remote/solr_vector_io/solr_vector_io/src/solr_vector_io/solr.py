@@ -1,8 +1,8 @@
 from typing import Any
 
 import httpx
+import numpy as np
 from numpy.typing import NDArray
-
 from llama_stack.apis.common.errors import VectorStoreNotFoundError
 from llama_stack.apis.files.files import Files
 from llama_stack.apis.inference import InterleavedContent
@@ -13,6 +13,9 @@ from llama_stack.providers.datatypes import Api, VectorDBsProtocolPrivate
 from llama_stack.providers.utils.kvstore import kvstore_impl
 from llama_stack.providers.utils.memory.openai_vector_store_mixin import (
     OpenAIVectorStoreMixin,
+)
+from llama_stack.providers.utils.inference.prompt_adapter import (
+    interleaved_content_as_str,
 )
 from llama_stack.providers.utils.memory.vector_store import (
     ChunkForDeletion,
@@ -1055,7 +1058,43 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
         """Query chunks from the Solr collection."""
         log.debug(f"Query chunks request for vector_db_id={vector_db_id}")
         index = await self._get_and_cache_vector_db_index(vector_db_id)
-        result = await index.query_chunks(query, params)
+
+        if params is None:
+            params = {}
+        k = params.get("max_chunks", 3)
+        mode = params.get("mode")
+        embedding = params.get("embedding")
+
+        score_threshold = params.get("score_threshold", 0.0)
+        vector_boost = params.get("rerank_vector_boost", 1.0)
+        keyword_boost = params.get("rerank_keyword_boost", 1.0)
+
+        score_threshold = 0.0
+        vector_boost = 1.0
+        keyword_boost = 1.0
+
+        # see docstring for query_hybrid. tl;dr: the "reranker type" is a llama-stack thing and may not be applicable to Solr (if it is applicable, we will implement it later)
+        solr_reranker_type = "doesntmatter"
+        solr_reranker_params = {vector_boost, keyword_boost}
+
+        query_string = interleaved_content_as_str(query)
+
+        if mode == "keyword":
+            result = await index.index.query_keyword(query_string, k, score_threshold)
+        else:
+            # auto-generate the embedding
+            # embeddings_response = await index.inference_api.openai_embeddings(index.vector_db.embedding_model, [query_string])
+            # embedding = embeddings_response.data[0].embedding
+
+            query_vector = np.array(embedding, dtype=np.float32)
+
+            if mode == "hybrid":
+                result = await index.index.query_hybrid(
+                    query_vector, query_string, k, score_threshold, solr_reranker_type, solr_reranker_params
+                )
+            else:
+                result = await index.index.query_vector(query_vector, k, score_threshold)
+
         log.debug(f"Query returned {len(result.chunks)} chunks")
         return result
 
