@@ -1,7 +1,12 @@
 from .config import ChunkWindowConfig, SolrVectorIOConfig
 from .solr import SolrVectorIOAdapter
 
-__all__ = ["ChunkWindowConfig", "SolrVectorIOConfig", "SolrVectorIOAdapter", "get_adapter_impl"]
+__all__ = [
+    "ChunkWindowConfig",
+    "SolrVectorIOConfig",
+    "SolrVectorIOAdapter",
+    "get_adapter_impl",
+]
 
 
 async def get_adapter_impl(config: SolrVectorIOConfig, _deps):

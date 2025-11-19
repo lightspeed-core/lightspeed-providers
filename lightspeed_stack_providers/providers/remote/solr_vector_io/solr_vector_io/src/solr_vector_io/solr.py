@@ -961,14 +961,10 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
         if self.kvstore is not None:
             start_key = VECTOR_DBS_PREFIX
             end_key = f"{VECTOR_DBS_PREFIX}\xff"
-            stored_vector_dbs = await self.kvstore.values_in_range(
-                start_key, end_key
-            )
+            stored_vector_dbs = await self.kvstore.values_in_range(start_key, end_key)
 
             log.info(
-                f"Loading {
-                    len(stored_vector_dbs)
-                } persisted vector DBs from KV store"
+                f"Loading {len(stored_vector_dbs)} persisted vector DBs from KV store"
             )
             for vector_db_data in stored_vector_dbs:
                 vector_db = VectorDB.model_validate_json(vector_db_data)
@@ -1076,7 +1072,9 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
         # see docstring for query_hybrid. tl;dr: the "reranker type" is a llama-stack thing and may not be applicable to Solr (if it is applicable, we will implement it later)
         solr_reranker_type = "doesntmatter"
         solr_reranker_params = {
-            vector_boost: vector_boost, keyword_boost: keyword_boost}
+            vector_boost: vector_boost,
+            keyword_boost: keyword_boost,
+        }
 
         query_string = interleaved_content_as_str(query)
 
@@ -1090,7 +1088,6 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
             query_vector = np.array(embedding, dtype=np.float32)
 
             if mode == "hybrid":
-
                 # self,
                 # embedding: NDArray,
                 # query_string: str,
@@ -1105,10 +1102,12 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
                     k=k,
                     score_threshold=score_threshold,
                     reranker_type=solr_reranker_type,
-                    reranker_params=solr_reranker_params
+                    reranker_params=solr_reranker_params,
                 )
             else:
-                result = await index.index.query_vector(query_vector, k, score_threshold)
+                result = await index.index.query_vector(
+                    query_vector, k, score_threshold
+                )
 
         log.debug(f"Query returned {len(result.chunks)} chunks")
         return result
