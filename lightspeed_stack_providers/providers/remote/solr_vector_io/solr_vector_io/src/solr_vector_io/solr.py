@@ -140,10 +140,10 @@ class SolrIndex(EmbeddingIndex):
         Returns:
             QueryChunksResponse with matching chunks and scores
         """
-        log.debug(
-            f"Performing vector search: k={k}, score_threshold={score_threshold}, "
-            f"embedding_dim={len(embedding)}"
-        )
+        # log.debug(
+        #     f"Performing vector search: k={k}, score_threshold={score_threshold}, "
+        #     f"embedding_dim={len(embedding)}"
+        # )
 
         async with self._create_http_client() as client:
             # Solr KNN query using the dense vector field
@@ -1082,8 +1082,8 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
             result = await index.index.query_keyword(query_string, k, score_threshold)
         else:
             # auto-generate the embedding
-            # embeddings_response = await index.inference_api.openai_embeddings(index.vector_db.embedding_model, [query_string])
-            # embedding = embeddings_response.data[0].embedding
+            embeddings_response = await index.inference_api.openai_embeddings(index.vector_db.embedding_model, [query_string])
+            embedding = embeddings_response.data[0].embedding
 
             query_vector = np.array(embedding, dtype=np.float32)
 
