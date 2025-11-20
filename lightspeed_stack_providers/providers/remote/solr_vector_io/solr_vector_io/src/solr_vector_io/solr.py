@@ -2,26 +2,31 @@ from typing import Any
 
 import httpx
 import numpy as np
-from numpy.typing import NDArray
 from llama_stack.apis.common.errors import VectorStoreNotFoundError
 from llama_stack.apis.files.files import Files
 from llama_stack.apis.inference import InterleavedContent
-from llama_stack.apis.vector_io import Chunk, QueryChunksResponse, VectorIO
 from llama_stack.apis.vector_dbs import VectorDB
+from llama_stack.apis.vector_io import (
+    Chunk,
+    ChunkMetadata,
+    QueryChunksResponse,
+    VectorIO,
+)
 from llama_stack.log import get_logger
 from llama_stack.providers.datatypes import Api, VectorDBsProtocolPrivate
+from llama_stack.providers.utils.inference.prompt_adapter import (
+    interleaved_content_as_str,
+)
 from llama_stack.providers.utils.kvstore import kvstore_impl
 from llama_stack.providers.utils.memory.openai_vector_store_mixin import (
     OpenAIVectorStoreMixin,
-)
-from llama_stack.providers.utils.inference.prompt_adapter import (
-    interleaved_content_as_str,
 )
 from llama_stack.providers.utils.memory.vector_store import (
     ChunkForDeletion,
     EmbeddingIndex,
     VectorDBWithIndex,
 )
+from numpy.typing import NDArray
 
 from .config import SolrVectorIOConfig
 
@@ -766,11 +771,19 @@ class SolrIndex(EmbeddingIndex):
                     if url:
                         expanded_metadata["reference_url"] = url
 
+                # Create ChunkMetadata for expanded chunk
+                expanded_chunk_metadata = ChunkMetadata(
+                    chunk_id=chunk.stored_chunk_id,
+                    document_id=expanded_metadata.get("parent_id"),
+                    source=expanded_metadata.get("reference_url"),
+                )
+
                 # Create expanded chunk
                 expanded_chunk = Chunk(
                     content=final_content,
                     metadata=expanded_metadata,
                     stored_chunk_id=chunk.stored_chunk_id,
+                    chunk_metadata=expanded_chunk_metadata,
                 )
 
                 expanded_chunks.append(expanded_chunk)
@@ -900,12 +913,20 @@ class SolrIndex(EmbeddingIndex):
             # Remaining fields become metadata
             metadata = clean_doc
 
+            # Create ChunkMetadata with available information
+            chunk_metadata = ChunkMetadata(
+                chunk_id=chunk_id,
+                document_id=metadata.get("parent_id"),
+                source=metadata.get("reference_url"),
+            )
+
             log.debug(f"Converted Solr document to chunk: chunk_id={chunk_id}")
             return Chunk(
                 content=content,
                 metadata=metadata,
                 embedding=embedding,
                 stored_chunk_id=chunk_id,
+                chunk_metadata=chunk_metadata,
             )
 
         except Exception as e:
