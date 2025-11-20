@@ -161,11 +161,12 @@ class SolrIndex(EmbeddingIndex):
                 "q": f"{{!knn f={self.vector_field} topK={k}}}{vector_list}",
                 "rows": str(k),
                 "fl": "*, score",
+                "fq": ["product:*openshift*"],
             }
 
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                solr_params["fq"] = self.chunk_window_config.chunk_filter_query
+                solr_params["fq"].append(self.chunk_window_config.chunk_filter_query)
                 log.debug(
                     f"Applying chunk filter: {
                         self.chunk_window_config.chunk_filter_query
@@ -265,13 +266,14 @@ class SolrIndex(EmbeddingIndex):
                 "q": query_string,
                 "rows": k,
                 "fl": "*, score",
+                "fq": ["product:*openshift*"],
                 "wt": "json",
                 "defType": "edismax",  # Use extended DisMax for better text search
             }
 
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                solr_params["fq"] = self.chunk_window_config.chunk_filter_query
+                solr_params["fq"].append(self.chunk_window_config.chunk_filter_query)
                 log.debug(
                     f"Applying chunk filter: {
                         self.chunk_window_config.chunk_filter_query
@@ -387,6 +389,7 @@ class SolrIndex(EmbeddingIndex):
                 "rqq": f"{{!knn f={self.vector_field} topK={k * 2}}}{vector_str}",
                 "rows": k,
                 "fl": "*, score",
+                "fq": ["product:*openshift*"],
                 "wt": "json",
                 "defType": "edismax",
             }
@@ -394,7 +397,7 @@ class SolrIndex(EmbeddingIndex):
 
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                data_params["fq"] = self.chunk_window_config.chunk_filter_query
+                solr_params["fq"].append(self.chunk_window_config.chunk_filter_query)
                 log.debug(
                     f"Applying chunk filter: {
                         self.chunk_window_config.chunk_filter_query
@@ -1103,7 +1106,9 @@ class SolrVectorIOAdapter(OpenAIVectorStoreMixin, VectorIO, VectorDBsProtocolPri
             result = await index.index.query_keyword(query_string, k, score_threshold)
         else:
             # auto-generate the embedding
-            embeddings_response = await index.inference_api.openai_embeddings(index.vector_db.embedding_model, [query_string])
+            embeddings_response = await index.inference_api.openai_embeddings(
+                index.vector_db.embedding_model, [query_string]
+            )
             embedding = embeddings_response.data[0].embedding
 
             query_vector = np.array(embedding, dtype=np.float32)

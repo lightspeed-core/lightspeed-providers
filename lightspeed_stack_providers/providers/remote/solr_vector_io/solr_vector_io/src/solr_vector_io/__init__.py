@@ -11,6 +11,7 @@ __all__ = [
     "get_adapter_impl",
 ]
 
+
 async def get_adapter_impl(config: SolrVectorIOConfig, deps: dict[Api, Any]):
     impl = SolrVectorIOAdapter(
         config,
