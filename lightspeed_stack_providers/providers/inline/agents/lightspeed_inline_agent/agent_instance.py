@@ -37,9 +37,30 @@ class LightspeedChatAgent(ChatAgent):
         created_at: str,
         policy: list = None,
         tools_filter_config: ToolsFilter = None,
+        chatbot_temperature_override: float = None,
     ):
         if policy is None:
             policy = []
+
+        # WORKAROUND: Apply temperature override if configured.
+        #
+        # llama-stack's SamplingParams defaults to GreedySamplingStrategy, which hardcodes
+        # temperature=0.0 in openai_compat.py. Models like gpt-5 and o-series reject this.
+        #
+        # This workaround overrides the default with TopPSamplingStrategy using the
+        # configured temperature value.
+        #
+        # TODO: Revisit after llama-stack v0.4.0+ - commit a8a8aa56 ("remove the agents
+        # (sessions and turns) API") replaces SamplingParams with direct temperature
+        # parameters in the new OpenAI-style agents API. Once upgraded, this workaround
+        # may no longer be needed.
+        #
+        # See: https://github.com/meta-llama/llama-stack/commit/a8a8aa56
+        if chatbot_temperature_override is not None:
+            agent_config.sampling_params = SamplingParams(
+                strategy=TopPSamplingStrategy(temperature=chatbot_temperature_override)
+            )
+            logger.info("Temperature override set to %s", chatbot_temperature_override)
 
         super().__init__(
             agent_id,
