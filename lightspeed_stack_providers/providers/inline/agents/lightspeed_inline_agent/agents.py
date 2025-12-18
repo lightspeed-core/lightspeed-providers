@@ -67,4 +67,5 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             created_at=agent_info.created_at,
             policy=self.policy,
             tools_filter_config=self.config.tools_filter,
+            chatbot_temperature_override=self.config.chatbot_temperature_override,
         )

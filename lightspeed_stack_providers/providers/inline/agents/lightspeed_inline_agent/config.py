@@ -105,6 +105,7 @@ class LightspeedAgentsImplConfig(MetaReferenceAgentsImplConfig):
     """Lightspeed agent configuration"""
 
     tools_filter: Optional[ToolsFilter] = ToolsFilter()
+    chatbot_temperature_override: Optional[float] = None
 
     @classmethod
     def sample_run_config(cls, __distro_dir__: str) -> dict[str, Any]:
