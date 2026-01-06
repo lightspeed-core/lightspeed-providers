@@ -131,7 +131,7 @@ class LightspeedChatAgent(ChatAgent):
         )
         message = "\n".join([message.content for message in request.messages])
         tools = [
-            dict(tool_name=tool.name, description=tool.description)
+            dict(tool_name=tool.tool_name, description=tool.description)
             for tool in self.tool_defs
         ]
         tools_filter_model_id = (
@@ -176,8 +176,8 @@ class LightspeedChatAgent(ChatAgent):
             original_tools_count = len(self.tool_defs)
             self.tool_defs = list(
                 filter(
-                    lambda tool: tool.name in filtered_tools_names
-                    or tool.name in always_included_tools,
+                    lambda tool: tool.tool_name in filtered_tools_names
+                    or tool.tool_name in always_included_tools,
                     self.tool_defs,
                 )
             )

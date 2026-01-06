@@ -7,8 +7,7 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 )
 from llama_stack.apis.agents import AgentConfig, AgentTurnCreateRequest, UserMessage
 from llama_stack.apis.inference import ChatCompletionResponse, CompletionMessage
-from llama_stack.apis.tools import ToolDef
-
+from llama_stack.models.llama.datatypes import ToolDefinition
 
 @pytest.fixture
 def mock_inference_api(mocker):
@@ -54,7 +53,7 @@ def lightspeed_chat_agent(mock_inference_api, mock_storage, mocker):
 async def test_create_and_execute_turn_with_filtering(lightspeed_chat_agent, mocker):
     """Test that create_and_execute_turn calls _filter_tools_with_request when enabled."""
     lightspeed_chat_agent.tool_defs = [
-        ToolDef(name="test_tool", description="A test tool")
+        ToolDefinition(tool_name="test_tool", description="A test tool")
     ]
     request = AgentTurnCreateRequest(
         agent_id="test_agent",
@@ -74,7 +73,7 @@ async def test_create_and_execute_turn_without_filtering(lightspeed_chat_agent, 
     """Test that create_and_execute_turn does not call _filter_tools_with_request when disabled."""
     lightspeed_chat_agent.tools_filter_config.enabled = False
     lightspeed_chat_agent.tool_defs = [
-        ToolDef(name="test_tool", description="A test tool")
+        ToolDefinition(tool_name="test_tool", description="A test tool")
     ]
     request = AgentTurnCreateRequest(
         agent_id="test_agent",
@@ -95,8 +94,8 @@ async def test_filter_tools_with_request(
 ):
     """Test the _filter_tools_with_request method."""
     lightspeed_chat_agent.tool_defs = [
-        ToolDef(name="tool1", description="Tool 1"),
-        ToolDef(name="tool2", description="Tool 2"),
+        ToolDefinition(tool_name="tool1", description="Tool 1"),
+        ToolDefinition(tool_name="tool2", description="Tool 2"),
     ]
     lightspeed_chat_agent.tool_name_to_args = {"tool1": {}, "tool2": {}}
     mock_storage.get_session_turns.return_value = []
@@ -114,6 +113,6 @@ async def test_filter_tools_with_request(
     await lightspeed_chat_agent._filter_tools_with_request(request)
 
     assert len(lightspeed_chat_agent.tool_defs) == 1
-    assert lightspeed_chat_agent.tool_defs[0].name == "tool1"
+    assert lightspeed_chat_agent.tool_defs[0].tool_name == "tool1"
     assert "tool1" in lightspeed_chat_agent.tool_name_to_args
     assert "tool2" not in lightspeed_chat_agent.tool_name_to_args
