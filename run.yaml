@@ -57,7 +57,7 @@ providers:
           chunk_filter_query: "is_chunk:true"
 
 vector_stores:
-  - vector_db_id: portal
+  - vector_db_id: portal-rag
     provider_id: solr_vector
 
 models:

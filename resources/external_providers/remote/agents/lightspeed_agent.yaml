@@ -1,8 +1,7 @@
-api: Api.agents
+adapter_type: lightspeed_agent
 adapter:
-  adapter_type: lightspeed_agent
-  pip_packages: []
-  config_class: lightspeed_stack_providers.providers.remote.agents.lightspeed_agent.config.LightspeedAgentConfig
   module: lightspeed_stack_providers.providers.remote.agents.lightspeed_agent
+config_class: lightspeed_stack_providers.providers.remote.agents.lightspeed_agent.config.LightspeedAgentConfig
+pip_packages: []
 api_dependencies: []
 optional_api_dependencies: []

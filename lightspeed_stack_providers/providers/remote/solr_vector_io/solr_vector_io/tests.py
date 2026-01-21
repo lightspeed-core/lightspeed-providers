@@ -213,10 +213,8 @@ class TestBasicFunctionality:
         """Test that delete operations raise NotImplementedError."""
         with pytest.raises(NotImplementedError, match="read-only"):
             await adapter_basic.delete_chunks(
-                store_id="test-basic-store",
-                chunks_for_deletion=[
-                    ChunkForDeletion(chunk_id="test", document_id="test-doc")
-                ],
+                vector_db_id="test-basic-store",
+                chunk_ids=["test-chunk-1", "test-chunk-2"],
             )
 
 
@@ -527,7 +525,6 @@ class TestHybridSearch:
             query_string="Linux software",
             k=5,
             score_threshold=0.0,
-            reranker_type="solr_native",
             reranker_params={"vector_boost": 1.0, "keyword_boost": 1.0},
         )
 
@@ -549,7 +546,6 @@ class TestHybridSearch:
             query_string="security",
             k=3,
             score_threshold=0.0,
-            reranker_type="solr_native",
             reranker_params={"vector_boost": 2.0, "keyword_boost": 0.5},
         )
 
@@ -559,7 +555,6 @@ class TestHybridSearch:
             query_string="security",
             k=3,
             score_threshold=0.0,
-            reranker_type="solr_native",
             reranker_params={"vector_boost": 0.5, "keyword_boost": 2.0},
         )
 
@@ -663,7 +658,6 @@ class TestChunkWindowExpansion:
             query_string="Linux",
             k=3,
             score_threshold=0.0,
-            reranker_type="solr_native",
             reranker_params={"vector_boost": 1.0, "keyword_boost": 1.0},
         )
         assert len(hybrid_response.chunks) >= 0
@@ -754,7 +748,6 @@ class TestRealEmbeddings:
             query_string="Red Hat Linux",
             k=5,
             score_threshold=0.0,
-            reranker_type="solr_native",
             reranker_params={"vector_boost": 1.5, "keyword_boost": 1.0},
         )
 

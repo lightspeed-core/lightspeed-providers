@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from llama_stack.providers.utils.kvstore.config import KVStoreConfig
+from llama_stack.core.storage.datatypes import KVStoreReference
 from llama_stack.schema_utils import json_schema_type
 
 
@@ -98,8 +98,8 @@ class SolrVectorIOConfig(BaseModel):
         description="Name of the field containing unique document identifier",
     )
     embedding_dimension: int = Field(description="Dimension of the embedding vectors")
-    persistence: KVStoreConfig | None = Field(
-        description="Config for KV store backend (SQLite only for now)", default=None
+    persistence: KVStoreReference | None = Field(
+        description="Config for KV store backend reference", default=None
     )
     request_timeout: int = Field(
         default=30, description="Timeout for Solr requests in seconds"
@@ -127,8 +127,8 @@ class SolrVectorIOConfig(BaseModel):
             "content_field": content_field,
             "embedding_dimension": embedding_dimension,
             "persistence": {
-                "type": "sqlite",
                 "namespace": "vector_io::solr",
+                "backend": "kv_default",
             },
             # Example chunk window configuration (uncomment to enable):
             # "chunk_window_config": {
