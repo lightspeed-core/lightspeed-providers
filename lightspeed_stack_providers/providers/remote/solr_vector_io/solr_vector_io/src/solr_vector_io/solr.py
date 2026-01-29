@@ -1394,7 +1394,7 @@ class SolrIndex(EmbeddingIndex):
                     f"Sending KNN query to Solr: topK={k}, field={self.vector_field}"
                 )
                 response = await client.post(
-                    f"{self.base_url}/knn-search?wt=json",
+                    f"{self.base_url}/hybrid-search?wt=json",
                     json=json_body,
                     headers={"Content-Type": "application/json"},
                 )
