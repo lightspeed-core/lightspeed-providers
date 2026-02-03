@@ -167,7 +167,7 @@ class SolrIndex(EmbeddingIndex):
 
             try:
                 response = await client.post(
-                    f"{self.base_url}/hybrid-search",
+                    f"{self.base_url}/semantic-search",
                     data=params,   # ✅ form-encoded
                 )
                 response.raise_for_status()
