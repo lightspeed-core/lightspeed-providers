@@ -203,7 +203,7 @@ class SolrIndex(EmbeddingIndex):
 
             except httpx.HTTPStatusError as e:
                 log.error(
-                    f"hybrid-search failed: status={e.response.status_code}, "
+                    f"semantic-search failed: status={e.response.status_code}, "
                     f"body={e.response.text[:500]}"
                 )
                 raise
