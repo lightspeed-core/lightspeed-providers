@@ -899,11 +899,14 @@ class SolrIndex(EmbeddingIndex):
                 embedding = []
 
 
-            return Chunk(
+            return EmbeddedChunk(
                 chunk_id=str(chunk_id),
                 content=content,
-                metadata=metadata,
                 chunk_metadata=metadata,
+                embedding=[],           # can be None
+                embedding_model=self.embedding_model,
+                embedding_dimension=self.dimension,
+                metadata_token_count=None,           # optional but required by schema
             )
 
         except Exception as e:
