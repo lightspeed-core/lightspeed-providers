@@ -60,7 +60,7 @@ class SolrIndex(EmbeddingIndex):
         self.request_timeout = request_timeout
         self.chunk_window_config = chunk_window_config
         self.base_url = f"{self.solr_url}/{self.collection_name}"
-        log.debug(
+        log.info(
             f"Initialized SolrIndex for collection '{collection_name}' at {
                 self.base_url
             }, "
@@ -141,7 +141,7 @@ class SolrIndex(EmbeddingIndex):
         Returns:
             QueryChunksResponse with matching chunks and scores
         """
-        log.debug(
+        log.info(
             f"Performing vector search: k={k}, score_threshold={score_threshold}, "
             f"embedding_dim={len(embedding)}"
         )
@@ -225,7 +225,7 @@ class SolrIndex(EmbeddingIndex):
         Returns:
             QueryChunksResponse with matching chunks and scores
         """
-        log.debug(
+        log.info(
             f"Performing keyword search: query='{query_string}', k={k}, "
             f"score_threshold={score_threshold}"
         )
@@ -242,14 +242,14 @@ class SolrIndex(EmbeddingIndex):
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
                 solr_params["fq"] = self.chunk_window_config.chunk_filter_query
-                log.debug(
+                log.info(
                     f"Applying chunk filter: {
                         self.chunk_window_config.chunk_filter_query
                     }"
                 )
 
             try:
-                log.debug("Sending keyword query to Solr using edismax parser")
+                log.info("Sending keyword query to Solr using edismax parser")
                 response = await client.get(
                     f"{self.base_url}/select", params=solr_params
                 )
@@ -260,14 +260,14 @@ class SolrIndex(EmbeddingIndex):
                 scores = []
 
                 num_docs = data.get("response", {}).get("numFound", 0)
-                log.debug(f"Solr returned {num_docs} documents for keyword search")
+                log.info(f"Solr returned {num_docs} documents for keyword search")
 
                 for doc in data.get("response", {}).get("docs", []):
                     score = float(doc.get("score", 0))
 
                     # Apply score threshold
                     if score < score_threshold:
-                        log.debug(
+                        log.info(
                             f"Filtering out document with score {score} < threshold {
                                 score_threshold
                             }"
@@ -336,7 +336,7 @@ class SolrIndex(EmbeddingIndex):
         vector_boost = reranker_params.get("vector_boost", 1.0)
         keyword_boost = reranker_params.get("keyword_boost", 1.0)
 
-        log.debug(
+        log.info(
             f"Performing hybrid search: query='{query_string}', k={k}, "
             f"score_threshold={score_threshold}, vector_boost={vector_boost}, "
             f"keyword_boost={keyword_boost}"
@@ -362,17 +362,20 @@ class SolrIndex(EmbeddingIndex):
             }
             # Note: keyword_boost can be incorporated in future by discovering schema fields
 
+            print("========== HYBRID SEARCH PARAMS ==========")
+            print(data_params)
+
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
                 data_params["fq"] = self.chunk_window_config.chunk_filter_query
-                log.debug(
+                log.info(
                     f"Applying chunk filter: {
                         self.chunk_window_config.chunk_filter_query
                     }"
                 )
 
             try:
-                log.debug(
+                log.info(
                     f"Sending hybrid query to Solr with reranking: reRankDocs={k * 2}, "
                     f"reRankWeight={vector_boost}"
                 )
@@ -388,14 +391,14 @@ class SolrIndex(EmbeddingIndex):
                 scores = []
 
                 num_docs = data.get("response", {}).get("numFound", 0)
-                log.debug(f"Solr returned {num_docs} documents for hybrid search")
+                log.info(f"Solr returned {num_docs} documents for hybrid search")
 
                 for doc in data.get("response", {}).get("docs", []):
                     score = float(doc.get("score", 0))
 
                     # Apply score threshold
                     if score < score_threshold:
-                        log.debug(
+                        log.info(
                             f"Filtering out document with score {score} < threshold {
                                 score_threshold
                             }"
@@ -474,7 +477,7 @@ class SolrIndex(EmbeddingIndex):
             fields.append(schema.parent_content_url_field)
 
         try:
-            log.debug(f"Fetching parent metadata for parent_id={parent_id}")
+            log.info(f"Fetching parent metadata for parent_id={parent_id}")
             response = await client.get(
                 f"{self.base_url}/select",
                 params={
@@ -493,7 +496,7 @@ class SolrIndex(EmbeddingIndex):
                 return None
 
             parent_doc = docs[0]
-            log.debug(
+            log.info(
                 f"Found parent document: total_chunks={
                     parent_doc.get(schema.parent_total_chunks_field)
                 }, "
@@ -547,7 +550,7 @@ class SolrIndex(EmbeddingIndex):
         query = " AND ".join(query_parts)
 
         try:
-            log.debug(
+            log.info(
                 f"Fetching context chunks: parent_id={parent_id}, "
                 f"range=[{window_start}, {window_end}]"
             )
@@ -566,7 +569,7 @@ class SolrIndex(EmbeddingIndex):
             data = response.json()
 
             chunks = data.get("response", {}).get("docs", [])
-            log.debug(f"Fetched {len(chunks)} context chunks")
+            log.info(f"Fetched {len(chunks)} context chunks")
             return chunks
 
         except Exception as e:
@@ -632,7 +635,7 @@ class SolrIndex(EmbeddingIndex):
                     abs(matched_chunk_index - kept) < min_chunk_gap
                     for kept in kept_indices_by_parent[parent_id]
                 ):
-                    log.debug(
+                    log.info(
                         f"Skipping chunk at index {matched_chunk_index} "
                         f"(too close to existing anchor)"
                     )
@@ -658,7 +661,7 @@ class SolrIndex(EmbeddingIndex):
 
                 # If short doc, return all chunks
                 if total_chunks < min_chunk_window or total_tokens <= token_budget:
-                    log.debug(
+                    log.info(
                         f"Document is short (total_chunks={total_chunks}, "
                         f"total_tokens={total_tokens}), fetching all chunks"
                     )
@@ -675,7 +678,7 @@ class SolrIndex(EmbeddingIndex):
                         else 0
                     )
 
-                    log.debug(
+                    log.info(
                         f"Fetching bounded window: [{window_start}, {window_end}] "
                         f"around match at index {matched_chunk_index}"
                     )
@@ -790,7 +793,7 @@ class SolrIndex(EmbeddingIndex):
         total_tokens += center_chunk.get(schema.chunk_token_count_field, 0)
         selected_chunks.append(center_chunk)
 
-        log.debug(
+        log.info(
             f"Starting chunk window expansion: match_index={match_index}, "
             f"total_chunks={n}, token_budget={token_budget}"
         )
@@ -808,7 +811,7 @@ class SolrIndex(EmbeddingIndex):
                     total_tokens += next_tokens
                     left -= 1
                     added = True
-                    log.debug(
+                    log.info(
                         f"Added left chunk at index {left}, total_tokens={total_tokens}"
                     )
 
@@ -821,7 +824,7 @@ class SolrIndex(EmbeddingIndex):
                     total_tokens += next_tokens
                     right += 1
                     added = True
-                    log.debug(
+                    log.info(
                         f"Added right chunk at index {right - 1}, total_tokens={
                             total_tokens
                         }"
@@ -844,7 +847,7 @@ class SolrIndex(EmbeddingIndex):
     def _doc_to_chunk(self, doc: dict[str, Any]) -> Chunk | None:
         try:
             if not doc.get("is_chunk", True):
-                log.debug("Skipping non-chunk document")
+                log.info("Skipping non-chunk document")
                 return None
 
             content = doc.get(self.content_field)
@@ -929,11 +932,11 @@ class SolrVectorIOAdapter(
         self.inference_api = inference_api
         self.cache = {}
         self.vector_store_table = None
-        log.debug("SolrVectorIOAdapter instance created")
+        log.info("SolrVectorIOAdapter instance created")
 
     async def initialize(self) -> None:
         log.info("Initializing Solr vector_io adapter")
-        log.debug(
+        log.info(
             f"Configuration: solr_url={self.config.solr_url}, "
             f"collection={self.config.collection_name}, "
             f"vector_field={self.config.vector_field}, "
@@ -942,13 +945,13 @@ class SolrVectorIOAdapter(
 
         if self.config.persistence is not None:
             self.kvstore = await kvstore_impl(self.config.persistence)
-            log.debug("KV store initialized")
+            log.info("KV store initialized")
 
             # Initialize OpenAI vector stores support (read-only) - requires kvstore
             await self.initialize_openai_vector_stores()
-            log.debug("OpenAI vector stores initialized")
+            log.info("OpenAI vector stores initialized")
         else:
-            log.debug(
+            log.info(
                 "No persistence configured, skipping KV store and OpenAI vector store initialization"
             )
 
@@ -967,7 +970,7 @@ class SolrVectorIOAdapter(
             )
             for vector_store_data in stored_vector_stores:
                 vector_store = VectorStore.model_validate_json(vector_store_data)
-                log.debug(f"Loading vector store: {vector_store.identifier}")
+                log.info(f"Loading vector store: {vector_store.identifier}")
 
                 index = SolrIndex(
                     vector_store=vector_store,
@@ -992,7 +995,7 @@ class SolrVectorIOAdapter(
         log.info("Shutting down Solr vector_io adapter")
         # Clean up mixin resources (file batch tasks)
         await super().shutdown()
-        log.debug("Shutdown complete")
+        log.info("Shutdown complete")
 
     async def register_vector_store(self, vector_store: VectorStore) -> None:
         """Register a vector store (read-only, just caches the metadata)."""
@@ -1000,9 +1003,9 @@ class SolrVectorIOAdapter(
         if self.kvstore is not None:
             key = f"{VECTOR_DBS_PREFIX}{vector_store.identifier}"
             await self.kvstore.set(key=key, value=vector_store.model_dump_json())
-            log.debug(f"Persisted vector store metadata to KV store: {key}")
+            log.info(f"Persisted vector store metadata to KV store: {key}")
         else:
-            log.debug("No KV store configured, skipping persistence")
+            log.info("No KV store configured, skipping persistence")
 
         index = SolrIndex(
             vector_store=vector_store,
@@ -1028,11 +1031,11 @@ class SolrVectorIOAdapter(
 
         if vector_store_id in self.cache:
             del self.cache[vector_store_id]
-            log.debug(f"Removed vector store from cache: {vector_store_id}")
+            log.info(f"Removed vector store from cache: {vector_store_id}")
 
         if self.kvstore is not None:
             await self.kvstore.delete(key=f"{VECTOR_DBS_PREFIX}{vector_store_id}")
-            log.debug("Removed from KV store")
+            log.info("Removed from KV store")
 
         log.info(f"Successfully unregistered vector store: {vector_store_id}")
 
@@ -1053,10 +1056,10 @@ class SolrVectorIOAdapter(
         params: dict[str, Any] | None = None,
     ) -> QueryChunksResponse:
         """Query chunks from the Solr collection."""
-        log.debug(f"Query chunks request for vector_store_id={vector_store_id}")
+        log.info(f"Query chunks request for vector_store_id={vector_store_id}")
         index = await self._get_and_cache_vector_store_index(vector_store_id)
         result = await index.query_chunks(query, params)
-        log.debug(f"Query returned {len(result.chunks)} chunks")
+        log.info(f"Query returned {len(result.chunks)} chunks")
         return result
 
     async def delete_chunks(
@@ -1075,10 +1078,10 @@ class SolrVectorIOAdapter(
         self, vector_store_id: str
     ) -> VectorStoreWithIndex:
         if vector_store_id in self.cache:
-            log.debug(f"Retrieved vector store from cache: {vector_store_id}")
+            log.info(f"Retrieved vector store from cache: {vector_store_id}")
             return self.cache[vector_store_id]
 
-        log.debug(f"Vector store not in cache, loading from table: {vector_store_id}")
+        log.info(f"Vector store not in cache, loading from table: {vector_store_id}")
 
         if self.vector_store_table is None:
             log.error(f"Vector store table not set, cannot find: {vector_store_id}")
