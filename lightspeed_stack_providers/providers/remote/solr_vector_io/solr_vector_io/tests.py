@@ -26,10 +26,10 @@ from src.solr_vector_io import (
     SolrVectorIOAdapter,
     SolrVectorIOConfig,
 )
-from llama_stack.apis.vector_dbs import VectorDB
-from llama_stack.apis.vector_io import Chunk
+from llama_stack_api.vector_stores import VectorStore as VectorDB
+from llama_stack_api.vector_io import Chunk
 from llama_stack.providers.utils.memory.vector_store import ChunkForDeletion
-from llama_stack.providers.utils.kvstore.config import SqliteKVStoreConfig
+from llama_stack.core.storage.kvstore.config import SqliteKVStoreConfig
 
 
 # ============================================================================
