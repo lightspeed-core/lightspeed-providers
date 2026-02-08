@@ -1,27 +1,40 @@
 import logging
-from typing import Any
+import uuid
 from string import Template
+from typing import Any
+
+from llama_stack_api import (
+    Api,
+    Inference,
+    ModerationObject,
+    ModerationObjectResults,
+    RunShieldResponse,
+    Safety,
+    SafetyViolation,
+    ShieldsProtocolPrivate,
+    UserMessage,
+    ViolationLevel,
+)
+from llama_stack_api.inference import (
+    OpenAIAssistantMessageParam,
+    OpenAIChatCompletionRequestWithExtraBody,
+    OpenAIDeveloperMessageParam,
+    OpenAISystemMessageParam,
+    OpenAIToolMessageParam,
+    OpenAIUserMessageParam,
+)
+
+# Message type alias for run_shield parameter
+Message = (
+    OpenAIUserMessageParam
+    | OpenAISystemMessageParam
+    | OpenAIAssistantMessageParam
+    | OpenAIToolMessageParam
+    | OpenAIDeveloperMessageParam
+)
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
     QuestionValidityShieldConfig,
-)
-
-from llama_stack.apis.datatypes import Api
-from llama_stack.providers.datatypes import ShieldsProtocolPrivate
-from llama_stack.apis.safety import (
-    SafetyViolation,
-    ViolationLevel,
-    RunShieldResponse,
-    Safety,
-)
-from llama_stack.apis.safety.safety import (
-    ModerationObject,
-    ModerationObjectResults,
-)
-from llama_stack.apis.inference import (
-    Inference,
-    Message,
-    UserMessage,
 )
 
 log = logging.getLogger(__name__)
@@ -44,13 +57,11 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         pass
 
     async def run_moderation(
-        self, input: str | list[str], model: str
+        self, input: str | list[str], model: str | None = None
     ) -> ModerationObject:
         """Run moderation on input text to check if it's a valid question."""
-        if isinstance(input, list):
-            text = " ".join(input)
-        else:
-            text = input
+        inputs = input if isinstance(input, list) else [input]
+        results = []
 
         impl = QuestionValidityRunner(
             model_id=self.config.model_id,
@@ -59,8 +70,15 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
             inference_api=self.inference_api,
         )
 
-        run_response = await impl.run(UserMessage(content=text))
-        return self._get_moderation_object_results(run_response)
+        for text in inputs:
+            run_response = await impl.run(UserMessage(content=text))
+            results.append(self._get_moderation_object_results(run_response))
+
+        return ModerationObject(
+            id=f"modr-{uuid.uuid4()}",
+            model=model or self.config.model_id,
+            results=results,
+        )
 
     def _get_moderation_object_results(
         self, run_shield_response: RunShieldResponse
@@ -93,8 +111,18 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         messages: list[Message],
         params: dict[str, Any] = None,
     ) -> RunShieldResponse:
-        # Take last UserMessage
-        message: UserMessage = [m for m in messages if isinstance(m, UserMessage)][-1]
+        # Take last user message (can be UserMessage or OpenAIUserMessageParam)
+        user_messages = [
+            m
+            for m in messages
+            if isinstance(m, (UserMessage, OpenAIUserMessageParam))
+            or (hasattr(m, "role") and m.role == "user")
+        ]
+        if not user_messages:
+            return RunShieldResponse(violation=None)
+        last_msg = user_messages[-1]
+        content = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
+        message = UserMessage(content=content)
         log.debug(f"Shield UserMessage: {message.content}")
 
         impl = QuestionValidityRunner(
@@ -149,11 +177,16 @@ class QuestionValidityRunner:
         shield_input_message = self.build_text_shield_input(message)
         log.debug(f"Shield input message: {shield_input_message}")
 
-        response = await self.inference_api.chat_completion(
-            model_id=self.model_id,
-            messages=[shield_input_message],
+        request = OpenAIChatCompletionRequestWithExtraBody(
+            model=self.model_id,
+            messages=[
+                OpenAIUserMessageParam(
+                    role="user", content=shield_input_message.content
+                ),
+            ],
             stream=False,
         )
-        content = response.completion_message.content
+        response = await self.inference_api.openai_chat_completion(request)
+        content = response.choices[0].message.content
         content = content.strip()
         return self.get_shield_response(content)

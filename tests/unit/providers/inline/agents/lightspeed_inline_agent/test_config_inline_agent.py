@@ -2,6 +2,11 @@ import pytest
 from pydantic import ValidationError
 import os
 
+from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
+from llama_stack.providers.inline.agents.meta_reference.config import (
+    AgentPersistenceConfig,
+)
+
 from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.config import (
     ToolsFilter,
     LightspeedAgentsImplConfig,
@@ -54,7 +59,13 @@ def test_tools_filter_with_unreadable_system_prompt_path(tmp_path):
 
 def test_lightspeed_agents_impl_config_defaults():
     """Test that the LightspeedAgentsImplConfig model can be instantiated with default values."""
-    config = LightspeedAgentsImplConfig()
+    persistence = AgentPersistenceConfig(
+        agent_state=KVStoreReference(namespace="test", backend="in_memory"),
+        responses=ResponsesStoreReference(
+            table_name="test_responses", backend="in_memory"
+        ),
+    )
+    config = LightspeedAgentsImplConfig(persistence=persistence)
     assert isinstance(config.tools_filter, ToolsFilter)
 
 

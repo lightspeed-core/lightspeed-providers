@@ -17,30 +17,32 @@ agents:
   - provider_id: lightspeed_inline_agent
     provider_type: inline::lightspeed_inline_agent
     config:
-      persistence_store:
-        type: sqlite
-        namespace: null
-        db_path: ${env.SQLITE_STORE_DIR:=~/.llama/distributions/ollama}/agents_store.db
-      responses_store:
-        type: sqlite
-        db_path: ${env.SQLITE_STORE_DIR:=~/.llama/distributions/ollama}/responses_store.db
+      persistence:
+        agent_state:
+          namespace: lightspeed_agents
+          backend: kv_default
+        responses:
+          table_name: lightspeed_responses
+          backend: sql_default
       tools_filter:
-        # Optional: Whether to enable tools filtering, default value is true  
+        # Optional: Whether to enable tools filtering, default value is true
         enabled: true
         # Optional: The model to use for filtering, the default value is the inference model used
         model_id: ${env.INFERENCE_MODEL_FILTER:=}
-        # Optional: From how much tools we start filtering, default value is 10 
+        # Optional: From how much tools we start filtering, default value is 10
         min_tools: 10
         # Optional: the file path of the system prompt, default value is None
         system_prompt_path: ${env.FILTER_SYSTEM_PROMPT_PATH:=}
-        # Optional: the system prompt if not in a file, 
+        # Optional: the system prompt if not in a file,
         # when system_prompt_path is defined system_prompt will be the content of the indicated file
-        # when system_prompt is empty, the default filtering system prompt is used 
+        # when system_prompt is empty, the default filtering system prompt is used
         system_prompt: ${env.FILTER_SYSTEM_PROMPT:=}
-        # Optional: tools to always include, for example rag tools, to not be filtered out, 
+        # Optional: tools to always include, for example rag tools, to not be filtered out,
         # the default is an empty list
         always_include_tools:
-        - knowledge_search
+          - knowledge_search
+      # Optional: Override temperature for this agent (default: None)
+      chatbot_temperature_override: 1.0
 ...
 external_providers_dir: ~/.llama/distributions/ollama/external_providers/
 ```
