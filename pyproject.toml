@@ -4,18 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightspeed_stack_providers"
-version = "0.1.18"
+version = "0.4.1"
 description = "Lightspeed Stack providers for llama-stack"
 requires-python = ">=3.12"
 dependencies = [
     "llama-stack==0.4.3",
+    "llama-stack-api==0.4.4",
     "llama-stack-client==0.4.3",
     "httpx",
     "pydantic>=2.10.6",
     "litellm>=1.75.5.post1",
     "sqlalchemy>=2.0.0",
     "numpy>=1.24.0",
-    "mcp",
+    "mcp>=1.23.0",
+    "urllib3>=2.6.3",
+    "aiohttp>=3.13.3",
+    "protobuf>=6.33.5",
+    "filelock>=3.20.3",
 ]
 
 [tool.setuptools.packages]

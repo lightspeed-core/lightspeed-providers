@@ -1,20 +1,35 @@
 import logging
 import re
+import uuid
 from typing import Any, Optional
+
+from llama_stack_api import (
+    ModerationObject,
+    ModerationObjectResults,
+    RunShieldResponse,
+    Safety,
+    Shield,
+    ShieldsProtocolPrivate,
+)
+from llama_stack_api.inference import (
+    OpenAIAssistantMessageParam,
+    OpenAIDeveloperMessageParam,
+    OpenAISystemMessageParam,
+    OpenAIToolMessageParam,
+    OpenAIUserMessageParam,
+)
+
+# Message type alias for run_shield parameter
+Message = (
+    OpenAIUserMessageParam
+    | OpenAISystemMessageParam
+    | OpenAIAssistantMessageParam
+    | OpenAIToolMessageParam
+    | OpenAIDeveloperMessageParam
+)
 
 from .config import (
     RedactionShieldConfig,
-)
-
-from llama_stack.apis.shields import Shield
-from llama_stack.providers.datatypes import ShieldsProtocolPrivate
-from llama_stack.apis.safety import (
-    RunShieldResponse,
-    Safety,
-)
-from llama_stack.apis.inference import (
-    Message,
-    UserMessage,
 )
 
 log = logging.getLogger(__name__)
@@ -75,7 +90,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         """Run the redaction shield - mutates messages directly."""
 
         for message in messages:
-            if isinstance(message, UserMessage) and isinstance(message.content, str):
+            if hasattr(message, "content") and isinstance(message.content, str):
                 original_content: str = message.content
                 redacted_content: str = self._apply_redaction_rules(original_content)
 
@@ -83,6 +98,53 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
                     message.content = redacted_content  # Mutating in-place
 
         return RunShieldResponse(violation=None)
+
+    async def run_moderation(
+        self, input: str | list[str], model: str | None = None
+    ) -> ModerationObject:
+        """Run moderation on input text, checking for sensitive data.
+
+        When sensitive data is detected, the content is flagged and blocked.
+        This serves as a safety net for flows that don't use run_shield.
+        For flows using lightspeed_inline_agent, redaction happens in the agent.
+        """
+        inputs = input if isinstance(input, list) else [input]
+        results = []
+
+        for text_input in inputs:
+            redacted = self._apply_redaction_rules(text_input)
+            contains_sensitive_data = redacted != text_input
+
+            if contains_sensitive_data:
+                results.append(
+                    ModerationObjectResults(
+                        flagged=True,
+                        categories={"sensitive_data": True},
+                        category_scores={"sensitive_data": 1.0},
+                        category_applied_input_types={"sensitive_data": ["text"]},
+                        user_message=(
+                            "Your message appears to contain sensitive information "
+                            "(such as passwords, API keys, or other secrets). "
+                            "Please remove sensitive data and try again."
+                        ),
+                        metadata={"contains_sensitive_data": True},
+                    )
+                )
+            else:
+                results.append(
+                    ModerationObjectResults(
+                        flagged=False,
+                        categories={},
+                        category_scores={},
+                        metadata={"contains_sensitive_data": False},
+                    )
+                )
+
+        return ModerationObject(
+            id=f"modr-{uuid.uuid4()}",
+            model=model or "lightspeed-redaction",
+            results=results,
+        )
 
     def _apply_redaction_rules(self, content: str) -> str:
         """Apply all redaction rules to content."""

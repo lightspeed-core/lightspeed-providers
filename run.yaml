@@ -1,27 +1,43 @@
-version: '2'
+version: 2
 image_name: llama-stack-local
 apis:
   - inference
   - safety
   - vector_io
+  - agents
+  - tool_runtime
 
 external_providers_dir: ./resources/external_providers
 
-inference_store:
-  type: sqlite
-  db_path: /tmp/inference_store.db
-
-metadata_store:
-  type: sqlite
-  db_path: /tmp/registry.db
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: /tmp/registry.db
+    sql_default:
+      type: sql_sqlite
+      db_path: /tmp/inference_store.db
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+    conversations:
+      table_name: openai_conversations
+      backend: sql_default
+    prompts:
+      namespace: prompts
+      backend: kv_default
 
 providers:
   inference:
     - provider_id: openai
       provider_type: remote::openai
       config:
-        api_key: ${OPENAI_API_KEY}
-  
+        api_key: ${env.OPENAI_API_KEY}
+
   safety:
     - provider_id: lightspeed_question_validity
       provider_type: inline::lightspeed_question_validity
@@ -29,7 +45,7 @@ providers:
         model_id: openai/gpt-4o
         temperature: 0.0
         invalid_question_response: |
-          Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift, 
+          Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift,
           please ask me a question related to OpenShift.
   
   vector_io:
@@ -60,15 +76,52 @@ vector_stores:
   - vector_db_id: portal-rag
     provider_id: solr_vector
 
-models:
-  - model_id: gpt-4o
-    provider_id: openai
-    model_type: llm
-    provider_model_id: gpt-4o
+    - provider_id: lightspeed_redaction
+      provider_type: inline::lightspeed_redaction
+      config:
+        case_sensitive: false
+        rules:
+          - pattern: "(?i)(password|passwd)[\\s:=]+[^\\s]+"
+            replacement: "[REDACTED_PASSWORD]"
+          - pattern: "(?i)(api_key|secret|token)[\\s:=]+[a-zA-Z0-9\\-_]{16,}"
+            replacement: "[REDACTED_SECRET]"
+          - pattern: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"
+            replacement: "[REDACTED_EMAIL]"
 
-shields:
-  - shield_id: lightspeed_question_validity-shield
-    provider_id: lightspeed_question_validity
+  agents:
+    - provider_id: lightspeed_inline_agent
+      provider_type: inline::lightspeed_inline_agent
+      config:
+        persistence:
+          agent_state:
+            namespace: lightspeed_agents
+            backend: kv_default
+          responses:
+            table_name: lightspeed_responses
+            backend: sql_default
+        tools_filter:
+          enabled: true
+          model_id: openai/gpt-4o-mini
+          min_tools: 10
+          always_include_tools:
+            - knowledge_search
+        chatbot_temperature_override: 1.0
+
+registered_resources:
+  models:
+    - model_id: gpt-4o
+      provider_id: openai
+      model_type: llm
+      provider_model_id: gpt-4o
+
+  shields:
+    - shield_id: lightspeed_question_validity-shield
+      provider_id: lightspeed_question_validity
+    - shield_id: redaction-shield
+      provider_id: lightspeed_redaction
+      provider_shield_id: lightspeed-redaction-shield
+
+  tool_groups: []
 
 server:
   host: 0.0.0.0

@@ -1,119 +1,250 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.agent_instance import (
-    LightspeedChatAgent,
+from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
+from llama_stack.providers.inline.agents.meta_reference.config import (
+    AgentPersistenceConfig,
+)
+
+from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.agents import (
+    LightspeedAgentsImpl,
 )
 from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.config import (
+    LightspeedAgentsImplConfig,
     ToolsFilter,
 )
-from llama_stack.apis.agents import AgentConfig, AgentTurnCreateRequest, UserMessage
-from llama_stack.apis.inference import ChatCompletionResponse, CompletionMessage
-from llama_stack.models.llama.datatypes import ToolDefinition
+
 
 
 @pytest.fixture
-def mock_inference_api(mocker):
+def mock_inference_api():
     """Fixture for mocking the Inference API."""
-    return mocker.AsyncMock()
+    mock = AsyncMock()
+    return mock
 
 
 @pytest.fixture
-def mock_storage(mocker):
-    """Fixture for mocking the storage."""
-    return mocker.AsyncMock()
+def mock_conversations_api():
+    """Fixture for mocking the Conversations API."""
+    mock = AsyncMock()
+    mock.list_messages.return_value = []
+    return mock
 
 
 @pytest.fixture
-def lightspeed_chat_agent(mock_inference_api, mock_storage, mocker):
-    """Fixture for creating a LightspeedChatAgent instance."""
-    agent_config = AgentConfig(
-        model="test_model",
-        instructions="test_instructions",
-        tool_choice=None,
-        tool_prompt_format=None,
-    )
-    tools_filter_config = ToolsFilter(enabled=True, min_tools=0)
-    agent = LightspeedChatAgent(
-        agent_id="test_agent",
-        agent_config=agent_config,
-        inference_api=mock_inference_api,
-        safety_api=mocker.AsyncMock(),
-        tool_runtime_api=mocker.AsyncMock(),
-        tool_groups_api=mocker.AsyncMock(),
-        vector_io_api=mocker.AsyncMock(),
-        persistence_store=mocker.AsyncMock(),
-        created_at="2025-10-27T00:00:00Z",
-        tools_filter_config=tools_filter_config,
-    )
-    agent.storage = mock_storage
-    agent._initialize_tools = mocker.AsyncMock()
-    agent._run_turn = mocker.MagicMock()
-    return agent
+def mock_tool_runtime_api():
+    """Fixture for mocking the Tool Runtime API."""
+    mock = AsyncMock()
+    return mock
 
 
-@pytest.mark.asyncio
-async def test_create_and_execute_turn_with_filtering(lightspeed_chat_agent, mocker):
-    """Test that create_and_execute_turn calls _filter_tools_with_request when enabled."""
-    lightspeed_chat_agent.tool_defs = [
-        ToolDefinition(tool_name="test_tool", description="A test tool")
-    ]
-    request = AgentTurnCreateRequest(
-        agent_id="test_agent",
-        session_id="test_session",
-        messages=[UserMessage(content="test message")],
-    )
-    lightspeed_chat_agent._filter_tools_with_request = mocker.AsyncMock()
-
-    async for _ in lightspeed_chat_agent.create_and_execute_turn(request):
-        pass
-
-    lightspeed_chat_agent._filter_tools_with_request.assert_called_once_with(request)
-
-
-@pytest.mark.asyncio
-async def test_create_and_execute_turn_without_filtering(lightspeed_chat_agent, mocker):
-    """Test that create_and_execute_turn does not call _filter_tools_with_request when disabled."""
-    lightspeed_chat_agent.tools_filter_config.enabled = False
-    lightspeed_chat_agent.tool_defs = [
-        ToolDefinition(tool_name="test_tool", description="A test tool")
-    ]
-    request = AgentTurnCreateRequest(
-        agent_id="test_agent",
-        session_id="test_session",
-        messages=[UserMessage(content="test message")],
-    )
-    lightspeed_chat_agent._filter_tools_with_request = mocker.AsyncMock()
-
-    async for _ in lightspeed_chat_agent.create_and_execute_turn(request):
-        pass
-
-    lightspeed_chat_agent._filter_tools_with_request.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_filter_tools_with_request(
-    lightspeed_chat_agent, mock_inference_api, mock_storage
+@pytest.fixture
+def lightspeed_agents_impl(
+    mock_inference_api, mock_conversations_api, mock_tool_runtime_api, mocker
 ):
-    """Test the _filter_tools_with_request method."""
-    lightspeed_chat_agent.tool_defs = [
-        ToolDefinition(tool_name="tool1", description="Tool 1"),
-        ToolDefinition(tool_name="tool2", description="Tool 2"),
+    """Fixture for creating a LightspeedAgentsImpl instance."""
+    persistence = AgentPersistenceConfig(
+        agent_state=KVStoreReference(namespace="test", backend="in_memory"),
+        responses=ResponsesStoreReference(
+            table_name="test_responses", backend="in_memory"
+        ),
+    )
+    config = LightspeedAgentsImplConfig(
+        persistence=persistence, tools_filter=ToolsFilter(enabled=True, min_tools=0)
+    )
+    impl = LightspeedAgentsImpl(
+        config=config,
+        inference_api=mock_inference_api,
+        vector_io_api=mocker.AsyncMock(),
+        safety_api=mocker.AsyncMock(),
+        tool_runtime_api=mock_tool_runtime_api,
+        tool_groups_api=mocker.AsyncMock(),
+        conversations_api=mock_conversations_api,
+        prompts_api=mocker.AsyncMock(),
+        files_api=mocker.AsyncMock(),
+        policy=[],
+    )
+    return impl
+
+
+def create_mock_chat_response(content: str):
+    """Create a mock OpenAI chat completion response."""
+    mock_message = MagicMock()
+    mock_message.content = content
+
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+
+    return mock_response
+
+
+@pytest.mark.asyncio
+async def test_filter_tools_for_response_filters_correctly(
+    lightspeed_agents_impl, mock_inference_api
+):
+    """Test that _filter_tools_for_response filters tools based on LLM response."""
+    # Setup mock LLM response to return filtered tool names
+    mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
+        '["mcp_server1"]'
+    )
+
+    # Setup mock tool runtime to return tool definitions
+    lightspeed_agents_impl.tool_runtime_api.list_runtime_tools.return_value = MagicMock(
+        data=[
+            MagicMock(name="tool1", description="Tool 1"),
+            MagicMock(name="tool2", description="Tool 2"),
+        ]
+    )
+
+    # Create MCP tools
+    tools = [
+        {
+            "type": "mcp",
+            "server_label": "mcp_server1",
+            "server_url": "http://test1.com",
+        },
+        {
+            "type": "mcp",
+            "server_label": "mcp_server2",
+            "server_url": "http://test2.com",
+        },
     ]
-    lightspeed_chat_agent.tool_name_to_args = {"tool1": {}, "tool2": {}}
-    mock_storage.get_session_turns.return_value = []
-    mock_inference_api.chat_completion.return_value = ChatCompletionResponse(
-        completion_message=CompletionMessage(
-            role="assistant", content='["tool1"]', stop_reason="end_of_turn"
-        )
-    )
-    request = AgentTurnCreateRequest(
-        agent_id="test_agent",
-        session_id="test_session",
-        messages=[UserMessage(content="test message")],
+
+    # Call the filtering method
+    filtered_tools = await lightspeed_agents_impl._filter_tools_for_response(
+        input="test message",
+        tools=tools,
+        model="test_model",
+        conversation=None,
     )
 
-    await lightspeed_chat_agent._filter_tools_with_request(request)
+    # Should only return the first tool
+    assert len(filtered_tools) == 1
+    assert filtered_tools[0]["server_label"] == "mcp_server1"
 
-    assert len(lightspeed_chat_agent.tool_defs) == 1
-    assert lightspeed_chat_agent.tool_defs[0].tool_name == "tool1"
-    assert "tool1" in lightspeed_chat_agent.tool_name_to_args
-    assert "tool2" not in lightspeed_chat_agent.tool_name_to_args
+
+@pytest.mark.asyncio
+async def test_filter_tools_for_response_includes_always_included_tools(
+    lightspeed_agents_impl, mock_inference_api
+):
+    """Test that always-included tools are preserved even when not in LLM response."""
+    # Configure always-included tools
+    lightspeed_agents_impl.config.tools_filter.always_include_tools = ["mcp_server2"]
+
+    # Setup mock LLM response to return only one tool
+    mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
+        '["mcp_server1"]'
+    )
+
+    # Setup mock tool runtime
+    lightspeed_agents_impl.tool_runtime_api.list_runtime_tools.return_value = MagicMock(
+        data=[
+            MagicMock(name="tool1", description="Tool 1"),
+        ]
+    )
+
+    # Create MCP tools
+    tools = [
+        {
+            "type": "mcp",
+            "server_label": "mcp_server1",
+            "server_url": "http://test1.com",
+        },
+        {
+            "type": "mcp",
+            "server_label": "mcp_server2",
+            "server_url": "http://test2.com",
+        },
+    ]
+
+    # Call the filtering method
+    filtered_tools = await lightspeed_agents_impl._filter_tools_for_response(
+        input="test message",
+        tools=tools,
+        model="test_model",
+        conversation=None,
+    )
+
+    # Should return both tools - one from LLM, one from always-included
+    assert len(filtered_tools) == 2
+    tool_labels = [t["server_label"] for t in filtered_tools]
+    assert "mcp_server1" in tool_labels
+    assert "mcp_server2" in tool_labels
+
+
+@pytest.mark.asyncio
+async def test_create_openai_response_skips_filtering_when_disabled(
+    lightspeed_agents_impl, mocker
+):
+    """Test that create_openai_response skips filtering when disabled."""
+    lightspeed_agents_impl.config.tools_filter.enabled = False
+
+    # Mock the parent's create_openai_response
+    mock_parent_response = MagicMock()
+    mocker.patch.object(
+        LightspeedAgentsImpl.__bases__[0],
+        "create_openai_response",
+        return_value=mock_parent_response,
+    )
+
+    # Mock _filter_tools_for_response to track if it's called
+    filter_mock = mocker.patch.object(
+        lightspeed_agents_impl,
+        "_filter_tools_for_response",
+        return_value=[],
+    )
+
+    tools = [
+        {"type": "mcp", "server_label": "test", "server_url": "http://test.com"},
+    ]
+
+    # Call create_openai_response
+    await lightspeed_agents_impl.create_openai_response(
+        input="test",
+        model="test_model",
+        tools=tools,
+    )
+
+    # Filter should not have been called
+    filter_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_openai_response_skips_filtering_below_threshold(
+    lightspeed_agents_impl, mocker
+):
+    """Test that create_openai_response skips filtering when tools below threshold."""
+    lightspeed_agents_impl.config.tools_filter.min_tools = 10  # High threshold
+
+    # Mock the parent's create_openai_response
+    mock_parent_response = MagicMock()
+    mocker.patch.object(
+        LightspeedAgentsImpl.__bases__[0],
+        "create_openai_response",
+        return_value=mock_parent_response,
+    )
+
+    # Mock _filter_tools_for_response to track if it's called
+    filter_mock = mocker.patch.object(
+        lightspeed_agents_impl,
+        "_filter_tools_for_response",
+        return_value=[],
+    )
+
+    tools = [
+        {"type": "mcp", "server_label": "test1", "server_url": "http://test1.com"},
+        {"type": "mcp", "server_label": "test2", "server_url": "http://test2.com"},
+    ]  # Only 2 tools, below threshold of 10
+
+    # Call create_openai_response
+    await lightspeed_agents_impl.create_openai_response(
+        input="test",
+        model="test_model",
+        tools=tools,
+    )
+
+    # Filter should not have been called
+    filter_mock.assert_not_called()
