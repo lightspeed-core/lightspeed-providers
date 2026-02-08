@@ -92,8 +92,8 @@ jobs:
       - name: Install dependencies
         run: |
           echo "Installing project dependencies..."
-          uv sync --group dev --group test
-          
+          uv sync --extra dev --extra test 
+
           echo "Installing lightspeed providers package..."
           uv pip install -e .
 

@@ -24,7 +24,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 RUN uv -h
 
-RUN uv sync --locked --group dev --group test
+RUN uv sync --locked --extra dev --extra test
 
 # Install the lightspeed providers package
 RUN uv pip install -e .
