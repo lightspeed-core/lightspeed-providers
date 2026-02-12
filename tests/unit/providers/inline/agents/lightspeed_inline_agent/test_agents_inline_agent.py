@@ -127,7 +127,7 @@ async def test_get_tool_name_from_config_unknown(lightspeed_agents_impl):
 async def test_extract_tool_definitions_file_search(lightspeed_agents_impl):
     """Test _extract_tool_definitions for file_search tools."""
     tools = [{"type": "file_search", "vector_store_ids": ["vs_123"]}]
-    defs = await lightspeed_agents_impl._extract_tool_definitions(tools)
+    defs, mapping = await lightspeed_agents_impl._extract_tool_definitions(tools)
     assert len(defs) == 1
     assert defs[0]["tool_name"] == "file_search"
     assert "knowledge base" in defs[0]["description"].lower()
@@ -139,7 +139,7 @@ async def test_extract_tool_definitions_function(lightspeed_agents_impl):
     tools = [
         {"type": "function", "name": "get_weather", "description": "Get the weather"}
     ]
-    defs = await lightspeed_agents_impl._extract_tool_definitions(tools)
+    defs, mapping = await lightspeed_agents_impl._extract_tool_definitions(tools)
     assert len(defs) == 1
     assert defs[0]["tool_name"] == "get_weather"
     assert defs[0]["description"] == "Get the weather"
