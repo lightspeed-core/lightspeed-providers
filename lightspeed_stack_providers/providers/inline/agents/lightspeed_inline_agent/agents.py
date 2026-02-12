@@ -97,33 +97,12 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         # Apply tool filtering if enabled and tools are provided
         filtered_tools = tools
-        if (
-            tools
-            and self.config.tools_filter.enabled
-            and len(tools) > self.config.tools_filter.min_tools
-        ):
-            logger.info(
-                "Tool filtering enabled - filtering %d tools (threshold: %d)",
-                len(tools),
-                self.config.tools_filter.min_tools,
-            )
+        if tools and self.config.tools_filter.enabled:
             filtered_tools = await self._filter_tools_for_response(
                 input=input,
                 tools=tools,
                 model=model,
                 conversation=conversation,
-            )
-            logger.info(
-                "Tool filtering complete - reduced from %d to %d tools",
-                len(tools),
-                len(filtered_tools) if filtered_tools else 0,
-            )
-        else:
-            logger.info(
-                "Skipping tool filtering - %d tools (threshold: %d, enabled: %s)",
-                len(tools) if tools else 0,
-                self.config.tools_filter.min_tools,
-                self.config.tools_filter.enabled,
             )
 
         # Call parent with filtered tools and temperature
@@ -189,6 +168,20 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             logger.warning("No tool definitions found for filtering")
             return tools
 
+        if len(tools_for_filtering) <= self.config.tools_filter.min_tools:
+            logger.info(
+                "Skipping tool filtering - %d tools (threshold: %d)",
+                len(tools_for_filtering),
+                self.config.tools_filter.min_tools,
+            )
+            return tools
+
+        logger.info(
+            "Tool filtering enabled - filtering %d tools (threshold: %d)",
+            len(tools_for_filtering),
+            self.config.tools_filter.min_tools,
+        )
+
         # Extract user prompt text from input
         if isinstance(input, str):
             user_prompt = input
@@ -246,28 +239,26 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                 logger.error("Failed to parse LLM response as JSON: %s", exp)
                 filtered_tool_names = []
 
-        # Filter the original tools list
+        # Filter using expanded tool definitions
         if filtered_tool_names or always_included_tools:
-            # Create a mapping from tool names to tool configs
-            tool_name_to_config = {}
-            for i, tool in enumerate(tools):
-                tool_dict = tool if isinstance(tool, dict) else tool.model_dump()
-                tool_name = self._get_tool_name_from_config(tool_dict, i)
-                tool_name_to_config[tool_name] = tool
-
-            # Filter based on LLM response and always included tools
-            filtered_tools = [
-                tool_name_to_config[name]
-                for name in tool_name_to_config
-                if name in filtered_tool_names or name in always_included_tools
+            selected_names = set(filtered_tool_names) | always_included_tools
+            result = [
+                {
+                    "type": "function",
+                    "name": td["tool_name"],
+                    "description": td["description"],
+                    "parameters": td.get("parameters", {}),
+                }
+                for td in tools_for_filtering
+                if td["tool_name"] in selected_names
             ]
 
             logger.info(
-                "Filtered tools count: %d removed, %d remaining",
-                len(tools) - len(filtered_tools),
-                len(filtered_tools),
+                "Filtered tools: %d removed, %d remaining",
+                len(tools_for_filtering) - len(result),
+                len(result),
             )
-            return filtered_tools
+            return result
         else:
             logger.warning("No tools matched filtering criteria, returning empty list")
             return []
@@ -337,9 +328,17 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                     }
                 )
             elif tool_type == "function":
-                name = tool_dict.get("name", f"function_{i}")
-                description = tool_dict.get("description", "")
-                tool_defs.append({"tool_name": name, "description": description})
+                func = tool_dict.get("function", {})
+                name = func.get("name", tool_dict.get("name", f"function_{i}"))
+                description = func.get("description", tool_dict.get("description", ""))
+                parameters = func.get("parameters", tool_dict.get("parameters", {}))
+                tool_defs.append(
+                    {
+                        "tool_name": name,
+                        "description": description,
+                        "parameters": parameters,
+                    }
+                )
             else:
                 logger.warning("Unknown tool type: %s", tool_type)
                 tool_defs.append(
@@ -385,6 +384,11 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                     {
                         "tool_name": tool_def.name,
                         "description": tool_def.description or "",
+                        "parameters": (
+                            tool_def.parameters
+                            if hasattr(tool_def, "parameters")
+                            else {}
+                        ),
                     }
                 )
 
