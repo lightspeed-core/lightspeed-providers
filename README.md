@@ -35,7 +35,7 @@ Manual procedure, assuming an existing PyPI API token available:
 ### Prerequisites
 
 - Python >= 3.12
-- Llama Stack == 0.2.22
+- Llama Stack == 0.4.3
 - pydantic >= 2.10.6
 
 ### Installation
@@ -163,13 +163,13 @@ shields:
 
 ```bash
 # Test the redaction shield
-curl -X POST "http://localhost:8321/v1/safety/run_shield" \
+curl -X POST "http://localhost:8321/v1/safety/run-shield" \
   -H "Content-Type: application/json" \
   -d '{
     "shield_id": "redaction-shield",
     "messages": [
       {
-        "role": "user", 
+        "role": "user",
         "content": "My API key is abc123xyz and password is secret456"
       }
     ]
@@ -180,11 +180,8 @@ curl -X POST "http://localhost:8321/v1/safety/run_shield" \
 1. **Create provider directory**
    ```bash
    mkdir -p ./providers.d/inline/safety/
-   mkdir -p ./providers.d/remote/tool_runtime/
    curl -o ./providers.d/inline/safety/lightspeed_question_validity.yaml https://raw.githubusercontent.com/lightspeed-core/lightspeed-            providers/refs/heads/main/resources/external_providers/inline/safety/lightspeed_question_validity.yaml
-   curl -o ./providers.d/inline/safety/lightspeed_question_validity.yaml https://raw.githubusercontent.com/lightspeed-core/lightspeed-            providers/refs/heads/main/resources/external_providers/inline/safety/lightspeed_redaction.yaml
-   curl -o ./providers.d/remote/tool_runtime/lightspeed.yaml https://raw.githubusercontent.com/lightspeed-core/lightspeed-providers/refs/heads/main/resources/external_providers/remote/tool_runtime/lightspeed.yaml
-   
+   curl -o ./providers.d/inline/safety/lightspeed_question_validity.yaml https://raw.githubusercontent.com/lightspeed-core/lightspeed-            providers/refs/heads/main/resources/external_providers/inline/safety/lightspeed_redaction.yaml   
    ```
 3. **Add external provider definition**
    ```yaml
