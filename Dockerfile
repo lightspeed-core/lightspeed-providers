@@ -31,7 +31,6 @@ RUN uv pip install -e .
 
 # Verify llama command is available
 RUN uv run python -c "import llama_stack; print('llama-stack imported successfully')"
-RUN uv run llama --help
 
 # Expose port
 EXPOSE 8321

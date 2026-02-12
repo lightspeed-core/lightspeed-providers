@@ -6,6 +6,8 @@ apis:
   - vector_io
   - agents
   - tool_runtime
+  - vector_io
+  - files
 
 external_providers_dir: ./resources/external_providers
 
@@ -13,10 +15,13 @@ storage:
   backends:
     kv_default:
       type: kv_sqlite
-      db_path: /tmp/registry.db
+      db_path: ${env.KV_STORE_PATH:=~/.llama/storage/rag/kv_store.db}
     sql_default:
       type: sql_sqlite
-      db_path: /tmp/inference_store.db
+      db_path: ${env.SQL_STORE_PATH:=~/.llama/storage/sql_store.db}
+    byok_openshift-docs_storage:
+      db_path: /Users/cpompeia/Documents/Dev/rag-content/generated_stores/os-start/faiss_store.db
+      type: kv_sqlite
   stores:
     metadata:
       namespace: registry
@@ -32,24 +37,55 @@ storage:
       backend: kv_default
 
 providers:
+
+  files:
+    - provider_id: meta-reference-files
+      provider_type: inline::localfs
+      config:
+        storage_dir: ${env.FILES_STORAGE_DIR:=/tmp/llama_files}
+        metadata_store:
+          table_name: files_metadata
+          backend: sql_default
+
   inference:
     - provider_id: openai
       provider_type: remote::openai
       config:
         api_key: ${env.OPENAI_API_KEY}
+    - config: {}
+      provider_id: sentence-transformers
+      provider_type: inline::sentence-transformers
 
   safety:
     - provider_id: lightspeed_question_validity
       provider_type: inline::lightspeed_question_validity
       config:
-        model_id: openai/gpt-4o
+        model_id: openai/gpt-4o-mini
         temperature: 0.0
         invalid_question_response: |
           Hi, I'm the OpenShift Lightspeed assistant, I can help you with questions about OpenShift,
           please ask me a question related to OpenShift.
-  
+
+    - provider_id: lightspeed_redaction
+      provider_type: inline::lightspeed_redaction
+      config:
+        case_sensitive: false
+        rules:
+          - pattern: "(?i)(password|passwd)[\\s:=]+[^\\s]+"
+            replacement: "[REDACTED_PASSWORD]"
+          - pattern: "(?i)(api_key|secret|token)[\\s:=]+[a-zA-Z0-9\\-_]{16,}"
+            replacement: "[REDACTED_SECRET]"
+          - pattern: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"
+            replacement: "[REDACTED_EMAIL]"
+
   vector_io:
-    - provider_id: solr_vector
+    - config:
+        persistence:
+          backend: byok_openshift-docs_storage
+          namespace: vector_io::faiss
+      provider_id: byok_openshift-docs
+      provider_type: inline::faiss
+    - provider_id: okp_solr
       provider_type: remote::solr-vector-io
       config:
         solr_url: "http://localhost:8983/solr"
@@ -72,21 +108,13 @@ providers:
           parent_content_url_field: "reference_url"
           chunk_filter_query: "is_chunk:true"
 
-vector_stores:
-  - vector_db_id: portal-rag
-    provider_id: solr_vector
-
-    - provider_id: lightspeed_redaction
-      provider_type: inline::lightspeed_redaction
-      config:
-        case_sensitive: false
-        rules:
-          - pattern: "(?i)(password|passwd)[\\s:=]+[^\\s]+"
-            replacement: "[REDACTED_PASSWORD]"
-          - pattern: "(?i)(api_key|secret|token)[\\s:=]+[a-zA-Z0-9\\-_]{16,}"
-            replacement: "[REDACTED_SECRET]"
-          - pattern: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"
-            replacement: "[REDACTED_EMAIL]"
+  tool_runtime:
+    - provider_id: model-context-protocol
+      provider_type: remote::model-context-protocol
+      config: {}
+    - config: {}
+      provider_id: rag-runtime
+      provider_type: inline::rag-runtime
 
   agents:
     - provider_id: lightspeed_inline_agent
@@ -108,11 +136,14 @@ vector_stores:
         chatbot_temperature_override: 1.0
 
 registered_resources:
+
   models:
-    - model_id: gpt-4o
-      provider_id: openai
-      model_type: llm
-      provider_model_id: gpt-4o
+    - metadata:
+        embedding_dimension: 768
+      model_id: byok_openshift-docs_embedding
+      model_type: embedding
+      provider_id: sentence-transformers
+      provider_model_id: <path_to>/embeddings_model
 
   shields:
     - shield_id: lightspeed_question_validity-shield
@@ -121,7 +152,23 @@ registered_resources:
       provider_id: lightspeed_redaction
       provider_shield_id: lightspeed-redaction-shield
 
-  tool_groups: []
+  tool_groups:
+    - toolgroup_id: openshift-tools
+      provider_id: model-context-protocol
+      mcp_endpoint:
+        uri: http://localhost:8401/sse
+    - provider_id: rag-runtime
+      toolgroup_id: builtin::rag
+
+  vector_stores:
+    - embedding_dimension: 768
+      embedding_model: sentence-transformers/<path_to>/embeddings_model
+      provider_id: byok_openshift-docs
+      vector_store_id: vs_123
+    - embedding_dimension: 384
+      embedding_model: sentence-transformers/ibm-granite/granite-embedding-30m-english
+      provider_id: okp_solr
+      vector_store_id: portal-rag
 
 server:
   host: 0.0.0.0
@@ -129,3 +176,9 @@ server:
 
 logging:
   level: DEBUG
+
+vector_stores:
+  default_provider_id: faiss
+  default_embedding_model:
+    provider_id: sentence-transformers
+    model_id: nomic-ai/nomic-embed-text-v1.5

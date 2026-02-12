@@ -97,33 +97,12 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         # Apply tool filtering if enabled and tools are provided
         filtered_tools = tools
-        if (
-            tools
-            and self.config.tools_filter.enabled
-            and len(tools) > self.config.tools_filter.min_tools
-        ):
-            logger.info(
-                "Tool filtering enabled - filtering %d tools (threshold: %d)",
-                len(tools),
-                self.config.tools_filter.min_tools,
-            )
+        if tools and self.config.tools_filter.enabled:
             filtered_tools = await self._filter_tools_for_response(
                 input=input,
                 tools=tools,
                 model=model,
                 conversation=conversation,
-            )
-            logger.info(
-                "Tool filtering complete - reduced from %d to %d tools",
-                len(tools),
-                len(filtered_tools) if filtered_tools else 0,
-            )
-        else:
-            logger.info(
-                "Skipping tool filtering - %d tools (threshold: %d, enabled: %s)",
-                len(tools) if tools else 0,
-                self.config.tools_filter.min_tools,
-                self.config.tools_filter.enabled,
             )
 
         # Call parent with filtered tools and temperature
@@ -183,11 +162,25 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             except Exception as e:
                 logger.warning("Failed to retrieve conversation history: %s", e)
 
-        tools_for_filtering = await self._extract_tool_definitions(tools)
+        tools_for_filtering, tool_to_endpoint = await self._extract_tool_definitions(tools)
 
         if not tools_for_filtering:
             logger.warning("No tool definitions found for filtering")
             return tools
+
+        if len(tools_for_filtering) <= self.config.tools_filter.min_tools:
+            logger.info(
+                "Skipping tool filtering - %d tools (threshold: %d)",
+                len(tools_for_filtering),
+                self.config.tools_filter.min_tools,
+            )
+            return tools
+
+        logger.info(
+            "Tool filtering enabled - filtering %d tools (threshold: %d)",
+            len(tools_for_filtering),
+            self.config.tools_filter.min_tools,
+        )
 
         # Extract user prompt text from input
         if isinstance(input, str):
@@ -246,28 +239,72 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                 logger.error("Failed to parse LLM response as JSON: %s", exp)
                 filtered_tool_names = []
 
-        # Filter the original tools list
-        if filtered_tool_names or always_included_tools:
-            # Create a mapping from tool names to tool configs
-            tool_name_to_config = {}
-            for i, tool in enumerate(tools):
-                tool_dict = tool if isinstance(tool, dict) else tool.model_dump()
-                tool_name = self._get_tool_name_from_config(tool_dict, i)
-                tool_name_to_config[tool_name] = tool
+        # Merge always-included tools into filtered list
+        filtered_tool_names = list(set(filtered_tool_names) | always_included_tools)
 
-            # Filter based on LLM response and always included tools
-            filtered_tools = [
-                tool_name_to_config[name]
-                for name in tool_name_to_config
-                if name in filtered_tool_names or name in always_included_tools
-            ]
+        # Filter using expanded tool definitions
+        if filtered_tool_names:
+            result = []
+            for tool in tools:
+                tool_dict = tool if isinstance(tool, dict) else tool.model_dump()
+                tool_type = tool_dict.get("type")
+
+                if tool_type == "mcp" and len(filtered_tool_names) > 0:
+                    # Get the endpoint for this MCP config
+                    mcp_endpoint = tool_dict.get("server_url", "")
+                    server_label = tool_dict.get("server_label", "unknown")
+
+                    logger.debug(
+                        "Processing MCP config: server_label=%s, server_url=%s",
+                        server_label,
+                        mcp_endpoint,
+                    )
+                    logger.debug(
+                        "All filtered tool names: %s",
+                        filtered_tool_names,
+                    )
+
+                    # Filter to only include tools that belong to this endpoint
+                    endpoint_tools = [
+                        tool_name for tool_name in filtered_tool_names
+                        if tool_to_endpoint.get(tool_name) == mcp_endpoint
+                    ]
+
+                    logger.debug(
+                        "MCP server %s (%s): Setting allowed_tools = %s (filtered from %d total tools)",
+                        server_label,
+                        mcp_endpoint,
+                        endpoint_tools,
+                        len(filtered_tool_names),
+                    )
+
+                    if endpoint_tools:
+                        if isinstance(tool, dict):
+                            tool["allowed_tools"] = endpoint_tools
+                        else:
+                            tool.allowed_tools = endpoint_tools
+                        result.append(tool)
+                    else:
+                        logger.warning(
+                            "MCP server %s (%s) has no matching tools - skipping from result",
+                            server_label,
+                            mcp_endpoint,
+                        )
+                else:
+                    # Non-MCP tools (file_search, function) are always included
+                    logger.debug(
+                        "Including non-MCP tool: type=%s, config=%s",
+                        tool_type,
+                        tool_dict.get("name") if tool_type == "function" else tool_type,
+                    )
+                    result.append(tool)
 
             logger.info(
-                "Filtered tools count: %d removed, %d remaining",
-                len(tools) - len(filtered_tools),
-                len(filtered_tools),
+                "Filtered tools: %d removed, %d remaining",
+                len(tools_for_filtering) - len(filtered_tool_names),
+                len(filtered_tool_names),
             )
-            return filtered_tools
+            return result
         else:
             logger.warning("No tools matched filtering criteria, returning empty list")
             return []
@@ -295,6 +332,9 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                 if item_type == "function_call":
                     if hasattr(item, "name") and item.name:
                         tool_names.add(item.name)
+                elif item_type in ("mcp_call", "mcp_approval_request"):
+                    if hasattr(item, "name") and item.name:
+                        tool_names.add(item.name)
                 # Also check for nested tool_calls (legacy format)
                 elif hasattr(item, "tool_calls") and item.tool_calls:
                     for tool_call in item.tool_calls:
@@ -307,7 +347,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
     async def _extract_tool_definitions(
         self, tools: list[OpenAIResponseInputTool]
-    ) -> list[dict[str, str]]:
+    ) -> tuple[list[dict[str, str]], dict[str, str]]:
         """
         Extract tool names and descriptions from tool configurations.
 
@@ -318,38 +358,53 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             tools: List of tool configurations
 
         Returns:
-            List of dicts with tool_name and description
+            Tuple of (tool_definitions, tool_to_endpoint_map)
+            - tool_definitions: List of dicts with tool_name and description
+            - tool_to_endpoint_map: Dict mapping tool_name to MCP endpoint
         """
         tool_defs = []
+        seen_tool_names: set[str] = set()
+        tool_to_endpoint: dict[str, str] = {}  # Maps tool_name -> MCP endpoint
 
-        for i, tool in enumerate(tools):
+        for tool in tools:
             tool_dict = tool if isinstance(tool, dict) else tool.model_dump()
             tool_type = tool_dict.get("type")
 
             if tool_type == "mcp":
                 mcp_tools = await self._get_mcp_tool_definitions(tool_dict)
-                tool_defs.extend(mcp_tools)
+                for mcp_tool in mcp_tools:
+                    if mcp_tool["tool_name"] not in seen_tool_names:
+                        seen_tool_names.add(mcp_tool["tool_name"])
+                        tool_defs.append(mcp_tool)
+                        # Track which endpoint this tool belongs to
+                        if mcp_tool.get("endpoint"):
+                            tool_to_endpoint[mcp_tool["tool_name"]] = mcp_tool["endpoint"]
             elif tool_type == "file_search":
-                tool_defs.append(
-                    {
-                        "tool_name": "file_search",
-                        "description": "Search through uploaded files and knowledge base",
-                    }
-                )
+                tool_def = {
+                    "tool_name": "file_search",
+                    "description": "Search the knowledge base for relevant information",
+                }
+                if tool_def["tool_name"] not in seen_tool_names:
+                    seen_tool_names.add(tool_def["tool_name"])
+                    tool_defs.append(tool_def)
             elif tool_type == "function":
-                name = tool_dict.get("name", f"function_{i}")
-                description = tool_dict.get("description", "")
-                tool_defs.append({"tool_name": name, "description": description})
-            else:
-                logger.warning("Unknown tool type: %s", tool_type)
-                tool_defs.append(
-                    {
-                        "tool_name": f"{tool_type}_{i}",
-                        "description": f"Tool of type {tool_type}",
-                    }
-                )
+                tool_name = tool_dict.get("name", "unknown_function")
+                tool_desc = tool_dict.get("description", "No description available")
+                tool_def = {
+                    "tool_name": tool_name,
+                    "description": tool_desc,
+                }
+                if tool_def["tool_name"] not in seen_tool_names:
+                    seen_tool_names.add(tool_def["tool_name"])
+                    tool_defs.append(tool_def)
 
-        return tool_defs
+        logger.info(
+            "Extracted %d unique tool definitions from %d tool configs",
+            len(tool_defs),
+            len(tools),
+        )
+        logger.debug("Tool-to-endpoint mapping: %s", tool_to_endpoint)
+        return tool_defs, tool_to_endpoint
 
     async def _get_mcp_tool_definitions(
         self, mcp_tool_config: dict
@@ -361,7 +416,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             mcp_tool_config: MCP tool configuration dict
 
         Returns:
-            List of tool definitions with tool_name and description
+            List of tool definitions with tool_name, description, and endpoint
         """
         tool_defs = []
 
@@ -376,15 +431,42 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             from llama_stack_api.common.content_types import URL
 
             mcp_endpoint = URL(uri=server_url)
+            # Note: llama-stack 0.4.x ignores the mcp_endpoint parameter and
+            # returns tools from ALL registered MCP servers. Deduplication is
+            # handled in _extract_tool_definitions.
             tools_response = await self.tool_runtime_api.list_runtime_tools(
                 mcp_endpoint=mcp_endpoint
             )
 
             for tool_def in tools_response.data:
+                # Extract endpoint from metadata to track tool-to-server mapping
+                endpoint = None
+                if hasattr(tool_def, "metadata") and tool_def.metadata:
+                    endpoint = tool_def.metadata.get("endpoint")
+                    logger.debug(
+                        "Tool %s: metadata=%s, extracted endpoint=%s",
+                        tool_def.name,
+                        tool_def.metadata,
+                        endpoint,
+                    )
+                else:
+                    logger.debug(
+                        "Tool %s has no metadata (hasattr=%s, metadata=%s)",
+                        tool_def.name,
+                        hasattr(tool_def, "metadata"),
+                        getattr(tool_def, "metadata", None),
+                    )
+
                 tool_defs.append(
                     {
                         "tool_name": tool_def.name,
                         "description": tool_def.description or "",
+                        "parameters": (
+                            tool_def.parameters
+                            if hasattr(tool_def, "parameters")
+                            else {}
+                        ),
+                        "endpoint": endpoint,  # Track which MCP server this tool belongs to
                     }
                 )
 
