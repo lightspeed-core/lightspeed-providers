@@ -13,7 +13,7 @@ dependencies = [
     "httpx",
     "pydantic>=2.10.6",
     "litellm>=1.75.5.post1",
-    "sqlalchemy>=2.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
     "mcp",
 ]
 
