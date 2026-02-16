@@ -202,10 +202,10 @@ The tests depend on the OKP Solr RAG prototype container image.
 1. Pull the Offline Knowledge Portal with public RAG prototype image:
 
 ```
-podman pull images.paas.redhat.com/offline-kbase/okp-rag-proto:latest
+podman pull images.paas.redhat.com/offline-kbase/okp-rag-proto:nov20
 ```
 
-**NOTE:** this requires a VPN connection
+**NOTE:** this requires a VPN connection and is a temporary image for testing.
 
 2. Run the OKP image:
 
