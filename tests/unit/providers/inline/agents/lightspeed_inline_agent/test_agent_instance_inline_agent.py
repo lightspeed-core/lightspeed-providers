@@ -9,6 +9,7 @@ from llama_stack.apis.agents import AgentConfig, AgentTurnCreateRequest, UserMes
 from llama_stack.apis.inference import ChatCompletionResponse, CompletionMessage
 from llama_stack.models.llama.datatypes import ToolDefinition
 
+
 @pytest.fixture
 def mock_inference_api(mocker):
     """Fixture for mocking the Inference API."""

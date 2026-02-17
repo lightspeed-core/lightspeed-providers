@@ -5,10 +5,15 @@ from numpy.typing import NDArray
 
 from llama_stack_api.common.errors import VectorStoreNotFoundError
 from llama_stack_api.files import Files
-from llama_stack_api.inference import Inference, InterleavedContent
+from llama_stack_api.inference import Inference
 from llama_stack_api.common.content_types import TextContentItem, ImageContentItem
 from typing import Union
-from llama_stack_api.vector_io import Chunk, EmbeddedChunk, QueryChunksResponse, VectorIO
+from llama_stack_api.vector_io import (
+    Chunk,
+    EmbeddedChunk,
+    QueryChunksResponse,
+    VectorIO,
+)
 from llama_stack_api.vector_stores import VectorStore
 from llama_stack.log import get_logger
 from llama_stack_api.datatypes import VectorStoresProtocolPrivate
@@ -97,11 +102,9 @@ class SolrIndex(EmbeddingIndex):
                     f"HTTP error connecting to Solr collection {self.collection_name}: "
                     f"status={e.response.status_code}"
                 )
-                raise RuntimeError(
-                    f"Failed to connect to Solr collection {
+                raise RuntimeError(f"Failed to connect to Solr collection {
                         self.collection_name
-                    }: HTTP {e.response.status_code}"
-                ) from e
+                    }: HTTP {e.response.status_code}") from e
             except Exception as e:
                 log.exception(
                     f"Error connecting to Solr collection {self.collection_name}"
@@ -117,11 +120,9 @@ class SolrIndex(EmbeddingIndex):
 
     async def delete_chunks(self, chunks_for_deletion: list[ChunkForDeletion]) -> None:
         """Not implemented - this is a read-only provider."""
-        log.warning(
-            f"Attempted to delete {
+        log.warning(f"Attempted to delete {
                 len(chunks_for_deletion)
-            } chunks from read-only SolrIndex"
-        )
+            } chunks from read-only SolrIndex")
         raise NotImplementedError("SolrVectorIO is read-only.")
 
     async def query_vector(
@@ -154,7 +155,7 @@ class SolrIndex(EmbeddingIndex):
             vector_str = ",".join(str(v) for v in embedding.tolist())
 
             params = {
-                "q": "*:*",          # or query_string if hybrid
+                "q": "*:*",  # or query_string if hybrid
                 "vector": vector_str,
                 "topK": k,
                 "rows": k,
@@ -168,7 +169,7 @@ class SolrIndex(EmbeddingIndex):
             try:
                 response = await client.post(
                     f"{self.base_url}/semantic-search",
-                    data=params,   # ✅ form-encoded
+                    data=params,  # ✅ form-encoded
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -189,15 +190,14 @@ class SolrIndex(EmbeddingIndex):
                         chunk_id=chunk.chunk_id,
                         content=chunk.content,
                         chunk_metadata=chunk.metadata or {},
-                        embedding= [],           # can be None
+                        embedding=[],  # can be None
                         embedding_model=self.embedding_model,
                         embedding_dimension=self.dimension,
-                        metadata_token_count=None,           # optional but required by schema
+                        metadata_token_count=None,  # optional but required by schema
                     )
 
                     chunks.append(embedded_chunk)
                     scores.append(score)
-
 
                 return QueryChunksResponse(chunks=chunks, scores=scores)
 
@@ -242,11 +242,9 @@ class SolrIndex(EmbeddingIndex):
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
                 solr_params["fq"] = self.chunk_window_config.chunk_filter_query
-                log.info(
-                    f"Applying chunk filter: {
+                log.info(f"Applying chunk filter: {
                         self.chunk_window_config.chunk_filter_query
-                    }"
-                )
+                    }")
 
             try:
                 log.info("Sending keyword query to Solr using edismax parser")
@@ -279,11 +277,9 @@ class SolrIndex(EmbeddingIndex):
                         chunks.append(chunk)
                         scores.append(score)
 
-                log.info(
-                    f"Keyword search returned {len(chunks)} chunks (filtered from {
+                log.info(f"Keyword search returned {len(chunks)} chunks (filtered from {
                         num_docs
-                    } by score threshold)"
-                )
+                    } by score threshold)")
                 response = QueryChunksResponse(chunks=chunks, scores=scores)
 
                 # Apply chunk window expansion if configured
@@ -368,11 +364,9 @@ class SolrIndex(EmbeddingIndex):
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
                 data_params["fq"] = self.chunk_window_config.chunk_filter_query
-                log.info(
-                    f"Applying chunk filter: {
+                log.info(f"Applying chunk filter: {
                         self.chunk_window_config.chunk_filter_query
-                    }"
-                )
+                    }")
 
             try:
                 log.info(
@@ -410,11 +404,9 @@ class SolrIndex(EmbeddingIndex):
                         chunks.append(chunk)
                         scores.append(score)
 
-                log.info(
-                    f"Hybrid search returned {len(chunks)} chunks (filtered from {
+                log.info(f"Hybrid search returned {len(chunks)} chunks (filtered from {
                         num_docs
-                    } by score threshold)"
-                )
+                    } by score threshold)")
                 response = QueryChunksResponse(chunks=chunks, scores=scores)
 
                 # Apply chunk window expansion if configured
@@ -496,12 +488,9 @@ class SolrIndex(EmbeddingIndex):
                 return None
 
             parent_doc = docs[0]
-            log.info(
-                f"Found parent document: total_chunks={
+            log.info(f"Found parent document: total_chunks={
                     parent_doc.get(schema.parent_total_chunks_field)
-                }, "
-                f"total_tokens={parent_doc.get(schema.parent_total_tokens_field)}"
-            )
+                }, " f"total_tokens={parent_doc.get(schema.parent_total_tokens_field)}")
             return parent_doc
 
         except Exception as e:
@@ -647,11 +636,9 @@ class SolrIndex(EmbeddingIndex):
                 # Fetch parent metadata
                 parent_doc = await self._fetch_parent_metadata(client, parent_id)
                 if not parent_doc:
-                    log.warning(
-                        f"Parent document not found for {
+                    log.warning(f"Parent document not found for {
                             parent_id
-                        }, using original chunk"
-                    )
+                        }, using original chunk")
                     expanded_chunks.append(chunk)
                     expanded_scores.append(score)
                     continue
@@ -754,12 +741,9 @@ class SolrIndex(EmbeddingIndex):
                 expanded_chunks.append(expanded_chunk)
                 expanded_scores.append(score)
 
-        log.info(
-            f"Chunk window expansion complete: {
+        log.info(f"Chunk window expansion complete: {
                 len(initial_response.chunks)
-            } initial chunks -> "
-            f"{len(expanded_chunks)} expanded chunks"
-        )
+            } initial chunks -> " f"{len(expanded_chunks)} expanded chunks")
 
         return QueryChunksResponse(chunks=expanded_chunks, scores=expanded_scores)
 
@@ -824,11 +808,9 @@ class SolrIndex(EmbeddingIndex):
                     total_tokens += next_tokens
                     right += 1
                     added = True
-                    log.info(
-                        f"Added right chunk at index {right - 1}, total_tokens={
+                    log.info(f"Added right chunk at index {right - 1}, total_tokens={
                             total_tokens
-                        }"
-                    )
+                        }")
 
             # If no chunks could be added, we're done
             if not added:
@@ -859,24 +841,26 @@ class SolrIndex(EmbeddingIndex):
                 return None
 
             chunk_id = (
-                doc.get(self.id_field)
-                or doc.get("resourceName")
-                or doc.get("id")
+                doc.get(self.id_field) or doc.get("resourceName") or doc.get("id")
             )
             if not chunk_id:
                 log.error("No chunk_id found in Solr document")
                 return None
-            
+
             parent_id = (
                 doc.get("parent_id")
                 or doc.get("doc_id")
-                or (str(chunk_id).rsplit("_chunk_", 1)[0] if "_chunk_" in str(chunk_id) else None))
-            
+                or (
+                    str(chunk_id).rsplit("_chunk_", 1)[0]
+                    if "_chunk_" in str(chunk_id)
+                    else None
+                )
+            )
+
             metadata: dict[str, Any] = {
-                "document_id":parent_id,
+                "document_id": parent_id,
                 "doc_id": parent_id,
                 "chunk_id": chunk_id,
-
             }
 
             # helpful extras if present
@@ -891,22 +875,20 @@ class SolrIndex(EmbeddingIndex):
             if "parent_id" in doc:
                 metadata["parent_id"] = doc["parent_id"]
 
-
             embedding = doc.get(self.vector_field)
             if isinstance(embedding, list):
                 embedding = [float(x) for x in embedding]
             else:
                 embedding = []
 
-
             return EmbeddedChunk(
                 chunk_id=str(chunk_id),
                 content=content,
                 chunk_metadata=metadata,
-                embedding=[],           # can be None
+                embedding=[],  # can be None
                 embedding_model=self.embedding_model,
                 embedding_dimension=self.dimension,
-                metadata_token_count=None,           # optional but required by schema
+                metadata_token_count=None,  # optional but required by schema
             )
 
         except Exception as e:
@@ -966,11 +948,9 @@ class SolrVectorIOAdapter(
                 start_key, end_key
             )
 
-            log.info(
-                f"Loading {
+            log.info(f"Loading {
                     len(stored_vector_stores)
-                } persisted vector stores from KV store"
-            )
+                } persisted vector stores from KV store")
             for vector_store_data in stored_vector_stores:
                 vector_store = VectorStore.model_validate_json(vector_store_data)
                 log.info(f"Loading vector store: {vector_store.identifier}")
@@ -1043,7 +1023,10 @@ class SolrVectorIOAdapter(
         log.info(f"Successfully unregistered vector store: {vector_store_id}")
 
     async def insert_chunks(
-        self, vector_store_id: str, chunks: list[EmbeddedChunk], ttl_seconds: int | None = None
+        self,
+        vector_store_id: str,
+        chunks: list[EmbeddedChunk],
+        ttl_seconds: int | None = None,
     ) -> None:
         """Not implemented - this is a read-only provider."""
         log.warning(
@@ -1055,7 +1038,12 @@ class SolrVectorIOAdapter(
     async def query_chunks(
         self,
         vector_store_id: str,
-        query: Union[str, TextContentItem, ImageContentItem, list[Union[TextContentItem, ImageContentItem]]],
+        query: Union[
+            str,
+            TextContentItem,
+            ImageContentItem,
+            list[Union[TextContentItem, ImageContentItem]],
+        ],
         params: dict[str, Any] | None = None,
     ) -> QueryChunksResponse:
         """Query chunks from the Solr collection."""
@@ -1069,12 +1057,9 @@ class SolrVectorIOAdapter(
         self, store_id: str, chunks_for_deletion: list[ChunkForDeletion]
     ) -> None:
         """Not implemented - this is a read-only provider."""
-        log.warning(
-            f"Attempted to delete {
+        log.warning(f"Attempted to delete {
                 len(chunks_for_deletion)
-            } chunks from read-only provider "
-            f"(store_id={store_id})"
-        )
+            } chunks from read-only provider " f"(store_id={store_id})")
         raise NotImplementedError("SolrVectorIO is read-only.")
 
     async def _get_and_cache_vector_store_index(

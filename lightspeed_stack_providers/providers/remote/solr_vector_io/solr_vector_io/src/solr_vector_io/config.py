@@ -51,13 +51,16 @@ class ChunkWindowConfig(BaseModel):
 
     # Optional parent metadata fields
     parent_content_id_field: str | None = Field(
-        default=None, description="Field name for content identifier in parent documents (e.g. 'doc_id')"
+        default=None,
+        description="Field name for content identifier in parent documents (e.g. 'doc_id')",
     )
     parent_content_title_field: str | None = Field(
-        default=None, description="Field name for content title in parent documents (e.g. 'title')"
+        default=None,
+        description="Field name for content title in parent documents (e.g. 'title')",
     )
     parent_content_url_field: str | None = Field(
-        default=None, description="Field name for content URL in parent documents (e.g. 'reference_url')"
+        default=None,
+        description="Field name for content URL in parent documents (e.g. 'reference_url')",
     )
 
     # ---- Query filters ----
@@ -67,9 +70,15 @@ class ChunkWindowConfig(BaseModel):
     )
 
     # ---- Chunk window expansion parameters ----
-    token_budget: int = Field(default=2048, description="Max token budget per expanded context window")
-    min_chunk_gap: int = Field(default=4, description="Min gap between anchors to avoid overlap")
-    min_chunk_window: int = Field(default=4, description="Min number of chunks before windowing applies")
+    token_budget: int = Field(
+        default=2048, description="Max token budget per expanded context window"
+    )
+    min_chunk_gap: int = Field(
+        default=4, description="Min gap between anchors to avoid overlap"
+    )
+    min_chunk_window: int = Field(
+        default=4, description="Min number of chunks before windowing applies"
+    )
 
 
 @json_schema_type
@@ -79,7 +88,9 @@ class SolrVectorIOConfig(BaseModel):
     """
 
     # Solr connection
-    solr_url: str = Field(description="Base URL of the Solr server (e.g. http://localhost:8983/solr)")
+    solr_url: str = Field(
+        description="Base URL of the Solr server (e.g. http://localhost:8983/solr)"
+    )
     collection_name: str = Field(description="Name of the Solr collection to use")
 
     # Fields
@@ -94,7 +105,9 @@ class SolrVectorIOConfig(BaseModel):
     embedding_model: str = Field(
         description="Embedding model identifier used to produce query embeddings (e.g. 'sentence-transformers/all-mpnet-base-v2')"
     )
-    embedding_dimension: int = Field(description="Embedding vector dimension (e.g. 384)")
+    embedding_dimension: int = Field(
+        description="Embedding vector dimension (e.g. 384)"
+    )
 
     # Optional: if your handler mixes parents/chunks, give your provider a clue
     chunk_only: bool = Field(
@@ -103,10 +116,14 @@ class SolrVectorIOConfig(BaseModel):
     )
 
     # Storage/persistence
-    persistence: KVStoreReference | None = Field(default=None, description="KV store backend reference")
+    persistence: KVStoreReference | None = Field(
+        default=None, description="KV store backend reference"
+    )
 
     # HTTP
-    request_timeout: int = Field(default=30, description="Timeout for Solr requests (seconds)")
+    request_timeout: int = Field(
+        default=30, description="Timeout for Solr requests (seconds)"
+    )
 
     # Chunk window expansion (optional)
     chunk_window_config: ChunkWindowConfig | None = Field(
