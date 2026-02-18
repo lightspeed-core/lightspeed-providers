@@ -1,0 +1,21 @@
+[project]
+name = "solr-vector-io"
+version = "0.1.0"
+description = "Read-only Solr vector_io provider for llama-stack"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "basic: Basic functionality tests (adapter init, registration, etc.)",
+    "search: Search functionality tests (vector, keyword, hybrid)",
+    "chunk_window: Chunk window expansion tests",
+    "persistence: Persistence and KV store tests",
+    "embeddings: Tests using real embedding models",
+    "slow: Slow tests that should be skipped by default",
+    "openai: Tests that pertain to the OpenAI API",
+]
+filterwarnings = [
+    "ignore::pytest.PytestAssertRewriteWarning",
+]

@@ -176,8 +176,10 @@ class LightspeedChatAgent(ChatAgent):
             original_tools_count = len(self.tool_defs)
             self.tool_defs = list(
                 filter(
-                    lambda tool: tool.tool_name in filtered_tools_names
-                    or tool.tool_name in always_included_tools,
+                    lambda tool: (
+                        tool.tool_name in filtered_tools_names
+                        or tool.tool_name in always_included_tools
+                    ),
                     self.tool_defs,
                 )
             )

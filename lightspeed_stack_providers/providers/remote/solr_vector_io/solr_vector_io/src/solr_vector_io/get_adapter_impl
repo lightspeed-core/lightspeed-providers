@@ -1,0 +1,13 @@
+from .solr import SolrVectorIOAdapter
+
+__all__ = ["ChunkWindowConfig", "SolrVectorIOConfig", "SolrVectorIOAdapter"]
+
+
+async def get_adapter_impl(config: SolrVectorIOConfig, _deps):
+    impl = SolrVectorIOAdapter(
+        config,
+        # _deps.get("inference"),
+        # _deps.get("files"),
+    )
+    await impl.initialize()
+    return impl

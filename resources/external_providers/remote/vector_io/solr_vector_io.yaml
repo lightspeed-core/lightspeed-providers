@@ -1,0 +1,10 @@
+adapter_type: solr_vector_io
+pip_packages:
+- httpx
+- pydantic
+- numpy
+config_class: lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.src.solr_vector_io.SolrVectorIOConfig
+module: lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.src.solr_vector_io
+api_dependencies:
+- inference
+optional_api_dependencies: []
