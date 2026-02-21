@@ -265,7 +265,7 @@ class SolrIndex(EmbeddingIndex):
 
                     # Apply score threshold
                     if score < score_threshold:
-                        log.info(
+                        log.debug(
                             f"Filtering out document with score {score} < threshold {
                                 score_threshold
                             }"
@@ -277,16 +277,17 @@ class SolrIndex(EmbeddingIndex):
                         chunks.append(chunk)
                         scores.append(score)
 
-                log.info(f"Keyword search returned {len(chunks)} chunks (filtered from {
+                log.debug(
+                    f"Keyword search returned {len(chunks)} chunks (filtered from {
                         num_docs
-                    } by score threshold)")
+                    } by score threshold)"
+                )
                 response = QueryChunksResponse(chunks=chunks, scores=scores)
 
                 # Apply chunk window expansion if configured
                 if self.chunk_window_config is not None:
                     return await self._apply_chunk_window_expansion(
                         initial_response=response,
-                        token_budget=self.chunk_window_config.token_budget,
                         min_chunk_gap=self.chunk_window_config.min_chunk_gap,
                         min_chunk_window=self.chunk_window_config.min_chunk_window,
                     )
@@ -358,9 +359,6 @@ class SolrIndex(EmbeddingIndex):
             }
             # Note: keyword_boost can be incorporated in future by discovering schema fields
 
-            print("========== HYBRID SEARCH PARAMS ==========")
-            print(data_params)
-
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
                 data_params["fq"] = self.chunk_window_config.chunk_filter_query
@@ -392,7 +390,7 @@ class SolrIndex(EmbeddingIndex):
 
                     # Apply score threshold
                     if score < score_threshold:
-                        log.info(
+                        log.debug(
                             f"Filtering out document with score {score} < threshold {
                                 score_threshold
                             }"
@@ -404,7 +402,7 @@ class SolrIndex(EmbeddingIndex):
                         chunks.append(chunk)
                         scores.append(score)
 
-                log.info(f"Hybrid search returned {len(chunks)} chunks (filtered from {
+                log.debug(f"Hybrid search returned {len(chunks)} chunks (filtered from {
                         num_docs
                     } by score threshold)")
                 response = QueryChunksResponse(chunks=chunks, scores=scores)
@@ -413,7 +411,6 @@ class SolrIndex(EmbeddingIndex):
                 if self.chunk_window_config is not None:
                     return await self._apply_chunk_window_expansion(
                         initial_response=response,
-                        token_budget=self.chunk_window_config.token_budget,
                         min_chunk_gap=self.chunk_window_config.min_chunk_gap,
                         min_chunk_window=self.chunk_window_config.min_chunk_window,
                     )
@@ -503,6 +500,7 @@ class SolrIndex(EmbeddingIndex):
         parent_id: str,
         window_start: int,
         window_end: int,
+        boundary_values: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Fetch chunks within a specified index range for a parent document.
@@ -512,6 +510,8 @@ class SolrIndex(EmbeddingIndex):
             parent_id: ID of the parent document
             window_start: Start index (inclusive)
             window_end: End index (inclusive)
+            boundary_values: Optional dict of field name -> value pairs that
+                chunks must match (e.g. {'parent_id': 'doc1', 'heading': 'Intro'})
 
         Returns:
             List of chunk documents sorted by chunk_index
@@ -526,11 +526,25 @@ class SolrIndex(EmbeddingIndex):
             schema.chunk_parent_id_field,
         ]
 
+        # Add boundary fields to the field list so they're returned
+        if schema.chunk_family_fields:
+            for field in schema.chunk_family_fields:
+                if field not in fields:
+                    fields.append(field)
+
         # Build query
         query_parts = [
             f'{schema.chunk_parent_id_field}:"{parent_id}"',
             f"{schema.chunk_index_field}:[{window_start} TO {window_end}]",
         ]
+
+        # Add boundary field filters
+        if boundary_values:
+            for field_name, field_value in boundary_values.items():
+                # Skip parent_id since it's already in the query
+                if field_name == schema.chunk_parent_id_field:
+                    continue
+                query_parts.append(f'{field_name}:"{field_value}"')
 
         # Add filter query if configured
         if schema.chunk_filter_query:
@@ -541,7 +555,8 @@ class SolrIndex(EmbeddingIndex):
         try:
             log.info(
                 f"Fetching context chunks: parent_id={parent_id}, "
-                f"range=[{window_start}, {window_end}]"
+                f"range=[{window_start}, {window_end}], "
+                f"boundary_values={boundary_values}"
             )
             response = await client.get(
                 f"{self.base_url}/select",
@@ -568,7 +583,6 @@ class SolrIndex(EmbeddingIndex):
     async def _apply_chunk_window_expansion(
         self,
         initial_response: QueryChunksResponse,
-        token_budget: int,
         min_chunk_gap: int,
         min_chunk_window: int,
     ) -> QueryChunksResponse:
@@ -578,9 +592,12 @@ class SolrIndex(EmbeddingIndex):
         This method processes the initial query results, fetches parent documents,
         expands context windows around matched chunks, and returns expanded results.
 
+        Uses family_token_budget for chunks that have values for any configured
+        chunk_family_fields, and orphan_token_budget for chunks missing all of
+        those field values.
+
         Args:
             initial_response: Initial query response with matched chunks
-            token_budget: Maximum tokens per context window
             min_chunk_gap: Minimum spacing between chunks from same parent
             min_chunk_window: Minimum chunks before windowing applies
 
@@ -624,7 +641,7 @@ class SolrIndex(EmbeddingIndex):
                     abs(matched_chunk_index - kept) < min_chunk_gap
                     for kept in kept_indices_by_parent[parent_id]
                 ):
-                    log.info(
+                    log.debug(
                         f"Skipping chunk at index {matched_chunk_index} "
                         f"(too close to existing anchor)"
                     )
@@ -646,8 +663,39 @@ class SolrIndex(EmbeddingIndex):
                 total_chunks = parent_doc.get(schema.parent_total_chunks_field, 0)
                 total_tokens = parent_doc.get(schema.parent_total_tokens_field, 0)
 
+                # Build boundary values from matched chunk metadata and
+                # determine whether this chunk is an orphan (missing family fields)
+                boundary_values = None
+                is_orphan = False
+                if schema.chunk_family_fields:
+                    boundary_values = {}
+                    for field in schema.chunk_family_fields:
+                        value = chunk.metadata.get(field)
+                        if value is not None:
+                            boundary_values[field] = value
+
+                    # mark the chunk as an orphan if it is missing values for ALL the family fields.
+                    is_orphan = all(
+                        chunk.metadata.get(field) is None
+                        for field in schema.chunk_family_fields
+                    )
+                    if is_orphan:
+                        log.debug(
+                            f"Chunk at index {matched_chunk_index} is an orphan "
+                            f"(missing family field values), using orphan_token_budget"
+                        )
+
+                token_budget = (
+                    schema.orphan_token_budget
+                    if is_orphan
+                    else schema.family_token_budget
+                )
+
                 # If short doc, return all chunks
-                if total_chunks < min_chunk_window or total_tokens <= token_budget:
+                if (
+                    total_chunks < min_chunk_window
+                    or total_tokens <= schema.family_token_budget
+                ):
                     log.info(
                         f"Document is short (total_chunks={total_chunks}, "
                         f"total_tokens={total_tokens}), fetching all chunks"
@@ -657,6 +705,13 @@ class SolrIndex(EmbeddingIndex):
                     )
                     selected_chunks = context_chunks
                 else:
+                    log.info(
+                        f"Document exceeds token budget (total_chunks={total_chunks}, "
+                        f"total_tokens={total_tokens}, "
+                        f"{'orphan' if is_orphan else 'family'}_token_budget={token_budget}), "
+                        f"expanding window around match"
+                    )
+
                     # Fetch bounded window around match (±10 chunks)
                     window_start = max(0, matched_chunk_index - 10)
                     window_end = (
@@ -670,7 +725,11 @@ class SolrIndex(EmbeddingIndex):
                         f"around match at index {matched_chunk_index}"
                     )
                     context_chunks = await self._fetch_context_chunks(
-                        client, parent_id, window_start, window_end
+                        client,
+                        parent_id,
+                        window_start,
+                        window_end,
+                        boundary_values=boundary_values,
                     )
 
                     if not context_chunks:
@@ -679,26 +738,39 @@ class SolrIndex(EmbeddingIndex):
                         expanded_scores.append(score)
                         continue
 
-                    # Find local match index in the fetched window
-                    match_pos = None
-                    for i, c in enumerate(context_chunks):
-                        if c.get(schema.chunk_index_field) == matched_chunk_index:
-                            match_pos = i
-                            break
-
-                    if match_pos is None:
-                        log.warning(
-                            "Matched chunk not found in context window, "
-                            "using original chunk"
-                        )
-                        expanded_chunks.append(chunk)
-                        expanded_scores.append(score)
-                        continue
-
-                    # Apply token budget expansion
-                    selected_chunks = self._expand_chunk_window(
-                        context_chunks, match_pos, token_budget
+                    # If all fetched chunks fit in the token budget, use them
+                    # all directly (no need to run expansion loop)
+                    window_tokens = sum(
+                        c.get(schema.chunk_token_count_field, 0) for c in context_chunks
                     )
+                    if window_tokens <= token_budget:
+                        log.info(
+                            f"All {len(context_chunks)} context chunks fit in "
+                            f"token budget ({window_tokens}/{token_budget}), "
+                            f"skipping expansion loop"
+                        )
+                        selected_chunks = context_chunks
+                    else:
+                        # Find local match index in the fetched window
+                        match_pos = None
+                        for i, c in enumerate(context_chunks):
+                            if c.get(schema.chunk_index_field) == matched_chunk_index:
+                                match_pos = i
+                                break
+
+                        if match_pos is None:
+                            log.warning(
+                                "Matched chunk not found in context window, "
+                                "using original chunk"
+                            )
+                            expanded_chunks.append(chunk)
+                            expanded_scores.append(score)
+                            continue
+
+                        # Apply token budget expansion
+                        selected_chunks = self._expand_chunk_window(
+                            context_chunks, match_pos, token_budget
+                        )
 
                 # Concatenate selected chunks into final content
                 content_parts = []
@@ -732,10 +804,15 @@ class SolrIndex(EmbeddingIndex):
                         expanded_metadata["reference_url"] = url
 
                 # Create expanded chunk
-                expanded_chunk = Chunk(
+                expanded_chunk = EmbeddedChunk(
+                    chunk_id=chunk.chunk_id,
                     content=final_content,
                     metadata=expanded_metadata,
-                    stored_chunk_id=chunk.stored_chunk_id,
+                    chunk_metadata=expanded_metadata,
+                    embedding=[],
+                    embedding_model=self.embedding_model,
+                    embedding_dimension=self.dimension,
+                    metadata_token_count=None,
                 )
 
                 expanded_chunks.append(expanded_chunk)
@@ -753,7 +830,7 @@ class SolrIndex(EmbeddingIndex):
         """
         Expand context window bidirectionally from matched chunk within token budget.
 
-        This algorithm starts with the matched chunk and expands left/right,
+        This algorithm starts with the matched chunk and expands to prev/next chunks,
         adding adjacent chunks until the token budget is exhausted.
 
         Args:
@@ -769,8 +846,8 @@ class SolrIndex(EmbeddingIndex):
         selected_chunks = []
 
         n = len(chunks)
-        left = match_index
-        right = match_index + 1
+        prev_idx = match_index
+        next_idx = match_index + 1
 
         # Always include the matched chunk first
         center_chunk = chunks[match_index]
@@ -783,32 +860,32 @@ class SolrIndex(EmbeddingIndex):
         )
 
         # Expand bidirectionally
-        while total_tokens < token_budget and (left > 0 or right < n):
+        while total_tokens < token_budget and (prev_idx > 0 or next_idx < n):
             added = False
 
-            # Try to add chunk to the left
-            if left > 0:
-                next_chunk = chunks[left - 1]
+            # Try to add previous chunk (earlier in document)
+            if prev_idx > 0:
+                next_chunk = chunks[prev_idx - 1]
                 next_tokens = next_chunk.get(schema.chunk_token_count_field, 0)
                 if total_tokens + next_tokens <= token_budget:
                     selected_chunks.insert(0, next_chunk)
                     total_tokens += next_tokens
-                    left -= 1
+                    prev_idx -= 1
                     added = True
-                    log.info(
-                        f"Added left chunk at index {left}, total_tokens={total_tokens}"
+                    log.debug(
+                        f"Added prev chunk at index {prev_idx}, total_tokens={total_tokens}"
                     )
 
-            # Try to add chunk to the right
-            if right < n:
-                next_chunk = chunks[right]
+            # Try to add next chunk (later in document)
+            if next_idx < n:
+                next_chunk = chunks[next_idx]
                 next_tokens = next_chunk.get(schema.chunk_token_count_field, 0)
                 if total_tokens + next_tokens <= token_budget:
                     selected_chunks.append(next_chunk)
                     total_tokens += next_tokens
-                    right += 1
+                    next_idx += 1
                     added = True
-                    log.info(f"Added right chunk at index {right - 1}, total_tokens={
+                    log.debug(f"Added next chunk at index {next_idx - 1}, total_tokens={
                             total_tokens
                         }")
 
@@ -874,6 +951,14 @@ class SolrIndex(EmbeddingIndex):
                 metadata["chunk_index"] = doc["chunk_index"]
             if "parent_id" in doc:
                 metadata["parent_id"] = doc["parent_id"]
+            if self.chunk_window_config.chunk_token_count_field in doc:
+                metadata[self.chunk_window_config.chunk_token_count_field] = doc[
+                    self.chunk_window_config.chunk_token_count_field
+                ]
+            # add family fields to the metadata since we need to access them for comparison with other chunks later on
+            for field in self.chunk_window_config.chunk_family_fields:
+                if field in doc:
+                    metadata[field] = doc[field]
 
             embedding = doc.get(self.vector_field)
             if isinstance(embedding, list):
@@ -884,6 +969,7 @@ class SolrIndex(EmbeddingIndex):
             return EmbeddedChunk(
                 chunk_id=str(chunk_id),
                 content=content,
+                metadata=metadata,
                 chunk_metadata=metadata,
                 embedding=[],  # can be None
                 embedding_model=self.embedding_model,
@@ -1066,7 +1152,7 @@ class SolrVectorIOAdapter(
         self, vector_store_id: str
     ) -> VectorStoreWithIndex:
         if vector_store_id in self.cache:
-            log.info(f"Retrieved vector store from cache: {vector_store_id}")
+            log.debug(f"Retrieved vector store from cache: {vector_store_id}")
             return self.cache[vector_store_id]
 
         log.info(f"Vector store not in cache, loading from table: {vector_store_id}")

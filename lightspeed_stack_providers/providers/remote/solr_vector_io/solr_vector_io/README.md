@@ -75,12 +75,13 @@ To enable chunk window expansion (context retrieval around matched chunks), conf
 
 **Chunk Document Fields:**
 
-| Field                     | Description                          | Required   | OKP RAG Proto Example |
-| -------                   | -------------                        | ---------- | ---------             |
-| `chunk_parent_id_field`   | Chunk's parent document ID           | Yes        | `"parent_id"`         |
-| `chunk_index_field`       | Chunk's sequential position position | Yes        | `"chunk_index"`       |
-| `chunk_token_count_field` | Token count for the chunk            | Yes        | `"num_tokens"`        |
-| `chunk_filter_query`      | Filter to identify chunk documents   | Yes        | `"is_chunk:true"`     |
+| Field                     | Description                                                                    | Required   | OKP RAG Proto Example |
+| -------                   | -------------                                                                  | ---------- | ---------             |
+| `chunk_parent_id_field`   | Chunk's parent document ID                                                     | Yes        | `"parent_id"`         |
+| `chunk_index_field`       | Chunk's sequential position                                                    | Yes        | `"chunk_index"`       |
+| `chunk_token_count_field` | Token count for the chunk                                                      | Yes        | `"num_tokens"`        |
+| `chunk_filter_query`      | Filter to identify chunk documents                                             | Yes        | `"is_chunk:true"`     |
+| `chunk_family_fields`     | Solr fields that should match when concatenating chunks for additional context | No         | `["headings"]`        |
 
 **Parent Document Fields:**
 
@@ -115,7 +116,8 @@ config = SolrVectorIOConfig(
         parent_content_id_field="doc_id",
         parent_content_title_field="title",
         parent_content_url_field="reference_url",
-        chunk_filter_query="is_chunk:true"
+        chunk_filter_query="is_chunk:true",
+        chunk_family_fields=["headings"],
     )
 )
 ```
@@ -145,9 +147,15 @@ config = SolrVectorIOConfig(
         chunk_filter_query="is_chunk:true",
 
         # Optional: Expansion parameters (with defaults shown)
-        token_budget=2048,        # Max tokens per context window
+        family_token_budget=3072, # Max tokens for chunks with any family fields
+        orphan_token_budget=1536, # Max tokens for chunks missing all family fields
         min_chunk_gap=4,          # Min spacing between chunks from same doc
         min_chunk_window=4,       # Min chunks before windowing applies
+
+        # Optional: Solr fields that should match when concatenating chunks
+        # for additional context. Chunks missing values for these fields are
+        # treated as orphans and use orphan_token_budget instead.
+        chunk_family_fields=["headings"],
     )
 )
 
@@ -168,6 +176,9 @@ This feature:
 - Expands bidirectionally within token budget limits
 - Prevents duplicate context from the same document
 - Returns concatenated chunk content as a single result
+- Optionally constrains expansion to chunks sharing the same values for configured family fields (e.g. heading/section)
+- Chunks are considered orphans if they have no values set for _all_ the fields in `chunk_family_fields`
+- If an orphan chunk is matched, the chunk window will expand right up until the `orphan_token_budget` would be exceeded.  `chunk_family_fields` is not enforced during orphan chunk expansion.
 
 ## Hybrid Search
 
