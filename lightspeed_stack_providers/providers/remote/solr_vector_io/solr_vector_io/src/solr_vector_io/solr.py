@@ -265,7 +265,7 @@ class SolrIndex(EmbeddingIndex):
 
                     # Apply score threshold
                     if score < score_threshold:
-                        log.info(
+                        log.debug(
                             f"Filtering out document with score {score} < threshold {
                                 score_threshold
                             }"
@@ -358,9 +358,6 @@ class SolrIndex(EmbeddingIndex):
             }
             # Note: keyword_boost can be incorporated in future by discovering schema fields
 
-            print("========== HYBRID SEARCH PARAMS ==========")
-            print(data_params)
-
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
                 data_params["fq"] = self.chunk_window_config.chunk_filter_query
@@ -392,7 +389,7 @@ class SolrIndex(EmbeddingIndex):
 
                     # Apply score threshold
                     if score < score_threshold:
-                        log.info(
+                        log.debug(
                             f"Filtering out document with score {score} < threshold {
                                 score_threshold
                             }"
@@ -503,6 +500,7 @@ class SolrIndex(EmbeddingIndex):
         parent_id: str,
         window_start: int,
         window_end: int,
+        boundary_values: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Fetch chunks within a specified index range for a parent document.
@@ -512,6 +510,8 @@ class SolrIndex(EmbeddingIndex):
             parent_id: ID of the parent document
             window_start: Start index (inclusive)
             window_end: End index (inclusive)
+            boundary_values: Optional dict of field name -> value pairs that
+                chunks must match (e.g. {'parent_id': 'doc1', 'heading': 'Intro'})
 
         Returns:
             List of chunk documents sorted by chunk_index
@@ -526,11 +526,25 @@ class SolrIndex(EmbeddingIndex):
             schema.chunk_parent_id_field,
         ]
 
+        # Add boundary fields to the field list so they're returned
+        if schema.chunk_expansion_boundary_fields:
+            for field in schema.chunk_expansion_boundary_fields:
+                if field not in fields:
+                    fields.append(field)
+
         # Build query
         query_parts = [
             f'{schema.chunk_parent_id_field}:"{parent_id}"',
             f"{schema.chunk_index_field}:[{window_start} TO {window_end}]",
         ]
+
+        # Add boundary field filters
+        if boundary_values:
+            for field_name, field_value in boundary_values.items():
+                # Skip parent_id since it's already in the query
+                if field_name == schema.chunk_parent_id_field:
+                    continue
+                query_parts.append(f'{field_name}:"{field_value}"')
 
         # Add filter query if configured
         if schema.chunk_filter_query:
@@ -541,7 +555,8 @@ class SolrIndex(EmbeddingIndex):
         try:
             log.info(
                 f"Fetching context chunks: parent_id={parent_id}, "
-                f"range=[{window_start}, {window_end}]"
+                f"range=[{window_start}, {window_end}], "
+                f"boundary_values={boundary_values}"
             )
             response = await client.get(
                 f"{self.base_url}/select",
@@ -646,6 +661,15 @@ class SolrIndex(EmbeddingIndex):
                 total_chunks = parent_doc.get(schema.parent_total_chunks_field, 0)
                 total_tokens = parent_doc.get(schema.parent_total_tokens_field, 0)
 
+                # Build boundary values from matched chunk metadata
+                boundary_values = None
+                if schema.chunk_expansion_boundary_fields:
+                    boundary_values = {}
+                    for field in schema.chunk_expansion_boundary_fields:
+                        value = chunk.metadata.get(field)
+                        if value is not None:
+                            boundary_values[field] = value
+
                 # If short doc, return all chunks
                 if total_chunks < min_chunk_window or total_tokens <= token_budget:
                     log.info(
@@ -653,7 +677,8 @@ class SolrIndex(EmbeddingIndex):
                         f"total_tokens={total_tokens}), fetching all chunks"
                     )
                     context_chunks = await self._fetch_context_chunks(
-                        client, parent_id, 0, max(0, total_chunks - 1)
+                        client, parent_id, 0, max(0, total_chunks - 1),
+                        boundary_values=boundary_values,
                     )
                     selected_chunks = context_chunks
                 else:
@@ -670,7 +695,8 @@ class SolrIndex(EmbeddingIndex):
                         f"around match at index {matched_chunk_index}"
                     )
                     context_chunks = await self._fetch_context_chunks(
-                        client, parent_id, window_start, window_end
+                        client, parent_id, window_start, window_end,
+                        boundary_values=boundary_values,
                     )
 
                     if not context_chunks:
@@ -795,7 +821,7 @@ class SolrIndex(EmbeddingIndex):
                     total_tokens += next_tokens
                     left -= 1
                     added = True
-                    log.info(
+                    log.debug(
                         f"Added left chunk at index {left}, total_tokens={total_tokens}"
                     )
 
@@ -808,7 +834,7 @@ class SolrIndex(EmbeddingIndex):
                     total_tokens += next_tokens
                     right += 1
                     added = True
-                    log.info(f"Added right chunk at index {right - 1}, total_tokens={
+                    log.debug(f"Added right chunk at index {right - 1}, total_tokens={
                             total_tokens
                         }")
 
@@ -829,7 +855,7 @@ class SolrIndex(EmbeddingIndex):
     def _doc_to_chunk(self, doc: dict[str, Any]) -> Chunk | None:
         try:
             if not doc.get("is_chunk", True):
-                log.info("Skipping non-chunk document")
+                log.debug("Skipping non-chunk document")
                 return None
 
             content = doc.get(self.content_field)
@@ -1066,7 +1092,7 @@ class SolrVectorIOAdapter(
         self, vector_store_id: str
     ) -> VectorStoreWithIndex:
         if vector_store_id in self.cache:
-            log.info(f"Retrieved vector store from cache: {vector_store_id}")
+            log.debug(f"Retrieved vector store from cache: {vector_store_id}")
             return self.cache[vector_store_id]
 
         log.info(f"Vector store not in cache, loading from table: {vector_store_id}")

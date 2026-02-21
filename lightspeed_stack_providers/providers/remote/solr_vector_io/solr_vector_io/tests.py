@@ -81,6 +81,7 @@ def config_with_chunk_window():
             parent_content_title_field="title",
             parent_content_url_field="reference_url",
             chunk_filter_query="is_chunk:true",
+            chunk_expansion_boundary_fields=["parent_id"],
         ),
     )
 

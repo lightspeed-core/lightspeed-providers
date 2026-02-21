@@ -80,6 +80,16 @@ class ChunkWindowConfig(BaseModel):
         default=4, description="Min number of chunks before windowing applies"
     )
 
+    # ---- Expansion boundary fields ----
+    chunk_expansion_boundary_fields: list[str] | None = Field(
+        default=None,
+        description=(
+            "Additional chunk field names that constrain window expansion (e.g. ['heading']). "
+            "chunk_parent_id_field is always used as a boundary regardless of this setting. "
+            "When set, only chunks sharing the anchor chunk's values for these fields are included."
+        ),
+    )
+
 
 @json_schema_type
 class SolrVectorIOConfig(BaseModel):
@@ -173,5 +183,6 @@ class SolrVectorIOConfig(BaseModel):
             #   "token_budget": 2048,
             #   "min_chunk_gap": 4,
             #   "min_chunk_window": 4,
+            #   "chunk_expansion_boundary_fields": ["parent_id", "heading"],
             # }
         }
