@@ -77,10 +77,11 @@ To enable chunk window expansion (context retrieval around matched chunks), conf
 
 | Field                     | Description                          | Required   | OKP RAG Proto Example |
 | -------                   | -------------                        | ---------- | ---------             |
-| `chunk_parent_id_field`   | Chunk's parent document ID           | Yes        | `"parent_id"`         |
-| `chunk_index_field`       | Chunk's sequential position position | Yes        | `"chunk_index"`       |
-| `chunk_token_count_field` | Token count for the chunk            | Yes        | `"num_tokens"`        |
-| `chunk_filter_query`      | Filter to identify chunk documents   | Yes        | `"is_chunk:true"`     |
+| `chunk_parent_id_field`             | Chunk's parent document ID             | Yes  | `"parent_id"`              |
+| `chunk_index_field`                 | Chunk's sequential position            | Yes  | `"chunk_index"`            |
+| `chunk_token_count_field`           | Token count for the chunk              | Yes  | `"num_tokens"`             |
+| `chunk_filter_query`                | Filter to identify chunk documents     | Yes  | `"is_chunk:true"`          |
+| `chunk_expansion_boundary_fields`   | Fields that constrain window expansion | No   | `["parent_id", "heading"]` |
 
 **Parent Document Fields:**
 
@@ -115,7 +116,8 @@ config = SolrVectorIOConfig(
         parent_content_id_field="doc_id",
         parent_content_title_field="title",
         parent_content_url_field="reference_url",
-        chunk_filter_query="is_chunk:true"
+        chunk_filter_query="is_chunk:true",
+        chunk_expansion_boundary_fields=["parent_id"],
     )
 )
 ```
@@ -148,6 +150,12 @@ config = SolrVectorIOConfig(
         token_budget=2048,        # Max tokens per context window
         min_chunk_gap=4,          # Min spacing between chunks from same doc
         min_chunk_window=4,       # Min chunks before windowing applies
+
+        # Optional: Boundary fields constrain expansion to chunks sharing
+        # the same values for these fields as the matched chunk.
+        # chunk_parent_id_field is always used as a boundary regardless
+        # of this setting. Default is None (no additional boundaries).
+        chunk_expansion_boundary_fields=["parent_id", "heading"],
     )
 )
 
@@ -168,6 +176,7 @@ This feature:
 - Expands bidirectionally within token budget limits
 - Prevents duplicate context from the same document
 - Returns concatenated chunk content as a single result
+- Optionally constrains expansion to chunks sharing the same values for configured boundary fields (e.g. heading/section)
 
 ## Hybrid Search
 
