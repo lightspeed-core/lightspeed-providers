@@ -1,5 +1,5 @@
-module: lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction
-config_class: lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.config.RedactionShieldConfig
+config_class: lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction.config.RedactionShieldConfig
+module: lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction
 pip_packages: ["lightspeed_stack_providers"]
 api_dependencies:
   - safety

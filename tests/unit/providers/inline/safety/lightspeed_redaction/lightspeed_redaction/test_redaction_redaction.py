@@ -1,12 +1,13 @@
 import pytest
+from llama_stack_api.inference import UserMessage
+
+from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction.config import (
+    PatternReplacement,
+    RedactionShieldConfig,
+)
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction.redaction import (
     RedactionShieldImpl,
 )
-from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction.config import (
-    RedactionShieldConfig,
-    PatternReplacement,
-)
-from llama_stack.apis.inference import UserMessage
 
 
 @pytest.fixture
