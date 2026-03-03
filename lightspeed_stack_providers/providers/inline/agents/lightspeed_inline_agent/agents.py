@@ -31,6 +31,7 @@ from llama_stack_api.openai_responses import (
 )
 
 from .config import LightspeedAgentsImplConfig
+from .responses.openai_responses import LightspeedOpenAIResponsesImpl
 
 logger = get_logger(name=__name__, category="agents")
 
@@ -62,6 +63,31 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             policy,
         )
         self.config = config
+
+    async def initialize(self) -> None:
+        """
+        Initialize the agent implementation.
+
+        This method uses LightspeedOpenAIResponsesImpl as part of the workaround for MCP server
+        connection cleanup issue. The issue is resolved in Llama Stack by
+        https://github.com/llamastack/llama-stack/pull/4758, but we need to use Llama Stack 0.4.3
+        and have backported the PR fix.
+
+        TODO: Remove this workaround once we upgrade to a Llama Stack version that includes PR #4758.
+        """
+        await super().initialize()
+        self.openai_responses_impl = LightspeedOpenAIResponsesImpl(
+            inference_api=self.inference_api,
+            tool_groups_api=self.tool_groups_api,
+            tool_runtime_api=self.tool_runtime_api,
+            responses_store=self.responses_store,
+            vector_io_api=self.vector_io_api,
+            safety_api=self.safety_api,
+            conversations_api=self.conversations_api,
+            prompts_api=self.prompts_api,
+            files_api=self.files_api,
+            vector_stores_config=self.config.vector_stores_config,
+        )
 
     async def create_openai_response(
         self,
