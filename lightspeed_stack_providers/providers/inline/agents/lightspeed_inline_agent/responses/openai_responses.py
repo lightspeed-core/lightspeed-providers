@@ -83,10 +83,12 @@ class LightspeedOpenAIResponsesImpl(OpenAIResponsesImpl):
         assert max_infer_iters is not None, "max_infer_iters must not be None"
 
         # Input preprocessing
-        all_input, messages, tool_context = (
-            await self._process_input_with_previous_response(
-                input, tools, previous_response_id, conversation
-            )
+        (
+            all_input,
+            messages,
+            tool_context,
+        ) = await self._process_input_with_previous_response(
+            input, tools, previous_response_id, conversation
         )
 
         if instructions:
@@ -116,7 +118,6 @@ class LightspeedOpenAIResponsesImpl(OpenAIResponsesImpl):
         # Create a per-request MCP session manager for session reuse (fix for #4452)
         # This avoids redundant tools/list calls when making multiple MCP tool invocations
         async with MyMCPSessionManager() as mcp_session_manager:
-
             # Create a per-request ToolExecutor with the session manager
             request_tool_executor = ToolExecutor(
                 tool_groups_api=self.tool_groups_api,
