@@ -957,9 +957,10 @@ class SolrIndex(EmbeddingIndex):
                     self.chunk_window_config.chunk_token_count_field
                 ]
             # add family fields to the metadata since we need to access them for comparison with other chunks later on
-            for field in self.chunk_window_config.chunk_family_fields:
-                if field in doc:
-                    metadata[field] = doc[field]
+            if self.chunk_window_config.chunk_family_fields:
+                for field in self.chunk_window_config.chunk_family_fields:
+                    if field in doc:
+                        metadata[field] = doc[field]
 
             embedding = doc.get(self.vector_field)
             if isinstance(embedding, list):
