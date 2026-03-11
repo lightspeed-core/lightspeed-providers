@@ -6,7 +6,7 @@ A read-only vector_io provider implementation for llama-stack that integrates wi
 
 - **Read-only access** to Solr collections with vector embeddings
 - **Vector similarity search** using Solr's KNN query parser
-- **Keyword search** using Solr's text search (edismax)
+- **Keyword search** using Solr's text search
 - **Hybrid search** combining vector and keyword search with Solr's native reranking
 - **Chunk window expansion** for retrieving extended context around matched chunks
 - **Schema-agnostic** field mapping for flexible Solr schema support

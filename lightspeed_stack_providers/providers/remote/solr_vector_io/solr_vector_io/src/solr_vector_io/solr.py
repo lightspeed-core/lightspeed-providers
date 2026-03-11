@@ -230,13 +230,15 @@ class SolrIndex(EmbeddingIndex):
             f"score_threshold={score_threshold}"
         )
 
+        # Replace ? and * because when the edismax text parser is enabled, they are evaluated as lucene wildcards
+        query_string = query_string.replace("?", "").replace("*", "")
+
         async with self._create_http_client() as client:
             solr_params = {
                 "q": query_string,
                 "rows": k,
-                "fl": "*, score",
+                "fl": "*,score",
                 "wt": "json",
-                "defType": "edismax",  # Use extended DisMax for better text search
             }
 
             # Add filter query for chunk documents if schema is configured
@@ -247,7 +249,7 @@ class SolrIndex(EmbeddingIndex):
                     }")
 
             try:
-                log.info("Sending keyword query to Solr using edismax parser")
+                log.info("Sending keyword query to Solr")
                 response = await client.get(
                     f"{self.base_url}/select", params=solr_params
                 )
@@ -330,13 +332,14 @@ class SolrIndex(EmbeddingIndex):
             reranker_params = {}
 
         # Get boost parameters, defaulting to equal weighting
-        vector_boost = reranker_params.get("vector_boost", 1.0)
-        keyword_boost = reranker_params.get("keyword_boost", 1.0)
+        vector_boost = reranker_params.get("vector_boost", 8.0)
+
+        # Replace ? and * because when the edismax text parser is enabled, they are evaluated as lucene wildcards
+        query_string = query_string.replace("?", "").replace("*", "")
 
         log.info(
             f"Performing hybrid search: query='{query_string}', k={k}, "
             f"score_threshold={score_threshold}, vector_boost={vector_boost}, "
-            f"keyword_boost={keyword_boost}"
         )
 
         async with self._create_http_client() as client:
@@ -350,14 +353,12 @@ class SolrIndex(EmbeddingIndex):
             # and vector_boost is applied via reRankWeight for the KNN reranking
             data_params = {
                 "q": query_string,
-                "rq": f"{{!rerank reRankQuery=$rqq reRankDocs={k * 2} reRankWeight={vector_boost}}}",
-                "rqq": f"{{!knn f={self.vector_field} topK={k * 2}}}{vector_str}",
+                "rq": f"{{!rerank reRankQuery=$rqq reRankDocs=100 reRankWeight={vector_boost}}}",
+                "rqq": f"{{!knn f={self.vector_field} topK=100}}{vector_str}",
                 "rows": k,
-                "fl": "*, score",
+                "fl": "*,score,originalScore()",
                 "wt": "json",
-                "defType": "edismax",
             }
-            # Note: keyword_boost can be incorporated in future by discovering schema fields
 
             # Add filter query for chunk documents if schema is configured
             if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
@@ -372,7 +373,7 @@ class SolrIndex(EmbeddingIndex):
                     f"reRankWeight={vector_boost}"
                 )
                 response = await client.post(
-                    f"{self.base_url}/select",
+                    f"{self.base_url}/hybrid-search",
                     data=data_params,
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
                 )
@@ -956,9 +957,10 @@ class SolrIndex(EmbeddingIndex):
                     self.chunk_window_config.chunk_token_count_field
                 ]
             # add family fields to the metadata since we need to access them for comparison with other chunks later on
-            for field in self.chunk_window_config.chunk_family_fields:
-                if field in doc:
-                    metadata[field] = doc[field]
+            if self.chunk_window_config.chunk_family_fields:
+                for field in self.chunk_window_config.chunk_family_fields:
+                    if field in doc:
+                        metadata[field] = doc[field]
 
             embedding = doc.get(self.vector_field)
             if isinstance(embedding, list):
