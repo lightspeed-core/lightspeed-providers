@@ -24,6 +24,10 @@ from llama_stack_api.inference import (
     OpenAIUserMessageParam,
 )
 
+from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
+    QuestionValidityShieldConfig,
+)
+
 # Message type alias for run_shield parameter
 Message = (
     OpenAIUserMessageParam
@@ -31,10 +35,6 @@ Message = (
     | OpenAIAssistantMessageParam
     | OpenAIToolMessageParam
     | OpenAIDeveloperMessageParam
-)
-
-from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
-    QuestionValidityShieldConfig,
 )
 
 log = logging.getLogger(__name__)
