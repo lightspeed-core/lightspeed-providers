@@ -1,6 +1,8 @@
+"""Unit tests for Lightspeed inline agent provider configuration."""
+
+import os
 import pytest
 from pydantic import ValidationError
-import os
 
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
 from llama_stack.providers.inline.agents.meta_reference.config import (
@@ -22,7 +24,7 @@ def test_tools_filter_defaults():
     assert tools_filter.min_tools == 10
     assert tools_filter.system_prompt_path is None
     assert tools_filter.system_prompt == DEFAULT_SYSTEM_PROMPT
-    assert tools_filter.always_include_tools == []
+    assert not tools_filter.always_include_tools
 
 
 def test_tools_filter_with_valid_system_prompt_path(tmp_path):
