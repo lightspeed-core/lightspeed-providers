@@ -1,3 +1,5 @@
+"""Unit tests for Lightspeed inline agent provider implementation."""
+
 from unittest.mock import AsyncMock
 
 import pytest
@@ -15,22 +17,22 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 )
 
 
-@pytest.fixture
-def mock_inference_api():
+@pytest.fixture(name="mock_inference_api")
+def mock_inference_api_fixture():
     """Fixture for mocking the Inference API."""
     return AsyncMock()
 
 
-@pytest.fixture
-def mock_conversations_api():
+@pytest.fixture(name="mock_conversations_api")
+def mock_conversations_api_fixture():
     """Fixture for mocking the Conversations API."""
     mock = AsyncMock()
     mock.list_messages.return_value = []
     return mock
 
 
-@pytest.fixture
-def lightspeed_agents_impl(mock_inference_api, mock_conversations_api, mocker):
+@pytest.fixture(name="lightspeed_agents_impl")
+def lightspeed_agents_impl_fixture(mock_inference_api, mock_conversations_api, mocker):
     """Fixture for creating a LightspeedAgentsImpl instance."""
     persistence = AgentPersistenceConfig(
         agent_state=KVStoreReference(namespace="test", backend="in_memory"),
@@ -87,6 +89,7 @@ def test_tools_filter_config():
     )
     assert filter_config.enabled is True
     assert filter_config.min_tools == 5
+    assert filter_config.always_include_tools is not None
     assert "tool1" in filter_config.always_include_tools
     assert "tool2" in filter_config.always_include_tools
 
@@ -95,6 +98,7 @@ def test_tools_filter_config():
 async def test_get_tool_name_from_config_mcp(lightspeed_agents_impl):
     """Test _get_tool_name_from_config for MCP tools."""
     tool_dict = {"type": "mcp", "server_label": "my_server"}
+    # pylint: disable=protected-access
     name = lightspeed_agents_impl._get_tool_name_from_config(tool_dict, 0)
     assert name == "my_server"
 
@@ -103,6 +107,7 @@ async def test_get_tool_name_from_config_mcp(lightspeed_agents_impl):
 async def test_get_tool_name_from_config_file_search(lightspeed_agents_impl):
     """Test _get_tool_name_from_config for file_search tools."""
     tool_dict = {"type": "file_search", "vector_store_ids": ["vs_123"]}
+    # pylint: disable=protected-access
     name = lightspeed_agents_impl._get_tool_name_from_config(tool_dict, 0)
     assert name == "file_search"
 
@@ -111,6 +116,7 @@ async def test_get_tool_name_from_config_file_search(lightspeed_agents_impl):
 async def test_get_tool_name_from_config_function(lightspeed_agents_impl):
     """Test _get_tool_name_from_config for function tools."""
     tool_dict = {"type": "function", "name": "my_function"}
+    # pylint: disable=protected-access
     name = lightspeed_agents_impl._get_tool_name_from_config(tool_dict, 0)
     assert name == "my_function"
 
@@ -119,6 +125,7 @@ async def test_get_tool_name_from_config_function(lightspeed_agents_impl):
 async def test_get_tool_name_from_config_unknown(lightspeed_agents_impl):
     """Test _get_tool_name_from_config for unknown tool types."""
     tool_dict = {"type": "custom_tool"}
+    # pylint: disable=protected-access
     name = lightspeed_agents_impl._get_tool_name_from_config(tool_dict, 3)
     assert name == "custom_tool_3"
 
@@ -127,7 +134,8 @@ async def test_get_tool_name_from_config_unknown(lightspeed_agents_impl):
 async def test_extract_tool_definitions_file_search(lightspeed_agents_impl):
     """Test _extract_tool_definitions for file_search tools."""
     tools = [{"type": "file_search", "vector_store_ids": ["vs_123"]}]
-    defs, mapping = await lightspeed_agents_impl._extract_tool_definitions(tools)
+    # pylint: disable=protected-access
+    defs, _ = await lightspeed_agents_impl._extract_tool_definitions(tools)
     assert len(defs) == 1
     assert defs[0]["tool_name"] == "file_search"
     assert "knowledge base" in defs[0]["description"].lower()
@@ -139,7 +147,8 @@ async def test_extract_tool_definitions_function(lightspeed_agents_impl):
     tools = [
         {"type": "function", "name": "get_weather", "description": "Get the weather"}
     ]
-    defs, mapping = await lightspeed_agents_impl._extract_tool_definitions(tools)
+    # pylint: disable=protected-access
+    defs, _ = await lightspeed_agents_impl._extract_tool_definitions(tools)
     assert len(defs) == 1
     assert defs[0]["tool_name"] == "get_weather"
     assert defs[0]["description"] == "Get the weather"
