@@ -49,6 +49,9 @@ test-solr = [
     "torch>=2.0.0",
 ]
 
+[tool.pylint.main]
+source-roots = "."
+
 [tool.ruff]
 [tool.ruff.lint.flake8-tidy-imports]
 banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }
