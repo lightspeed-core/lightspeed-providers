@@ -56,3 +56,11 @@ source-roots = "."
 [tool.ruff.lint.flake8-tidy-imports]
 banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }
 
+[tool.mypy]
+explicit_package_bases = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+disable_error_code = "attr-defined"
+
