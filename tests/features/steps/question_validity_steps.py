@@ -3,24 +3,25 @@ Step definitions for question validity shield tests.
 """
 
 from behave import given, when, then
+from behave.runner import Context
 
 
 @given("the question validity shield is configured")
-def step_given_question_validity_shield_configured(context):
+def step_given_question_validity_shield_configured(context: Context) -> None:
     """Verify the question validity shield is configured."""
     # This is implicitly verified by the service being up
     context.question_validity_shield_id = "lightspeed_question_validity-shield"
 
 
 @when('I send the question "{question}" to the question validity shield')
-def step_when_send_question_to_validity_shield(context, question):
+def step_when_send_question_to_validity_shield(context: Context, question: str) -> None:
     """Send a question to the question validity shield."""
     context.original_question = question
     context.client.run_shield(context.question_validity_shield_id, question)
 
 
 @then("the question should be allowed")
-def step_then_question_allowed(context):
+def step_then_question_allowed(context: Context) -> None:
     """Verify the question is allowed (no violation)."""
     assert (
         context.client.last_response.status_code == 200
@@ -35,7 +36,7 @@ def step_then_question_allowed(context):
 
 
 @then("no violation should be reported")
-def step_then_no_violation(context):
+def step_then_no_violation(context: Context) -> None:
     """Verify no violation is reported."""
     response_data = context.client.last_response_data
     violation = response_data.get("violation")
@@ -44,7 +45,7 @@ def step_then_no_violation(context):
 
 
 @then("the question should be blocked")
-def step_then_question_blocked(context):
+def step_then_question_blocked(context: Context) -> None:
     """Verify the question is blocked (violation reported)."""
     assert (
         context.client.last_response.status_code == 200
@@ -57,7 +58,7 @@ def step_then_question_blocked(context):
 
 
 @then("a violation should be reported")
-def step_then_violation_reported(context):
+def step_then_violation_reported(context: Context) -> None:
     """Verify a violation is reported."""
     response_data = context.client.last_response_data
     violation = response_data.get("violation")
@@ -66,7 +67,7 @@ def step_then_violation_reported(context):
 
 
 @then("the response should contain the invalid question message")
-def step_then_response_contains_invalid_message(context):
+def step_then_response_contains_invalid_message(context: Context) -> None:
     """Verify the response contains the invalid question message."""
     response_data = context.client.last_response_data
     violation = response_data.get("violation")
@@ -80,14 +81,14 @@ def step_then_response_contains_invalid_message(context):
 
 
 @when('I send an invalid question "{question}"')
-def step_when_send_invalid_question(context, question):
+def step_when_send_invalid_question(context: Context, question: str) -> None:
     """Send an invalid question to the shield."""
     context.original_question = question
     context.client.run_shield(context.question_validity_shield_id, question)
 
 
 @then('the response should contain the text "{expected_text}"')
-def step_then_response_contains_text(context, expected_text):
+def step_then_response_contains_text(context: Context, expected_text: str) -> None:
     """Verify the response contains specific text."""
     response_data = context.client.last_response_data
     violation = response_data.get("violation")
