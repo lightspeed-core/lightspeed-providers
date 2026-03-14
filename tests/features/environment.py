@@ -4,8 +4,11 @@ Behave environment configuration for Question Validity Shield tests.
 
 import os
 
+from behave.model import Scenario
+from behave.runner import Context
 
-def before_all(context):
+
+def before_all(context: Context) -> None:
     """Setup before all tests."""
     # Set default configuration
     context.config.setup_logging()
@@ -14,7 +17,7 @@ def before_all(context):
     context.base_url = os.getenv("LLAMA_STACK_BASE_URL", "http://localhost:8321")
 
 
-def after_scenario(context, scenario):
+def after_scenario(context: Context, scenario: Scenario) -> None:
     """Log scenario results."""
     if scenario.status.name == "failed":
         print(f"❌ {scenario.name}")
