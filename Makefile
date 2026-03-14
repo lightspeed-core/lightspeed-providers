@@ -33,6 +33,9 @@ test-solr:
 	@echo "Running solr_vector_io tests..."
 	uv run lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/tests.py
 
+check-types: ## Checks type hints in sources
+	uv run mypy --explicit-package-bases --disallow-untyped-calls --disallow-untyped-defs --disallow-incomplete-defs --ignore-missing-imports --disable-error-code attr-defined lightspeed_stack_providers/ tests/
+
 # Lint code
 lint:
 	uv run ruff check .
