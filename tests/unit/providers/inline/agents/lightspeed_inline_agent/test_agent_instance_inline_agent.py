@@ -1,6 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
+
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
 from llama_stack.providers.inline.agents.meta_reference.config import (
     AgentPersistenceConfig,
@@ -39,7 +41,10 @@ def mock_tool_runtime_api():
 
 @pytest.fixture
 def lightspeed_agents_impl(
-    mock_inference_api, mock_conversations_api, mock_tool_runtime_api, mocker
+    mock_inference_api,
+    mock_conversations_api,
+    mock_tool_runtime_api,
+    mocker: MockerFixture,
 ):
     """Fixture for creating a LightspeedAgentsImpl instance."""
     persistence = AgentPersistenceConfig(

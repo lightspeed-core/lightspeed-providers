@@ -2,6 +2,8 @@ from string import Template
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
+
 from llama_stack_api import UserMessage
 from llama_stack_api.safety import RunShieldResponse, SafetyViolation, ViolationLevel
 
@@ -124,7 +126,7 @@ def question_validity_shield_impl(mock_inference_api):
 
 
 @pytest.mark.asyncio
-async def test_run_shield_allowed(question_validity_shield_impl, mocker):
+async def test_run_shield_allowed(question_validity_shield_impl, mocker: MockerFixture):
     """Test the run_shield method for an allowed question."""
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
@@ -148,7 +150,9 @@ async def test_run_shield_allowed(question_validity_shield_impl, mocker):
 
 
 @pytest.mark.asyncio
-async def test_run_shield_rejected(question_validity_shield_impl, mocker):
+async def test_run_shield_rejected(
+    question_validity_shield_impl, mocker: MockerFixture
+):
     """Test the run_shield method for a rejected question."""
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
@@ -192,7 +196,9 @@ async def test_run_moderation_allowed(question_validity_shield_impl, mocker):
 
 
 @pytest.mark.asyncio
-async def test_run_moderation_rejected(question_validity_shield_impl, mocker):
+async def test_run_moderation_rejected(
+    question_validity_shield_impl, mocker: MockerFixture
+):
     """Test the run_moderation method for a rejected question."""
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
