@@ -5,6 +5,7 @@ This module tests the workaround for the MCP server connection cleanup issue
 that was backported from https://github.com/llamastack/llama-stack/pull/4758.
 """
 
+from typing import AsyncGenerator
 import pytest
 from pytest_mock import MockerFixture
 
@@ -26,7 +27,7 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 
 
 @pytest.fixture
-def lightspeed_agents_impl(mocker: MockerFixture):
+def lightspeed_agents_impl(mocker: MockerFixture) -> LightspeedAgentsImpl:
     """Fixture for creating a LightspeedAgentsImpl instance."""
     persistence = AgentPersistenceConfig(
         agent_state=KVStoreReference(namespace="test", backend="in_memory"),
@@ -53,8 +54,8 @@ def lightspeed_agents_impl(mocker: MockerFixture):
 
 @pytest.mark.asyncio
 async def test_initialize_creates_lightspeed_openai_responses_impl(
-    lightspeed_agents_impl, mocker: MockerFixture
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mocker: MockerFixture
+) -> None:
     """Test that initialize() creates a LightspeedOpenAIResponsesImpl instance."""
     # Mock the parent initialize method
     mocker.patch.object(
@@ -83,8 +84,8 @@ async def test_initialize_creates_lightspeed_openai_responses_impl(
 
 @pytest.mark.asyncio
 async def test_initialize_passes_correct_dependencies(
-    lightspeed_agents_impl, mocker: MockerFixture
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mocker: MockerFixture
+) -> None:
     """Test that initialize() passes correct dependencies to LightspeedOpenAIResponsesImpl."""
     # Mock the parent initialize method
     mocker.patch.object(
@@ -99,6 +100,7 @@ async def test_initialize_passes_correct_dependencies(
 
     # Verify the created instance has correct dependencies
     openai_impl = lightspeed_agents_impl.openai_responses_impl
+    assert openai_impl is not None
     assert openai_impl.inference_api == lightspeed_agents_impl.inference_api
     assert openai_impl.tool_groups_api == lightspeed_agents_impl.tool_groups_api
     assert openai_impl.tool_runtime_api == lightspeed_agents_impl.tool_runtime_api
@@ -111,7 +113,7 @@ async def test_initialize_passes_correct_dependencies(
 
 
 @pytest.mark.asyncio
-async def test_mcp_session_manager_enter(mocker: MockerFixture):
+async def test_mcp_session_manager_enter(mocker: MockerFixture) -> None:
     """Test MyMCPSessionManager __aenter__ returns self."""
     session_manager = MyMCPSessionManager()
 
@@ -121,7 +123,7 @@ async def test_mcp_session_manager_enter(mocker: MockerFixture):
 
 
 @pytest.mark.asyncio
-async def test_mcp_session_manager_exit_calls_close_all(mocker: MockerFixture):
+async def test_mcp_session_manager_exit_calls_close_all(mocker: MockerFixture) -> None:
     """Test MyMCPSessionManager __aexit__ calls close_all()."""
     session_manager = MyMCPSessionManager()
 
@@ -142,7 +144,7 @@ async def test_mcp_session_manager_exit_calls_close_all(mocker: MockerFixture):
 @pytest.mark.asyncio
 async def test_mcp_session_manager_exit_returns_false_on_exception(
     mocker: MockerFixture,
-):
+) -> None:
     """Test MyMCPSessionManager __aexit__ returns False when exception occurs."""
     session_manager = MyMCPSessionManager()
 
@@ -163,7 +165,7 @@ async def test_mcp_session_manager_exit_returns_false_on_exception(
 
 
 @pytest.mark.asyncio
-async def test_mcp_session_manager_context_manager_usage(mocker: MockerFixture):
+async def test_mcp_session_manager_context_manager_usage(mocker: MockerFixture) -> None:
     """Test MyMCPSessionManager can be used as an async context manager."""
     session_manager = MyMCPSessionManager()
 
@@ -181,7 +183,9 @@ async def test_mcp_session_manager_context_manager_usage(mocker: MockerFixture):
 
 
 @pytest.mark.asyncio
-async def test_lightspeed_openai_responses_impl_initialization(mocker: MockerFixture):
+async def test_lightspeed_openai_responses_impl_initialization(
+    mocker: MockerFixture,
+) -> None:
     """Test LightspeedOpenAIResponsesImpl can be instantiated."""
     # Create mock dependencies
     inference_api = mocker.AsyncMock()
@@ -217,7 +221,7 @@ async def test_lightspeed_openai_responses_impl_initialization(mocker: MockerFix
 @pytest.mark.asyncio
 async def test_create_streaming_response_uses_mcp_session_manager(
     mocker: MockerFixture,
-):
+) -> None:
     """Test _create_streaming_response uses MyMCPSessionManager."""
     # Create mock dependencies
     inference_api = mocker.AsyncMock()
@@ -252,7 +256,7 @@ async def test_create_streaming_response_uses_mcp_session_manager(
     # Mock the StreamingResponseOrchestrator to return a simple response
     mock_orchestrator = mocker.MagicMock()
 
-    async def mock_create_response():
+    async def mock_create_response() -> AsyncGenerator:
         """Mock generator that yields a completed response."""
         from llama_stack_api.openai_responses import OpenAIResponseObject
 
@@ -303,7 +307,9 @@ async def test_create_streaming_response_uses_mcp_session_manager(
 
 
 @pytest.mark.asyncio
-async def test_create_streaming_response_cleanup_on_error(mocker: MockerFixture):
+async def test_create_streaming_response_cleanup_on_error(
+    mocker: MockerFixture,
+) -> None:
     """Test _create_streaming_response properly cleans up MCP session on error."""
     # Create mock dependencies
     inference_api = mocker.AsyncMock()
@@ -336,7 +342,7 @@ async def test_create_streaming_response_cleanup_on_error(mocker: MockerFixture)
     mocker.patch.object(impl, "_prepend_prompt", return_value=None)
 
     # Mock the StreamingResponseOrchestrator to raise an error
-    async def mock_create_response_with_error():
+    async def mock_create_response_with_error() -> AsyncGenerator:
         """Mock generator that raises an error."""
         raise ValueError("Test error in streaming")
         yield  # This line is never reached
