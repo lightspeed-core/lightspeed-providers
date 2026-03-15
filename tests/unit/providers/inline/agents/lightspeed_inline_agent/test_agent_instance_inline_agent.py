@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
+from pytest_mock import AsyncMockType, MockerFixture
 
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
 from llama_stack.providers.inline.agents.meta_reference.config import (
@@ -18,14 +18,14 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 
 
 @pytest.fixture
-def mock_inference_api():
+def mock_inference_api() -> AsyncMockType:
     """Fixture for mocking the Inference API."""
     mock = AsyncMock()
     return mock
 
 
 @pytest.fixture
-def mock_conversations_api():
+def mock_conversations_api() -> AsyncMockType:
     """Fixture for mocking the Conversations API."""
     mock = AsyncMock()
     mock.list_messages.return_value = []
@@ -33,7 +33,7 @@ def mock_conversations_api():
 
 
 @pytest.fixture
-def mock_tool_runtime_api():
+def mock_tool_runtime_api() -> AsyncMockType:
     """Fixture for mocking the Tool Runtime API."""
     mock = AsyncMock()
     return mock
@@ -41,11 +41,11 @@ def mock_tool_runtime_api():
 
 @pytest.fixture
 def lightspeed_agents_impl(
-    mock_inference_api,
-    mock_conversations_api,
-    mock_tool_runtime_api,
+    mock_inference_api: AsyncMockType,
+    mock_conversations_api: AsyncMockType,
+    mock_tool_runtime_api: AsyncMockType,
     mocker: MockerFixture,
-):
+) -> LightspeedAgentsImpl:
     """Fixture for creating a LightspeedAgentsImpl instance."""
     persistence = AgentPersistenceConfig(
         agent_state=KVStoreReference(namespace="test", backend="in_memory"),
@@ -71,7 +71,7 @@ def lightspeed_agents_impl(
     return impl
 
 
-def create_mock_chat_response(content: str):
+def create_mock_chat_response(content: str) -> MockerFixture:
     """Create a mock OpenAI chat completion response."""
     mock_message = MagicMock()
     mock_message.content = content
@@ -87,8 +87,8 @@ def create_mock_chat_response(content: str):
 
 @pytest.mark.asyncio
 async def test_filter_tools_for_response_filters_correctly(
-    lightspeed_agents_impl, mock_inference_api
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
+) -> None:
     """Test that _filter_tools_for_response filters tools based on LLM response."""
     # Setup mock LLM response to return filtered tool names
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
@@ -139,8 +139,8 @@ async def test_filter_tools_for_response_filters_correctly(
 
 @pytest.mark.asyncio
 async def test_filter_tools_for_response_includes_always_included_tools(
-    lightspeed_agents_impl, mock_inference_api
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
+) -> None:
     """Test that always-included tools are preserved even when not in LLM response."""
     # Configure always-included tools (uses actual tool names, not server labels)
     lightspeed_agents_impl.config.tools_filter.always_include_tools = ["tool2"]
@@ -196,8 +196,8 @@ async def test_filter_tools_for_response_includes_always_included_tools(
 
 @pytest.mark.asyncio
 async def test_create_openai_response_skips_filtering_when_disabled(
-    lightspeed_agents_impl, mocker
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mocker: MockerFixture
+) -> None:
     """Test that create_openai_response skips filtering when disabled."""
     lightspeed_agents_impl.config.tools_filter.enabled = False
 
@@ -233,8 +233,8 @@ async def test_create_openai_response_skips_filtering_when_disabled(
 
 @pytest.mark.asyncio
 async def test_filter_tools_for_response_skips_filtering_below_threshold(
-    lightspeed_agents_impl, mock_inference_api
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
+) -> None:
     """Test that _filter_tools_for_response skips filtering when expanded tools are below threshold."""
     lightspeed_agents_impl.config.tools_filter.min_tools = 10  # High threshold
 
@@ -265,8 +265,8 @@ async def test_filter_tools_for_response_skips_filtering_below_threshold(
 
 @pytest.mark.asyncio
 async def test_get_previously_called_tools_extracts_function_calls(
-    lightspeed_agents_impl, mock_conversations_api
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
+) -> None:
     """Test that _get_previously_called_tools extracts tool names from function_call items."""
     # Mock conversation items with function_call type
     mock_item1 = MagicMock()
@@ -288,8 +288,8 @@ async def test_get_previously_called_tools_extracts_function_calls(
 
 @pytest.mark.asyncio
 async def test_get_previously_called_tools_extracts_mcp_calls(
-    lightspeed_agents_impl, mock_conversations_api
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
+) -> None:
     """Test that _get_previously_called_tools extracts tool names from mcp_call items."""
     # Mock conversation items with mcp_call type
     mock_item1 = MagicMock()
@@ -311,8 +311,8 @@ async def test_get_previously_called_tools_extracts_mcp_calls(
 
 @pytest.mark.asyncio
 async def test_get_previously_called_tools_extracts_mcp_approval_requests(
-    lightspeed_agents_impl, mock_conversations_api
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
+) -> None:
     """Test that _get_previously_called_tools extracts tool names from mcp_approval_request items."""
     # Mock conversation items with mcp_approval_request type
     mock_item = MagicMock()
@@ -330,8 +330,8 @@ async def test_get_previously_called_tools_extracts_mcp_approval_requests(
 
 @pytest.mark.asyncio
 async def test_get_previously_called_tools_handles_mixed_types(
-    lightspeed_agents_impl, mock_conversations_api
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
+) -> None:
     """Test that _get_previously_called_tools extracts tool names from mixed item types."""
     # Mock conversation items with different types
     function_item = MagicMock()
@@ -366,8 +366,10 @@ async def test_get_previously_called_tools_handles_mixed_types(
 
 @pytest.mark.asyncio
 async def test_filter_tools_preserves_previously_called_tools(
-    lightspeed_agents_impl, mock_inference_api, mock_conversations_api
-):
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+    mock_inference_api: AsyncMockType,
+    mock_conversations_api: AsyncMockType,
+) -> None:
     """Test that previously called tools are preserved even when LLM returns empty list."""
     # Setup conversation with previously called MCP tools
     mock_item = MagicMock()
