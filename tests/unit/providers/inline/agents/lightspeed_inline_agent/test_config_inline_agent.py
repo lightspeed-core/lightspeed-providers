@@ -2,6 +2,8 @@
 
 import os
 import pytest
+from pathlib import Path
+
 from pydantic import ValidationError
 
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
@@ -27,7 +29,7 @@ def test_tools_filter_defaults() -> None:
     assert not tools_filter.always_include_tools
 
 
-def test_tools_filter_with_valid_system_prompt_path(tmp_path):
+def test_tools_filter_with_valid_system_prompt_path(tmp_path: Path) -> None:
     """Test that the ToolsFilter model correctly loads the system prompt from a file."""
     prompt_content = "This is a test prompt."
     prompt_file = tmp_path / "prompt.txt"
@@ -40,16 +42,16 @@ def test_tools_filter_with_valid_system_prompt_path(tmp_path):
 def test_tools_filter_with_nonexistent_system_prompt_path() -> None:
     """Test that a nonexistent system_prompt_path raises a ValueError."""
     with pytest.raises(ValidationError):
-        ToolsFilter(system_prompt_path="/path/to/nonexistent/file")
+        ToolsFilter(system_prompt_path=Path("/path/to/nonexistent/file"))
 
 
-def test_tools_filter_with_directory_as_system_prompt_path(tmp_path) -> None:
+def test_tools_filter_with_directory_as_system_prompt_path(tmp_path: Path) -> None:
     """Test that a directory as system_prompt_path raises a ValueError."""
     with pytest.raises(ValidationError):
         ToolsFilter(system_prompt_path=tmp_path)
 
 
-def test_tools_filter_with_unreadable_system_prompt_path(tmp_path) -> None:
+def test_tools_filter_with_unreadable_system_prompt_path(tmp_path: Path) -> None:
     """Test that an unreadable system_prompt_path raises a ValueError."""
     prompt_file = tmp_path / "prompt.txt"
     prompt_file.write_text("test")
