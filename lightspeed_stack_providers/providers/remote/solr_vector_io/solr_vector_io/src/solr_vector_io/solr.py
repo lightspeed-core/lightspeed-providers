@@ -432,7 +432,7 @@ class SolrIndex(EmbeddingIndex):
                 log.exception(f"Error querying Solr with hybrid search: {e}")
                 raise
 
-    async def delete(self):
+    async def delete(self) -> None:
         """Not implemented - this is a read-only provider."""
         log.warning("Attempted to delete SolrIndex")
         raise NotImplementedError("SolrVectorIO is read-only.")

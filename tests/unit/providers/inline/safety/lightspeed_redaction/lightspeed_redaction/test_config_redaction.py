@@ -7,7 +7,7 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lig
 )
 
 
-def test_pattern_replacement_valid_regex():
+def test_pattern_replacement_valid_regex() -> None:
     """Test that a valid regex pattern is accepted."""
     pattern = r"\b\d{4}\b"
     replacement = "[YEAR]"
@@ -16,21 +16,21 @@ def test_pattern_replacement_valid_regex():
     assert pr.replacement == replacement
 
 
-def test_pattern_replacement_invalid_regex():
+def test_pattern_replacement_invalid_regex() -> None:
     """Test that an invalid regex pattern raises a ValueError."""
     with pytest.raises(ValidationError) as excinfo:
         PatternReplacement(pattern="[", replacement="invalid")
     assert "Invalid regular expression pattern" in str(excinfo.value)
 
 
-def test_redaction_shield_config_defaults():
+def test_redaction_shield_config_defaults() -> None:
     """Test that the RedactionShieldConfig model can be instantiated with default values."""
     config = RedactionShieldConfig()
     assert config.rules == []
     assert not config.case_sensitive
 
 
-def test_redaction_shield_config_custom_values():
+def test_redaction_shield_config_custom_values() -> None:
     """Test that the RedactionShieldConfig model correctly assigns custom values."""
     rules = [{"pattern": "foo", "replacement": "bar"}]
     config = RedactionShieldConfig(rules=rules, case_sensitive=True)
@@ -40,7 +40,7 @@ def test_redaction_shield_config_custom_values():
     assert config.case_sensitive
 
 
-def test_sample_run_config():
+def test_sample_run_config() -> None:
     """Test that the sample_run_config class method returns the expected dictionary."""
     expected_config = {
         "rules": None,
@@ -49,7 +49,7 @@ def test_sample_run_config():
     assert RedactionShieldConfig.sample_run_config() == expected_config
 
 
-def test_sample_run_config_with_custom_values():
+def test_sample_run_config_with_custom_values() -> None:
     """Test that the sample_run_config class method returns the expected dictionary with custom values."""
     custom_rules = [{"pattern": "test", "replacement": "tested"}]
     expected_config = {

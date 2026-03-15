@@ -16,7 +16,7 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 )
 
 
-def test_tools_filter_defaults():
+def test_tools_filter_defaults() -> None:
     """Test that the ToolsFilter model can be instantiated with default values."""
     tools_filter = ToolsFilter()
     assert tools_filter.model_id is None
@@ -37,19 +37,19 @@ def test_tools_filter_with_valid_system_prompt_path(tmp_path):
     assert tools_filter.system_prompt == prompt_content
 
 
-def test_tools_filter_with_nonexistent_system_prompt_path():
+def test_tools_filter_with_nonexistent_system_prompt_path() -> None:
     """Test that a nonexistent system_prompt_path raises a ValueError."""
     with pytest.raises(ValidationError):
         ToolsFilter(system_prompt_path="/path/to/nonexistent/file")
 
 
-def test_tools_filter_with_directory_as_system_prompt_path(tmp_path):
+def test_tools_filter_with_directory_as_system_prompt_path(tmp_path) -> None:
     """Test that a directory as system_prompt_path raises a ValueError."""
     with pytest.raises(ValidationError):
         ToolsFilter(system_prompt_path=tmp_path)
 
 
-def test_tools_filter_with_unreadable_system_prompt_path(tmp_path):
+def test_tools_filter_with_unreadable_system_prompt_path(tmp_path) -> None:
     """Test that an unreadable system_prompt_path raises a ValueError."""
     prompt_file = tmp_path / "prompt.txt"
     prompt_file.write_text("test")
@@ -59,7 +59,7 @@ def test_tools_filter_with_unreadable_system_prompt_path(tmp_path):
         ToolsFilter(system_prompt_path=prompt_file)
 
 
-def test_lightspeed_agents_impl_config_defaults():
+def test_lightspeed_agents_impl_config_defaults() -> None:
     """Test that the LightspeedAgentsImplConfig model can be instantiated with default values."""
     persistence = AgentPersistenceConfig(
         agent_state=KVStoreReference(namespace="test", backend="in_memory"),
@@ -71,7 +71,7 @@ def test_lightspeed_agents_impl_config_defaults():
     assert isinstance(config.tools_filter, ToolsFilter)
 
 
-def test_lightspeed_agents_impl_config_sample_run_config():
+def test_lightspeed_agents_impl_config_sample_run_config() -> None:
     """Test the sample_run_config class method."""
     config = LightspeedAgentsImplConfig.sample_run_config("/fake/dir")
     assert "tools_filter" in config
