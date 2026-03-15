@@ -1,23 +1,8 @@
-from typing import Any
+from typing import Any, Union
 
 import httpx
-from numpy.typing import NDArray
-
-from llama_stack_api.common.errors import VectorStoreNotFoundError
-from llama_stack_api.files import Files
-from llama_stack_api.inference import Inference
-from llama_stack_api.common.content_types import TextContentItem, ImageContentItem
-from typing import Union
-from llama_stack_api.vector_io import (
-    Chunk,
-    EmbeddedChunk,
-    QueryChunksResponse,
-    VectorIO,
-)
-from llama_stack_api.vector_stores import VectorStore
-from llama_stack.log import get_logger
-from llama_stack_api.datatypes import VectorStoresProtocolPrivate
 from llama_stack.core.storage.kvstore import kvstore_impl
+from llama_stack.log import get_logger
 from llama_stack.providers.utils.memory.openai_vector_store_mixin import (
     OpenAIVectorStoreMixin,
 )
@@ -26,6 +11,19 @@ from llama_stack.providers.utils.memory.vector_store import (
     EmbeddingIndex,
     VectorStoreWithIndex,
 )
+from llama_stack_api.common.content_types import ImageContentItem, TextContentItem
+from llama_stack_api.common.errors import VectorStoreNotFoundError
+from llama_stack_api.datatypes import VectorStoresProtocolPrivate
+from llama_stack_api.files import Files
+from llama_stack_api.inference import Inference
+from llama_stack_api.vector_io import (
+    Chunk,
+    EmbeddedChunk,
+    QueryChunksResponse,
+    VectorIO,
+)
+from llama_stack_api.vector_stores import VectorStore
+from numpy.typing import NDArray
 
 from .config import SolrVectorIOConfig
 
@@ -33,6 +31,7 @@ log = get_logger(name=__name__, category="vector_io::solr")
 
 VERSION = "v1"
 VECTOR_DBS_PREFIX = f"vector_stores:solr:{VERSION}::"
+OKP_SOURCE = "okp"
 
 
 class SolrIndex(EmbeddingIndex):
@@ -190,6 +189,7 @@ class SolrIndex(EmbeddingIndex):
                         chunk_id=chunk.chunk_id,
                         content=chunk.content,
                         chunk_metadata=chunk.metadata or {},
+                        metadata=chunk.metadata or {},
                         embedding=[],  # can be None
                         embedding_model=self.embedding_model,
                         embedding_dimension=self.dimension,
@@ -804,6 +804,8 @@ class SolrIndex(EmbeddingIndex):
                     if url:
                         expanded_metadata["reference_url"] = url
 
+                expanded_metadata["source"] = OKP_SOURCE
+
                 # Create expanded chunk
                 expanded_chunk = EmbeddedChunk(
                     chunk_id=chunk.chunk_id,
@@ -939,6 +941,7 @@ class SolrIndex(EmbeddingIndex):
                 "document_id": parent_id,
                 "doc_id": parent_id,
                 "chunk_id": chunk_id,
+                "source": OKP_SOURCE,
             }
 
             # helpful extras if present
