@@ -1,4 +1,4 @@
-from typing import Any, Union, Optional
+from typing import Any, Optional
 
 import httpx
 from llama_stack.core.storage.kvstore import kvstore_impl
