@@ -15,7 +15,9 @@
 - [ ] Bump-up dependent library
 - [ ] Bump-up library or tool used for development (does not change the final image)
 - [ ] CI configuration change
+- [ ] Konflux configuration change
 - [ ] Unit tests improvement
+- [ ] End to end tests improvement
 
 
 ## Tools used to create PR
