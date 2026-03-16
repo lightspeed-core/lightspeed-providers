@@ -2,10 +2,10 @@
 Pytest configuration file for Solr vector IO tests.
 """
 
+from collections.abc import Generator
+
 import pytest
 import requests
-
-from collections.abc import Generator
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -15,7 +15,7 @@ def check_solr_running() -> Generator:
     Aborts all tests if Solr is not accessible.
     """
     # Import SOLR_URL from test file to avoid duplication
-    from tests import SOLR_URL, COLLECTION_NAME
+    from tests import COLLECTION_NAME, SOLR_URL
 
     solr_test_url = SOLR_URL + "/" + COLLECTION_NAME + "/select"
     print(solr_test_url)

@@ -1,11 +1,10 @@
 from string import Template
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pytest_mock import MockerFixture
-
 from llama_stack_api import UserMessage
 from llama_stack_api.safety import RunShieldResponse, SafetyViolation, ViolationLevel
+from pytest_mock import MockerFixture
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (
     SUBJECT_ALLOWED,

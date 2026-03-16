@@ -1,23 +1,8 @@
-from typing import Any
+from typing import Any, Optional
 
 import httpx
-from numpy.typing import NDArray
-
-from llama_stack_api.common.errors import VectorStoreNotFoundError
-from llama_stack_api.files import Files
-from llama_stack_api.inference import Inference
-from llama_stack_api.common.content_types import TextContentItem, ImageContentItem
-from typing import Optional
-from llama_stack_api.vector_io import (
-    Chunk,
-    EmbeddedChunk,
-    QueryChunksResponse,
-    VectorIO,
-)
-from llama_stack_api.vector_stores import VectorStore
-from llama_stack.log import get_logger
-from llama_stack_api.datatypes import VectorStoresProtocolPrivate
 from llama_stack.core.storage.kvstore import kvstore_impl
+from llama_stack.log import get_logger
 from llama_stack.providers.utils.memory.openai_vector_store_mixin import (
     OpenAIVectorStoreMixin,
 )
@@ -26,8 +11,21 @@ from llama_stack.providers.utils.memory.vector_store import (
     EmbeddingIndex,
     VectorStoreWithIndex,
 )
+from llama_stack_api.common.content_types import ImageContentItem, TextContentItem
+from llama_stack_api.common.errors import VectorStoreNotFoundError
+from llama_stack_api.datatypes import VectorStoresProtocolPrivate
+from llama_stack_api.files import Files
+from llama_stack_api.inference import Inference
+from llama_stack_api.vector_io import (
+    Chunk,
+    EmbeddedChunk,
+    QueryChunksResponse,
+    VectorIO,
+)
+from llama_stack_api.vector_stores import VectorStore
+from numpy.typing import NDArray
 
-from .config import SolrVectorIOConfig, ChunkWindowConfig
+from .config import ChunkWindowConfig, SolrVectorIOConfig
 
 log = get_logger(name=__name__, category="vector_io::solr")
 

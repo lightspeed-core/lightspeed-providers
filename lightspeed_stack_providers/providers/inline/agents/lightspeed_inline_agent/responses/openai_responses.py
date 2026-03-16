@@ -10,9 +10,9 @@ TODO: Remove this workaround once we upgrade to a Llama Stack version that inclu
 
 import time
 import uuid
-from types import TracebackType
-from typing import Self, Optional
 from collections.abc import AsyncIterator
+from types import TracebackType
+from typing import Optional, Self
 
 from llama_stack.log import get_logger
 from llama_stack.providers.inline.agents.meta_reference.responses.openai_responses import (

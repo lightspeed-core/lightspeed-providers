@@ -6,10 +6,9 @@ import time
 from typing import Optional
 
 import requests
-from requests import Response
-
 from behave import given  # pyright: ignore[reportCallIssue]
 from behave.runner import Context
+from requests import Response
 
 
 class LlamaStackClient:

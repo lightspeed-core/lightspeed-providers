@@ -1,5 +1,6 @@
 import re
 from typing import Any, Self
+
 from pydantic import BaseModel, Field, model_validator
 
 

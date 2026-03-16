@@ -1,10 +1,10 @@
 import os
 from typing import Any, Optional
+
 from llama_stack.log import get_logger
 from llama_stack.providers.inline.agents.meta_reference.config import (
     MetaReferenceAgentsImplConfig,
 )
-
 from pydantic import BaseModel, FilePath
 
 DEFAULT_SYSTEM_PROMPT = """
