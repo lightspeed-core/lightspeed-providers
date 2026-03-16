@@ -3,8 +3,12 @@ Common step definitions for llama-stack question validity tests.
 """
 
 import time
+from typing import Optional
+
 import requests
-from behave import given
+from behave import given  # pyright: ignore[reportCallIssue]
+from behave.runner import Context
+from requests import Response
 
 
 class LlamaStackClient:
@@ -16,7 +20,7 @@ class LlamaStackClient:
         self.session.headers.update(
             {"Content-Type": "application/json", "Accept": "application/json"}
         )
-        self.last_response = None
+        self.last_response: Optional[Response] = None
         self.last_response_data = None
 
     def wait_for_service(self, timeout: int = 60) -> bool:
@@ -34,7 +38,7 @@ class LlamaStackClient:
 
         return False
 
-    def run_shield(self, shield_id: str, message: str):
+    def run_shield(self, shield_id: str, message: str) -> Optional[Response]:
         """Run a safety shield on a message."""
         payload = {
             "shield_id": shield_id,
@@ -51,7 +55,7 @@ class LlamaStackClient:
 
 # Background steps
 @given('the llama-stack is running on "{base_url}"')
-def step_given_llama_stack_running(context, base_url):
+def step_given_llama_stack_running(context: Context, base_url: str) -> None:
     """Ensure the llama-stack is running and accessible."""
     context.client = LlamaStackClient(base_url)
 

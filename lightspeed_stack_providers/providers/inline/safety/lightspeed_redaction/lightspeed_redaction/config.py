@@ -1,5 +1,6 @@
 import re
 from typing import Any, Self
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -39,7 +40,7 @@ class RedactionShieldConfig(BaseModel):
         cls,
         rules: list[dict] | None = None,
         case_sensitive: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         return {
             "rules": rules,

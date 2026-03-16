@@ -10,7 +10,9 @@ TODO: Remove this workaround once we upgrade to a Llama Stack version that inclu
 
 import time
 import uuid
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+from types import TracebackType
+from typing import Optional, Self
 
 from llama_stack.log import get_logger
 from llama_stack.providers.inline.agents.meta_reference.responses.openai_responses import (
@@ -45,11 +47,16 @@ logger = get_logger(name=__name__, category="agents")
 
 
 class MyMCPSessionManager(MCPSessionManager):
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         """Enter the async context manager."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: Optional[BaseException],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> bool:
         """Exit the async context manager and cleanup all sessions."""
         await super().close_all()
         return False

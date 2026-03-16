@@ -1,11 +1,11 @@
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
-    QuestionValidityShieldConfig,
-    DEFAULT_MODEL_PROMPT,
     DEFAULT_INVALID_QUESTION_RESPONSE,
+    DEFAULT_MODEL_PROMPT,
+    QuestionValidityShieldConfig,
 )
 
 
-def test_question_validity_shield_config_defaults():
+def test_question_validity_shield_config_defaults() -> None:
     """
     Test that the QuestionValidityShieldConfig model can be instantiated with default values.
     """
@@ -15,7 +15,7 @@ def test_question_validity_shield_config_defaults():
     assert config.invalid_question_response == DEFAULT_INVALID_QUESTION_RESPONSE
 
 
-def test_question_validity_shield_config_custom_values():
+def test_question_validity_shield_config_custom_values() -> None:
     """
     Test that the QuestionValidityShieldConfig model correctly assigns custom values.
     """
@@ -32,7 +32,7 @@ def test_question_validity_shield_config_custom_values():
     assert config.invalid_question_response == custom_invalid_question_response
 
 
-def test_sample_run_config():
+def test_sample_run_config() -> None:
     """
     Test that the sample_run_config class method returns the expected dictionary.
     """
@@ -44,7 +44,7 @@ def test_sample_run_config():
     assert QuestionValidityShieldConfig.sample_run_config() == expected_config
 
 
-def test_sample_run_config_with_custom_values():
+def test_sample_run_config_with_custom_values() -> None:
     """
     Test that the sample_run_config class method returns the expected dictionary with custom values.
     """

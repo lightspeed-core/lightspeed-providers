@@ -19,6 +19,10 @@ from llama_stack_api.inference import (
     OpenAIUserMessageParam,
 )
 
+from .config import (
+    RedactionShieldConfig,
+)
+
 # Message type alias for run_shield parameter
 Message = (
     OpenAIUserMessageParam
@@ -26,10 +30,6 @@ Message = (
     | OpenAIAssistantMessageParam
     | OpenAIToolMessageParam
     | OpenAIDeveloperMessageParam
-)
-
-from .config import (
-    RedactionShieldConfig,
 )
 
 log = logging.getLogger(__name__)
