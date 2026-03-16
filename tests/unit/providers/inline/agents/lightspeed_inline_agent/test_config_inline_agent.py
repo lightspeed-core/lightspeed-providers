@@ -1,20 +1,19 @@
 """Unit tests for Lightspeed inline agent provider configuration."""
 
 import os
-import pytest
 from pathlib import Path
 
-from pydantic import ValidationError
-
+import pytest
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
 from llama_stack.providers.inline.agents.meta_reference.config import (
     AgentPersistenceConfig,
 )
+from pydantic import ValidationError
 
 from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.config import (
-    ToolsFilter,
-    LightspeedAgentsImplConfig,
     DEFAULT_SYSTEM_PROMPT,
+    LightspeedAgentsImplConfig,
+    ToolsFilter,
 )
 
 

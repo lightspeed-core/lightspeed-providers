@@ -1,7 +1,7 @@
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
-    QuestionValidityShieldConfig,
-    DEFAULT_MODEL_PROMPT,
     DEFAULT_INVALID_QUESTION_RESPONSE,
+    DEFAULT_MODEL_PROMPT,
+    QuestionValidityShieldConfig,
 )
 
 

@@ -6,13 +6,13 @@ that was backported from https://github.com/llamastack/llama-stack/pull/4758.
 """
 
 from collections.abc import AsyncGenerator
-import pytest
-from pytest_mock import MockerFixture
 
+import pytest
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
 from llama_stack.providers.inline.agents.meta_reference.config import (
     AgentPersistenceConfig,
 )
+from pytest_mock import MockerFixture
 
 from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.agents import (
     LightspeedAgentsImpl,

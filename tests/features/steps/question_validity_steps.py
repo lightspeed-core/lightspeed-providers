@@ -2,7 +2,7 @@
 Step definitions for question validity shield tests.
 """
 
-from behave import given, when, then
+from behave import given, then, when
 from behave.runner import Context
 
 

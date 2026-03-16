@@ -1,12 +1,11 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pytest_mock import AsyncMockType, MockerFixture
-
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
 from llama_stack.providers.inline.agents.meta_reference.config import (
     AgentPersistenceConfig,
 )
+from pytest_mock import AsyncMockType, MockerFixture
 
 from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.agents import (
     LightspeedAgentsImpl,

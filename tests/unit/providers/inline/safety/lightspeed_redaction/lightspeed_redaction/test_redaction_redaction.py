@@ -6,8 +6,8 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lig
     RedactionShieldConfig,
 )
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction.redaction import (
-    RedactionShieldImpl,
     Message,
+    RedactionShieldImpl,
 )
 
 
