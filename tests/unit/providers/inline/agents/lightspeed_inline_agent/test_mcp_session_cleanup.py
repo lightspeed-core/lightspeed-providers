@@ -5,7 +5,7 @@ This module tests the workaround for the MCP server connection cleanup issue
 that was backported from https://github.com/llamastack/llama-stack/pull/4758.
 """
 
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 import pytest
 from pytest_mock import MockerFixture
 

@@ -62,7 +62,7 @@ class QuestionValidityShieldConfig(BaseModel):
         model_id: str = "${env.INFERENCE_MODEL}",
         model_prompt: str = DEFAULT_MODEL_PROMPT,
         invalid_question_response: str = DEFAULT_INVALID_QUESTION_RESPONSE,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         return {
             "model_id": model_id,

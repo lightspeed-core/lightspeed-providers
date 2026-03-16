@@ -7,11 +7,12 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lig
 )
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction.redaction import (
     RedactionShieldImpl,
+    Message,
 )
 
 
 @pytest.fixture
-def redaction_shield_impl():
+def redaction_shield_impl() -> RedactionShieldImpl:
     """Fixture for creating a RedactionShieldImpl instance."""
     config = RedactionShieldConfig(
         rules=[
@@ -22,21 +23,23 @@ def redaction_shield_impl():
     return RedactionShieldImpl(config, {})
 
 
-def test_compile_rules(redaction_shield_impl):
+def test_compile_rules(redaction_shield_impl: RedactionShieldImpl) -> None:
     """Test that the regex rules are compiled correctly."""
     assert len(redaction_shield_impl.compiled_rules) == 2
     assert redaction_shield_impl.compiled_rules[0]["original_pattern"] == "secret"
     assert redaction_shield_impl.compiled_rules[1]["original_pattern"] == r"\b\d{4}\b"
 
 
-def test_apply_redaction_rules(redaction_shield_impl):
+def test_apply_redaction_rules(redaction_shield_impl: RedactionShieldImpl) -> None:
     """Test that the redaction rules are applied correctly."""
     content = "This is a secret message from 2023."
     redacted_content = redaction_shield_impl._apply_redaction_rules(content)
     assert redacted_content == "This is a [REDACTED] message from [YEAR]."
 
 
-def test_apply_redaction_rules_case_insensitive(redaction_shield_impl):
+def test_apply_redaction_rules_case_insensitive(
+    redaction_shield_impl: RedactionShieldImpl,
+) -> None:
     """Test that the redaction rules are applied case-insensitively."""
     content = "This is a Secret message from 2023."
     redacted_content = redaction_shield_impl._apply_redaction_rules(content)
@@ -44,9 +47,11 @@ def test_apply_redaction_rules_case_insensitive(redaction_shield_impl):
 
 
 @pytest.mark.asyncio
-async def test_run_shield(redaction_shield_impl):
+async def test_run_shield(redaction_shield_impl: RedactionShieldImpl) -> None:
     """Test the run_shield method."""
-    messages = [UserMessage(content="This is a secret message from 2023.")]
+    messages: list[Message] = [
+        UserMessage(content="This is a secret message from 2023.")
+    ]
     response = await redaction_shield_impl.run_shield("test_shield", messages)
     assert response.violation is None
     assert messages[0].content == "This is a [REDACTED] message from [YEAR]."

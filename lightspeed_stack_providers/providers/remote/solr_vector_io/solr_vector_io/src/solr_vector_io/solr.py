@@ -7,7 +7,7 @@ from llama_stack_api.common.errors import VectorStoreNotFoundError
 from llama_stack_api.files import Files
 from llama_stack_api.inference import Inference
 from llama_stack_api.common.content_types import TextContentItem, ImageContentItem
-from typing import Union
+from typing import Optional
 from llama_stack_api.vector_io import (
     Chunk,
     EmbeddedChunk,
@@ -27,7 +27,7 @@ from llama_stack.providers.utils.memory.vector_store import (
     VectorStoreWithIndex,
 )
 
-from .config import SolrVectorIOConfig
+from .config import SolrVectorIOConfig, ChunkWindowConfig
 
 log = get_logger(name=__name__, category="vector_io::solr")
 
@@ -52,7 +52,7 @@ class SolrIndex(EmbeddingIndex):
         dimension: int,
         embedding_model: str,
         request_timeout: int = 30,
-        chunk_window_config=None,
+        chunk_window_config: Optional[ChunkWindowConfig] = None,
     ):
         self.vector_store = vector_store
         self.solr_url = solr_url.rstrip("/")
@@ -113,7 +113,7 @@ class SolrIndex(EmbeddingIndex):
                     f"Error connecting to Solr collection {self.collection_name}: {e}"
                 ) from e
 
-    async def add_chunks(self, chunks: list[Chunk], embeddings: NDArray):
+    async def add_chunks(self, chunks: list[Chunk], embeddings: NDArray) -> None:
         """Not implemented - this is a read-only provider."""
         log.warning(f"Attempted to add {len(chunks)} chunks to read-only SolrIndex")
         raise NotImplementedError("SolrVectorIO is read-only.")
@@ -406,17 +406,19 @@ class SolrIndex(EmbeddingIndex):
                 log.debug(f"Hybrid search returned {len(chunks)} chunks (filtered from {
                         num_docs
                     } by score threshold)")
-                response = QueryChunksResponse(chunks=chunks, scores=scores)
+                query_chunks_response = QueryChunksResponse(
+                    chunks=chunks, scores=scores
+                )
 
                 # Apply chunk window expansion if configured
                 if self.chunk_window_config is not None:
                     return await self._apply_chunk_window_expansion(
-                        initial_response=response,
+                        initial_response=query_chunks_response,
                         min_chunk_gap=self.chunk_window_config.min_chunk_gap,
                         min_chunk_window=self.chunk_window_config.min_chunk_window,
                     )
 
-                return response
+                return query_chunks_response
 
             except httpx.HTTPStatusError as e:
                 log.error(
@@ -1126,12 +1128,12 @@ class SolrVectorIOAdapter(
     async def query_chunks(
         self,
         vector_store_id: str,
-        query: Union[
-            str,
-            TextContentItem,
-            ImageContentItem,
-            list[Union[TextContentItem, ImageContentItem]],
-        ],
+        query: (
+            str
+            | TextContentItem
+            | ImageContentItem
+            | list[TextContentItem | ImageContentItem]
+        ),
         params: dict[str, Any] | None = None,
     ) -> QueryChunksResponse:
         """Query chunks from the Solr collection."""
