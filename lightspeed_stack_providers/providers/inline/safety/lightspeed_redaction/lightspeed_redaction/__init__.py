@@ -1,4 +1,5 @@
 from typing import Any
+
 from .config import RedactionShieldConfig
 
 

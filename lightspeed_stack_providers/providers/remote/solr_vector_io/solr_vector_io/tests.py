@@ -18,17 +18,16 @@ Skip slow tests (real embeddings):
     uv run pytest tests.py -v -m "not slow"
 """
 
-import pytest
 import numpy as np
-
+import pytest
+from llama_stack.core.storage.kvstore.config import SqliteKVStoreConfig
+from llama_stack_api.vector_io import Chunk
+from llama_stack_api.vector_stores import VectorStore as VectorDB
 from src.solr_vector_io import (
     ChunkWindowConfig,
     SolrVectorIOAdapter,
     SolrVectorIOConfig,
 )
-from llama_stack_api.vector_stores import VectorStore as VectorDB
-from llama_stack_api.vector_io import Chunk
-from llama_stack.core.storage.kvstore.config import SqliteKVStoreConfig
 
 # ============================================================================
 # Configuration
@@ -675,7 +674,7 @@ class TestRealEmbeddings:
     def embedding_model(self):
         """Load granite embedding model (cached at class scope)."""
         try:
-            from transformers import AutoTokenizer, AutoModel
+            from transformers import AutoModel, AutoTokenizer
 
             model_name = EMBEDDING_MODEL
             tokenizer = AutoTokenizer.from_pretrained(model_name)
