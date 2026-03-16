@@ -5,9 +5,11 @@ Pytest configuration file for Solr vector IO tests.
 import pytest
 import requests
 
+from collections.abc import Generator
+
 
 @pytest.fixture(scope="session", autouse=True)
-def check_solr_running():
+def check_solr_running() -> Generator:
     """
     Pre-test check to ensure Solr is running before executing any tests.
     Aborts all tests if Solr is not accessible.

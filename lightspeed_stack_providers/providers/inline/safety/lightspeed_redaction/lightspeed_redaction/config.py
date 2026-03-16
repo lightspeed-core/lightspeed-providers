@@ -39,7 +39,7 @@ class RedactionShieldConfig(BaseModel):
         cls,
         rules: list[dict] | None = None,
         case_sensitive: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         return {
             "rules": rules,
