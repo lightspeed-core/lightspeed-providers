@@ -1,5 +1,5 @@
 from string import Template
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -11,19 +11,18 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_vali
     SUBJECT_ALLOWED,
     SUBJECT_REJECTED,
     QuestionValidityRunner,
+    QuestionValidityShieldImpl,
 )
 
 
 @pytest.fixture
-def mock_inference_api():
+def mock_inference_api() -> AsyncMock:
     """Fixture for mocking the Inference API."""
-    from unittest.mock import AsyncMock
-
     return AsyncMock()
 
 
 @pytest.fixture
-def question_validity_runner(mock_inference_api):
+def question_validity_runner(mock_inference_api: AsyncMock) -> QuestionValidityRunner:
     """Fixture for creating a QuestionValidityRunner instance."""
     model_id = "test_model"
     model_prompt_template = Template(
@@ -38,7 +37,7 @@ def question_validity_runner(mock_inference_api):
     )
 
 
-def create_mock_chat_response(content: str):
+def create_mock_chat_response(content: str) -> MagicMock:
     """Create a mock OpenAI chat completion response."""
     mock_message = MagicMock()
     mock_message.content = content
@@ -52,23 +51,28 @@ def create_mock_chat_response(content: str):
     return mock_response
 
 
-def test_build_prompt(question_validity_runner):
+def test_build_prompt(question_validity_runner: QuestionValidityRunner) -> None:
     """Test that the prompt is built correctly."""
     message = UserMessage(content="How do I create a Kubernetes service?")
     prompt = question_validity_runner.build_prompt(message)
     assert "Is this question allowed?" in prompt
     assert SUBJECT_ALLOWED in prompt
     assert SUBJECT_REJECTED in prompt
+    assert isinstance(message.content, str)
     assert message.content in prompt
 
 
-def test_get_shield_response_allowed(question_validity_runner):
+def test_get_shield_response_allowed(
+    question_validity_runner: QuestionValidityRunner,
+) -> None:
     """Test that the shield response is correct for an allowed question."""
     response = question_validity_runner.get_shield_response(SUBJECT_ALLOWED)
     assert response.violation is None
 
 
-def test_get_shield_response_rejected(question_validity_runner):
+def test_get_shield_response_rejected(
+    question_validity_runner: QuestionValidityRunner,
+) -> None:
     """Test that the shield response is correct for a rejected question."""
     response = question_validity_runner.get_shield_response(SUBJECT_REJECTED)
     assert isinstance(response.violation, SafetyViolation)
@@ -80,7 +84,9 @@ def test_get_shield_response_rejected(question_validity_runner):
 
 
 @pytest.mark.asyncio
-async def test_run_allowed(question_validity_runner, mock_inference_api):
+async def test_run_allowed(
+    question_validity_runner: QuestionValidityRunner, mock_inference_api: AsyncMock
+) -> None:
     """Test the run method for an allowed question."""
     message = UserMessage(content="How do I create a Kubernetes service?")
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
@@ -94,7 +100,9 @@ async def test_run_allowed(question_validity_runner, mock_inference_api):
 
 
 @pytest.mark.asyncio
-async def test_run_rejected(question_validity_runner, mock_inference_api):
+async def test_run_rejected(
+    question_validity_runner: QuestionValidityRunner, mock_inference_api: AsyncMock
+) -> None:
     """Test the run method for a rejected question."""
     message = UserMessage(content="What is the weather today?")
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
@@ -108,7 +116,9 @@ async def test_run_rejected(question_validity_runner, mock_inference_api):
 
 
 @pytest.fixture
-def question_validity_shield_impl(mock_inference_api):
+def question_validity_shield_impl(
+    mock_inference_api: AsyncMock,
+) -> QuestionValidityShieldImpl:
     """Fixture for creating a QuestionValidityShieldImpl instance."""
     from llama_stack_api import Api
 
@@ -126,7 +136,9 @@ def question_validity_shield_impl(mock_inference_api):
 
 
 @pytest.mark.asyncio
-async def test_run_shield_allowed(question_validity_shield_impl, mocker: MockerFixture):
+async def test_run_shield_allowed(
+    question_validity_shield_impl: QuestionValidityShieldImpl, mocker: MockerFixture
+) -> None:
     """Test the run_shield method for an allowed question."""
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
@@ -151,8 +163,8 @@ async def test_run_shield_allowed(question_validity_shield_impl, mocker: MockerF
 
 @pytest.mark.asyncio
 async def test_run_shield_rejected(
-    question_validity_shield_impl, mocker: MockerFixture
-):
+    question_validity_shield_impl: QuestionValidityShieldImpl, mocker: MockerFixture
+) -> None:
     """Test the run_shield method for a rejected question."""
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
@@ -179,7 +191,9 @@ async def test_run_shield_rejected(
 
 
 @pytest.mark.asyncio
-async def test_run_moderation_allowed(question_validity_shield_impl, mocker):
+async def test_run_moderation_allowed(
+    question_validity_shield_impl: QuestionValidityShieldImpl, mocker: MockerFixture
+) -> None:
     """Test the run_moderation method for an allowed question."""
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
@@ -197,8 +211,8 @@ async def test_run_moderation_allowed(question_validity_shield_impl, mocker):
 
 @pytest.mark.asyncio
 async def test_run_moderation_rejected(
-    question_validity_shield_impl, mocker: MockerFixture
-):
+    question_validity_shield_impl: QuestionValidityShieldImpl, mocker: MockerFixture
+) -> None:
     """Test the run_moderation method for a rejected question."""
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
