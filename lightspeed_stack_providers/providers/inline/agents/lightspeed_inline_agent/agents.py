@@ -334,9 +334,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                 len(filtered_tool_names),
             )
             return result
-        else:
-            logger.warning("No tools matched filtering criteria, returning empty list")
-            return []
+        logger.warning("No tools matched filtering criteria, returning empty list")
+        return []
 
     async def _get_previously_called_tools(self, conversation_id: str) -> set[str]:
         """
@@ -532,9 +531,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         if tool_type == "mcp":
             return tool_dict.get("server_label", f"mcp_{index}")
-        elif tool_type == "file_search":
+        if tool_type == "file_search":
             return "file_search"
-        elif tool_type == "function":
+        if tool_type == "function":
             return tool_dict.get("name", f"function_{index}")
-        else:
-            return f"{tool_type}_{index}"
+        return f"{tool_type}_{index}"

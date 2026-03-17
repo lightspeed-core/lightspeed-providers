@@ -93,17 +93,16 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
                 user_message=None,
                 metadata={},
             )
-        else:
-            return ModerationObjectResults(
-                flagged=True,
-                categories={"question_validity": True},
-                category_scores={"question_validity": 1.0},
-                category_applied_input_types={"question_validity": ["text"]},
-                user_message=run_shield_response.violation.user_message,
-                metadata={
-                    "violation_level": run_shield_response.violation.violation_level.value
-                },
-            )
+        return ModerationObjectResults(
+            flagged=True,
+            categories={"question_validity": True},
+            category_scores={"question_validity": 1.0},
+            category_applied_input_types={"question_validity": ["text"]},
+            user_message=run_shield_response.violation.user_message,
+            metadata={
+                "violation_level": run_shield_response.violation.violation_level.value
+            },
+        )
 
     async def run_shield(
         self,
