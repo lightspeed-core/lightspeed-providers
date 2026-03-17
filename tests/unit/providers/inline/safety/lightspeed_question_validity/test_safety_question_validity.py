@@ -130,8 +130,7 @@ def question_validity_shield_impl(
 
     config = QuestionValidityShieldConfig()
     deps = {Api.inference: mock_inference_api}
-    shield = QuestionValidityShieldImpl(config, deps)
-    return shield
+    return QuestionValidityShieldImpl(config, deps)
 
 
 @pytest.mark.asyncio

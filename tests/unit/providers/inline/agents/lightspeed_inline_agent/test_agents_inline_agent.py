@@ -48,7 +48,7 @@ def lightspeed_agents_impl_fixture(
     config = LightspeedAgentsImplConfig(
         persistence=persistence, tools_filter=ToolsFilter(enabled=True, min_tools=5)
     )
-    impl = LightspeedAgentsImpl(
+    return LightspeedAgentsImpl(
         config=config,
         inference_api=mock_inference_api,
         vector_io_api=mocker.AsyncMock(),
@@ -60,7 +60,6 @@ def lightspeed_agents_impl_fixture(
         files_api=mocker.AsyncMock(),
         policy=[],
     )
-    return impl
 
 
 def test_lightspeed_agents_impl_initialization(

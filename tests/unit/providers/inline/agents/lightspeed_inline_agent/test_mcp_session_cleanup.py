@@ -37,7 +37,7 @@ def lightspeed_agents_impl(mocker: MockerFixture) -> LightspeedAgentsImpl:
     )
     config = LightspeedAgentsImplConfig(persistence=persistence)
 
-    impl = LightspeedAgentsImpl(
+    return LightspeedAgentsImpl(
         config=config,
         inference_api=mocker.AsyncMock(),
         vector_io_api=mocker.AsyncMock(),
@@ -49,7 +49,6 @@ def lightspeed_agents_impl(mocker: MockerFixture) -> LightspeedAgentsImpl:
         files_api=mocker.AsyncMock(),
         policy=[],
     )
-    return impl
 
 
 @pytest.mark.asyncio
