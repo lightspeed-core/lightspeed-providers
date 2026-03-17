@@ -19,8 +19,7 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 @pytest.fixture
 def mock_inference_api() -> AsyncMockType:
     """Fixture for mocking the Inference API."""
-    mock = AsyncMock()
-    return mock
+    return AsyncMock()
 
 
 @pytest.fixture
@@ -34,8 +33,7 @@ def mock_conversations_api() -> AsyncMockType:
 @pytest.fixture
 def mock_tool_runtime_api() -> AsyncMockType:
     """Fixture for mocking the Tool Runtime API."""
-    mock = AsyncMock()
-    return mock
+    return AsyncMock()
 
 
 @pytest.fixture
@@ -55,7 +53,7 @@ def lightspeed_agents_impl(
     config = LightspeedAgentsImplConfig(
         persistence=persistence, tools_filter=ToolsFilter(enabled=True, min_tools=0)
     )
-    impl = LightspeedAgentsImpl(
+    return LightspeedAgentsImpl(
         config=config,
         inference_api=mock_inference_api,
         vector_io_api=mocker.AsyncMock(),
@@ -67,7 +65,6 @@ def lightspeed_agents_impl(
         files_api=mocker.AsyncMock(),
         policy=[],
     )
-    return impl
 
 
 def create_mock_chat_response(content: str) -> MockerFixture:
