@@ -1,23 +1,10 @@
 .PHONY: help install test test-unit test-e2e lint format clean build setup-dev
 
-# Default target
-help:
-	@echo "Available targets:"
-	@echo "  install       - Install dependencies using uv"
-	@echo "  test          - Run unit tests"
-	@echo "  test-unit     - Run unit tests"
-	@echo "  test-e2e      - Run question validity tests (requires running stack)"
-	@echo "  lint          - Run linting checks"
-	@echo "  format        - Format code"
-	@echo "  clean         - Clean build artifacts"
-	@echo "  build         - Build the package"
-
 # Install dependencies
 install:	## Install all dependencies using uv
 	uv pip install -e .[dev,test]
 
-# Run unit tests
-test: test-unit
+test: test-unit	## Run the unit tests
 
 test-unit:	## Run the unit tests
 	@echo "Running unit tests..."
@@ -39,17 +26,14 @@ check-types:	## Checks type hints in sources
 security-check: ## Check the project for security issues
 	uv run bandit -c pyproject.toml -r lightspeed_stack_providers/ tests
 
-# Lint code
-lint:
+lint:	## Lint source code, including tests
 	uv run ruff check .
 	uv run black --check .
 
-# Format code
 format: ## Format the code into unified format
 	uv run ruff format .
 	uv run black .
 
-# Clean build artifacts
 clean:	## Clean build artifacts
 	rm -rf build/
 	rm -rf dist/
@@ -57,7 +41,15 @@ clean:	## Clean build artifacts
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 
-# Build package
-build: clean
+
+build: clean	## Build package
 	uv run python -m build
 
+help: ## Show this help screen
+	@echo 'Usage: make <OPTIONS> ... <TARGETS>'
+	@echo ''
+	@echo 'Available targets are:'
+	@echo ''
+	@grep -E '^[ a-zA-Z0-9_./-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-33s\033[0m %s\n", $$1, $$2}'
+	@echo ''
