@@ -6,6 +6,7 @@ from llama_stack.providers.inline.agents.meta_reference.agents import (
     MetaReferenceAgentsImpl,
 )
 from llama_stack_api import (
+    Connectors,
     Conversations,
     Files,
     Inference,
@@ -48,6 +49,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         conversations_api: Conversations,
         prompts_api: Prompts,
         files_api: Files,
+        connectors_api: Connectors,
         policy: list[AccessRule],
     ):
         super().__init__(
@@ -60,6 +62,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             conversations_api,
             prompts_api,
             files_api,
+            connectors_api,
             policy,
         )
         self.config = config
@@ -86,6 +89,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             conversations_api=self.conversations_api,
             prompts_api=self.prompts_api,
             files_api=self.files_api,
+            connectors_api=self.connectors_api,
             vector_stores_config=self.config.vector_stores_config,
         )
 

@@ -47,6 +47,7 @@ def lightspeed_agents_impl(mocker: MockerFixture) -> LightspeedAgentsImpl:
         conversations_api=mocker.AsyncMock(),
         prompts_api=mocker.AsyncMock(),
         files_api=mocker.AsyncMock(),
+        connectors_api=mocker.AsyncMock(),
         policy=[],
     )
 

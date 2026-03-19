@@ -29,6 +29,7 @@ async def get_provider_impl(
         deps[Api.conversations],
         deps[Api.prompts],
         deps[Api.files],
+        deps[Api.connectors],
         policy,
     )
     await impl.initialize()
