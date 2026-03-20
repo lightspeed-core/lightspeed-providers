@@ -5,6 +5,7 @@ from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreR
 from llama_stack.providers.inline.agents.meta_reference.config import (
     AgentPersistenceConfig,
 )
+from llama_stack_api import CreateResponseRequest
 from pytest_mock import AsyncMockType, MockerFixture
 
 from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.agents import (
@@ -219,9 +220,11 @@ async def test_create_openai_response_skips_filtering_when_disabled(
 
     # Call create_openai_response
     await lightspeed_agents_impl.create_openai_response(
-        input="test",
-        model="test_model",
-        tools=tools,
+        CreateResponseRequest(
+            input="test",
+            model="test_model",
+            tools=tools,
+        )
     )
 
     # Filter should not have been called

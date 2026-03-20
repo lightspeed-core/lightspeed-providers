@@ -1,4 +1,6 @@
 import json
+from collections.abc import AsyncIterator
+from typing import Any
 
 from llama_stack.core.datatypes import AccessRule
 from llama_stack.log import get_logger
@@ -8,15 +10,17 @@ from llama_stack.providers.inline.agents.meta_reference.agents import (
 from llama_stack_api import (
     Connectors,
     Conversations,
+    CreateResponseRequest,
     Files,
     Inference,
+    OpenAIResponseObject,
+    OpenAIResponseObjectStream,
     Prompts,
     Safety,
     ToolGroups,
     ToolRuntime,
     VectorIO,
 )
-from llama_stack_api.agents import ResponseGuardrail
 from llama_stack_api.inference import (
     OpenAIChatCompletionRequestWithExtraBody,
     OpenAISystemMessageParam,
@@ -25,10 +29,6 @@ from llama_stack_api.inference import (
 from llama_stack_api.openai_responses import (
     OpenAIResponseInput,
     OpenAIResponseInputTool,
-    OpenAIResponseInputToolChoice,
-    OpenAIResponseObject,
-    OpenAIResponsePrompt,
-    OpenAIResponseText,
 )
 
 from .config import LightspeedAgentsImplConfig
@@ -68,67 +68,36 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
     async def create_openai_response(
         self,
-        input: str | list[OpenAIResponseInput],
-        model: str,
-        prompt: OpenAIResponsePrompt | None = None,
-        instructions: str | None = None,
-        parallel_tool_calls: bool | None = True,
-        previous_response_id: str | None = None,
-        conversation: str | None = None,
-        store: bool | None = True,
-        stream: bool | None = False,
-        temperature: float | None = None,
-        text: OpenAIResponseText | None = None,
-        tool_choice: OpenAIResponseInputToolChoice | None = None,
-        tools: list[OpenAIResponseInputTool] | None = None,
-        include: list[str] | None = None,
-        max_infer_iters: int | None = 10,
-        guardrails: list[ResponseGuardrail] | None = None,
-        max_tool_calls: int | None = None,
-        metadata: dict[str, str] | None = None,
-    ) -> OpenAIResponseObject:
+        request: CreateResponseRequest,
+    ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
         """
         Create an OpenAI response with optional tool filtering.
 
         This overrides the parent implementation to add tool filtering functionality
         before passing to the base agent implementation.
         """
-        # Apply temperature override if configured
-        if temperature is None and self.config.chatbot_temperature_override is not None:
-            temperature = self.config.chatbot_temperature_override
-            logger.info("Temperature override set to %s", temperature)
+        updates: dict[str, Any] = {}
 
-        # Apply tool filtering if enabled and tools are provided
-        filtered_tools = tools
-        if tools and self.config.tools_filter.enabled:
-            filtered_tools = await self._filter_tools_for_response(
-                input=input,
-                tools=tools,
-                model=model,
-                conversation=conversation,
+        if (
+            request.temperature is None
+            and self.config.chatbot_temperature_override is not None
+        ):
+            updates["temperature"] = self.config.chatbot_temperature_override
+            logger.info(
+                "Temperature override set to %s",
+                self.config.chatbot_temperature_override,
             )
 
-        # Call parent with filtered tools and temperature
-        return await super().create_openai_response(
-            input=input,
-            model=model,
-            prompt=prompt,
-            instructions=instructions,
-            parallel_tool_calls=parallel_tool_calls,
-            previous_response_id=previous_response_id,
-            conversation=conversation,
-            store=store,
-            stream=stream,
-            temperature=temperature,
-            text=text,
-            tool_choice=tool_choice,
-            tools=filtered_tools,
-            include=include,
-            max_infer_iters=max_infer_iters,
-            guardrails=guardrails,
-            max_tool_calls=max_tool_calls,
-            metadata=metadata,
-        )
+        if request.tools and self.config.tools_filter.enabled:
+            updates["tools"] = await self._filter_tools_for_response(
+                input=request.input,
+                tools=request.tools,
+                model=request.model,
+                conversation=request.conversation,
+            )
+
+        req = request.model_copy(update=updates) if updates else request
+        return await super().create_openai_response(req)
 
     async def _filter_tools_for_response(
         self,
