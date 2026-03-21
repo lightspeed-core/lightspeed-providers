@@ -6,6 +6,7 @@ from typing import Any, Optional
 from llama_stack_api import (
     ModerationObject,
     ModerationObjectResults,
+    RunModerationRequest,
     RunShieldResponse,
     Safety,
     Shield,
@@ -100,7 +101,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         return RunShieldResponse(violation=None)
 
     async def run_moderation(
-        self, input: str | list[str], model: str | None = None
+        self, request: RunModerationRequest
     ) -> ModerationObject:
         """Run moderation on input text, checking for sensitive data.
 
@@ -108,7 +109,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         This serves as a safety net for flows that don't use run_shield.
         For flows using lightspeed_inline_agent, redaction happens in the agent.
         """
-        inputs = input if isinstance(input, list) else [input]
+        inputs = request.input if isinstance(request.input, list) else [request.input]
         results = []
 
         for text_input in inputs:
@@ -142,7 +143,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
 
         return ModerationObject(
             id=f"modr-{uuid.uuid4()}",
-            model=model or "lightspeed-redaction",
+            model=request.model or "lightspeed-redaction",
             results=results,
         )
 

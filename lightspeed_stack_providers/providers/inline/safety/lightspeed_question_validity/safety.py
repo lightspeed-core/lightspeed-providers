@@ -8,6 +8,7 @@ from llama_stack_api import (
     Inference,
     ModerationObject,
     ModerationObjectResults,
+    RunModerationRequest,
     RunShieldResponse,
     Safety,
     SafetyViolation,
@@ -57,10 +58,10 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         pass
 
     async def run_moderation(
-        self, input: str | list[str], model: str | None = None
+        self, request: RunModerationRequest
     ) -> ModerationObject:
         """Run moderation on input text to check if it's a valid question."""
-        inputs = input if isinstance(input, list) else [input]
+        inputs = request.input if isinstance(request.input, list) else [request.input]
         results = []
 
         impl = QuestionValidityRunner(
@@ -76,7 +77,7 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
 
         return ModerationObject(
             id=f"modr-{uuid.uuid4()}",
-            model=model or self.config.model_id,
+            model=request.model or self.config.model_id,
             results=results,
         )
 
