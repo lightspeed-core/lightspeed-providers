@@ -56,6 +56,34 @@ Manual procedure, assuming an existing PyPI API token available:
    pip install llama-stack
    ```
 
+### Make targets
+
+```
+Usage: make <OPTIONS> ... <TARGETS>
+
+Available targets are:
+
+install                           Install all dependencies using uv
+test                              Run the unit tests
+test-unit                         Run the unit tests
+test-e2e                          Run end to end tests for the service
+test-solr                         Run Solr vector_io tests
+check-types                       Checks type hints in sources
+security-check                    Check the project for security issues
+lint                              Lint source code, including tests
+format                            Format the code into unified format
+shellcheck                        Run shellcheck
+black                             Check source code using Black code formatter
+pylint                            Check source code using Pylint static code analyser
+pyright                           Check source code using Pyright static type checker
+docstyle                          Check the docstring style using Docstyle checker
+ruff                              Check source code using Ruff linter
+verify                            Run all linters
+clean                             Clean build artifacts
+build                             Build package
+help                              Show this help screen
+```
+
 ### Local Setup
 
 #### Method 1: Using with Existing Llama Stack
