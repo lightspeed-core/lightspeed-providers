@@ -2,9 +2,8 @@
 
 """Generate documentation for all modules from Lightspeed Core Stack service."""
 
-import os
-
 import ast
+import os
 from pathlib import Path
 
 DIRECTORIES = ["lightspeed_stack_providers", "tests"]
