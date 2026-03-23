@@ -16,7 +16,7 @@ from llama_stack_api import (
     ToolRuntime,
     VectorIO,
 )
-from llama_stack_api.agents import CreateResponseRequest, ResponseGuardrail
+from llama_stack_api.agents import CreateResponseRequest
 from llama_stack_api.inference import (
     OpenAIChatCompletionRequestWithExtraBody,
     OpenAISystemMessageParam,
@@ -25,10 +25,7 @@ from llama_stack_api.inference import (
 from llama_stack_api.openai_responses import (
     OpenAIResponseInput,
     OpenAIResponseInputTool,
-    OpenAIResponseInputToolChoice,
     OpenAIResponseObject,
-    OpenAIResponsePrompt,
-    OpenAIResponseText,
 )
 
 from .config import LightspeedAgentsImplConfig
