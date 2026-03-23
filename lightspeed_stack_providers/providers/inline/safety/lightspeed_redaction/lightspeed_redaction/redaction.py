@@ -100,9 +100,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
 
         return RunShieldResponse(violation=None)
 
-    async def run_moderation(
-        self, request: RunModerationRequest
-    ) -> ModerationObject:
+    async def run_moderation(self, request: RunModerationRequest) -> ModerationObject:
         """Run moderation on input text, checking for sensitive data.
 
         When sensitive data is detected, the content is flagged and blocked.

@@ -57,9 +57,7 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
     async def shutdown(self) -> None:
         pass
 
-    async def run_moderation(
-        self, request: RunModerationRequest
-    ) -> ModerationObject:
+    async def run_moderation(self, request: RunModerationRequest) -> ModerationObject:
         """Run moderation on input text to check if it's a valid question."""
         inputs = request.input if isinstance(request.input, list) else [request.input]
         results = []
