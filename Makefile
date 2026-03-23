@@ -34,6 +34,37 @@ format: ## Format the code into unified format
 	uv run ruff format .
 	uv run black .
 
+shellcheck: ## Run shellcheck
+	wget -qO- "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz" | tar -xJv \
+	shellcheck --version
+	shellcheck -- */*.sh
+
+black:	## Check source code using Black code formatter
+	uv run black --check .
+
+pylint:	## Check source code using Pylint static code analyser
+	uv run pylint lightspeed_stack_providers tests/
+
+pyright:	## Check source code using Pyright static type checker
+	uv run pyright lightspeed_stack_providers tests/
+
+docstyle:	## Check the docstring style using Docstyle checker
+	uv run pydocstyle -v lightspeed_stack_providers/ tests/
+
+ruff:	## Check source code using Ruff linter
+	uv run ruff check . --per-file-ignores=tests/*:S101 --per-file-ignores=scripts/*:S101
+
+verify:	## Run all linters
+	$(MAKE) black
+	$(MAKE) pylint
+	$(MAKE) pyright
+	$(MAKE) ruff
+	$(MAKE) docstyle
+	$(MAKE) check-types
+
+doc:	## Generate documentation for developers
+	scripts/gen_doc.py
+
 clean:	## Clean build artifacts
 	rm -rf build/
 	rm -rf dist/
