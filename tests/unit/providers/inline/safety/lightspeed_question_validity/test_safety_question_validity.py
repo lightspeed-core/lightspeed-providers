@@ -2,7 +2,7 @@ from string import Template
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from llama_stack_api import UserMessage
+from llama_stack_api import RunModerationRequest, UserMessage
 from llama_stack_api.safety import RunShieldResponse, SafetyViolation, ViolationLevel
 from pytest_mock import MockerFixture
 
@@ -201,7 +201,9 @@ async def test_run_moderation_allowed(
     )
 
     result = await question_validity_shield_impl.run_moderation(
-        "How do I create a Kubernetes service?", "test_model"
+        RunModerationRequest(
+            input="How do I create a Kubernetes service?", model="test_model"
+        )
     )
 
     assert not result.results[0].flagged
@@ -225,7 +227,7 @@ async def test_run_moderation_rejected(
     )
 
     result = await question_validity_shield_impl.run_moderation(
-        "What is the weather today?", "test_model"
+        RunModerationRequest(input="What is the weather today?", model="test_model")
     )
 
     assert result.results[0].flagged

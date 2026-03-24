@@ -6,6 +6,7 @@ from llama_stack.providers.inline.agents.meta_reference.agents import (
     MetaReferenceAgentsImpl,
 )
 from llama_stack_api import (
+    Connectors,
     Conversations,
     Files,
     Inference,
@@ -15,7 +16,8 @@ from llama_stack_api import (
     ToolRuntime,
     VectorIO,
 )
-from llama_stack_api.agents import ResponseGuardrail
+from llama_stack_api.agents import CreateResponseRequest
+from llama_stack_api.conversations import ListItemsRequest
 from llama_stack_api.inference import (
     OpenAIChatCompletionRequestWithExtraBody,
     OpenAISystemMessageParam,
@@ -24,14 +26,10 @@ from llama_stack_api.inference import (
 from llama_stack_api.openai_responses import (
     OpenAIResponseInput,
     OpenAIResponseInputTool,
-    OpenAIResponseInputToolChoice,
     OpenAIResponseObject,
-    OpenAIResponsePrompt,
-    OpenAIResponseText,
 )
 
 from .config import LightspeedAgentsImplConfig
-from .responses.openai_responses import LightspeedOpenAIResponsesImpl
 
 logger = get_logger(name=__name__, category="agents")
 
@@ -48,6 +46,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         conversations_api: Conversations,
         prompts_api: Prompts,
         files_api: Files,
+        connectors_api: Connectors,
         policy: list[AccessRule],
     ):
         super().__init__(
@@ -60,55 +59,14 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             conversations_api,
             prompts_api,
             files_api,
+            connectors_api,
             policy,
         )
         self.config = config
 
-    async def initialize(self) -> None:
-        """
-        Initialize the agent implementation.
-
-        This method uses LightspeedOpenAIResponsesImpl as part of the workaround for MCP server
-        connection cleanup issue. The issue is resolved in Llama Stack by
-        https://github.com/llamastack/llama-stack/pull/4758, but we need to use Llama Stack 0.4.3
-        and have backported the PR fix.
-
-        TODO: Remove this workaround once we upgrade to a Llama Stack version that includes PR #4758.
-        """
-        await super().initialize()
-        self.openai_responses_impl = LightspeedOpenAIResponsesImpl(
-            inference_api=self.inference_api,
-            tool_groups_api=self.tool_groups_api,
-            tool_runtime_api=self.tool_runtime_api,
-            responses_store=self.responses_store,
-            vector_io_api=self.vector_io_api,
-            safety_api=self.safety_api,
-            conversations_api=self.conversations_api,
-            prompts_api=self.prompts_api,
-            files_api=self.files_api,
-            vector_stores_config=self.config.vector_stores_config,
-        )
-
     async def create_openai_response(
         self,
-        input: str | list[OpenAIResponseInput],
-        model: str,
-        prompt: OpenAIResponsePrompt | None = None,
-        instructions: str | None = None,
-        parallel_tool_calls: bool | None = True,
-        previous_response_id: str | None = None,
-        conversation: str | None = None,
-        store: bool | None = True,
-        stream: bool | None = False,
-        temperature: float | None = None,
-        text: OpenAIResponseText | None = None,
-        tool_choice: OpenAIResponseInputToolChoice | None = None,
-        tools: list[OpenAIResponseInputTool] | None = None,
-        include: list[str] | None = None,
-        max_infer_iters: int | None = 10,
-        guardrails: list[ResponseGuardrail] | None = None,
-        max_tool_calls: int | None = None,
-        metadata: dict[str, str] | None = None,
+        request: CreateResponseRequest,
     ) -> OpenAIResponseObject:
         """
         Create an OpenAI response with optional tool filtering.
@@ -117,41 +75,48 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         before passing to the base agent implementation.
         """
         # Apply temperature override if configured
+        temperature = request.temperature
         if temperature is None and self.config.chatbot_temperature_override is not None:
             temperature = self.config.chatbot_temperature_override
             logger.info("Temperature override set to %s", temperature)
 
         # Apply tool filtering if enabled and tools are provided
-        filtered_tools = tools
-        if tools and self.config.tools_filter.enabled:
+        filtered_tools = request.tools
+        if request.tools and self.config.tools_filter.enabled:
             filtered_tools = await self._filter_tools_for_response(
-                input=input,
-                tools=tools,
-                model=model,
-                conversation=conversation,
+                input=request.input,
+                tools=request.tools,
+                model=request.model,
+                conversation=request.conversation,
             )
 
-        # Call parent with filtered tools and temperature
-        return await super().create_openai_response(
-            input=input,
-            model=model,
-            prompt=prompt,
-            instructions=instructions,
-            parallel_tool_calls=parallel_tool_calls,
-            previous_response_id=previous_response_id,
-            conversation=conversation,
-            store=store,
-            stream=stream,
+        # Create modified request with filtered tools and temperature
+        modified_request = CreateResponseRequest(
+            input=request.input,
+            model=request.model,
+            prompt=request.prompt,
+            instructions=request.instructions,
+            parallel_tool_calls=request.parallel_tool_calls,
+            previous_response_id=request.previous_response_id,
+            conversation=request.conversation,
+            store=request.store,
+            stream=request.stream,
             temperature=temperature,
-            text=text,
-            tool_choice=tool_choice,
+            text=request.text,
+            tool_choice=request.tool_choice,
             tools=filtered_tools,
-            include=include,
-            max_infer_iters=max_infer_iters,
-            guardrails=guardrails,
-            max_tool_calls=max_tool_calls,
-            metadata=metadata,
+            include=request.include,
+            max_infer_iters=request.max_infer_iters,
+            guardrails=request.guardrails,
+            max_tool_calls=request.max_tool_calls,
+            max_output_tokens=request.max_output_tokens,
+            reasoning=request.reasoning,
+            safety_identifier=request.safety_identifier,
+            metadata=request.metadata,
         )
+
+        # Call parent with modified request
+        return await super().create_openai_response(modified_request)
 
     async def _filter_tools_for_response(
         self,
@@ -349,7 +314,9 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         """
         tool_names: set[str] = set()
         try:
-            items_response = await self.conversations_api.list_items(conversation_id)
+            items_response = await self.conversations_api.list_items(
+                ListItemsRequest(conversation_id=conversation_id)
+            )
             items = (
                 items_response.data
                 if hasattr(items_response, "data")

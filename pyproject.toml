@@ -9,9 +9,9 @@ description = "Lightspeed Stack providers for llama-stack"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "llama-stack==0.4.3",
-    "llama-stack-api==0.4.4",
-    "llama-stack-client==0.4.3",
+    "llama-stack==0.5.2",
+    "llama-stack-api==0.5.2",
+    "llama-stack-client==0.5.2",
     "httpx",
     "pydantic>=2.10.6",
     "litellm>=1.75.5.post1",
