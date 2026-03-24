@@ -1,7 +1,9 @@
-# Lightspeed Core Stack Development Guide
+# Lightspeed Providers Development Guide
 
 ## Project Overview
-Lightspeed Core Stack (LCS) is an AI-powered assistant built on FastAPI that provides answers using LLM services, agents, and RAG databases. It integrates with Llama Stack for AI operations.
+
+Lightspeed Providers contains set of external and inline providers for Llama Stack. Each provider is stored in its
+own subdirectory. Providers are loaded and registered into Llama Stack on startup.
 
 ## Development Environment
 - **Python**: Check `pyproject.toml` for supported Python versions
@@ -14,31 +16,6 @@ Lightspeed Core Stack (LCS) is an AI-powered assistant built on FastAPI that pro
 
 ### Project Structure
 ```
-src/
-├── app/                  # FastAPI application
-│   ├── endpoints/        # REST API endpoints
-│   └── main.py           # Application entry point
-├── a2a_storage/          # A2A protocol persistent storage
-│   ├── context_store.py  # Abstract base class for context stores
-│   ├── in_memory_context_store.py  # In-memory implementation
-│   ├── sqlite_context_store.py     # SQLite implementation
-│   ├── postgres_context_store.py   # PostgreSQL implementation
-│   └── storage_factory.py          # Factory for creating stores
-├── authentication/       # Authentication modules (k8s, jwk, noop, rh-identity)
-├── authorization/        # Authorization middleware & resolvers
-├── cache/                # Conversation cache implementations
-├── quota/                # Quota limiter and token usage tracking
-├── metrics/              # Prometheus metrics
-├── runners/              # Agent runners
-├── models/               # Pydantic models
-│   ├── config.py         # Configuration classes
-│   ├── requests.py       # Request models
-│   ├── responses.py      # Response models
-│   └── database/         # Database models
-├── utils/                # Utility functions
-├── client.py             # Llama Stack client wrapper (Singleton)
-├── configuration.py      # Config management (Singleton)
-└── constants.py          # Shared constants
 lightspeed_stack_providers
 └── providers
     ├── inline
@@ -139,9 +116,7 @@ lightspeed_stack_providers
 ```
 tests/
 ├── unit/                # Unit tests (pytest)
-├── integration/         # Integration tests (pytest)
-└── e2e/                 # End-to-end tests (behave)
-    └── features/        # Gherkin feature files
+└── features/            # Integration tests (pytest)
 ```
 
 ### Testing Framework Requirements
