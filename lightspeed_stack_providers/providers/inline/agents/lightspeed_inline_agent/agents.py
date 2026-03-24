@@ -17,6 +17,7 @@ from llama_stack_api import (
     VectorIO,
 )
 from llama_stack_api.agents import CreateResponseRequest
+from llama_stack_api.conversations import ListItemsRequest
 from llama_stack_api.inference import (
     OpenAIChatCompletionRequestWithExtraBody,
     OpenAISystemMessageParam,
@@ -313,7 +314,9 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         """
         tool_names: set[str] = set()
         try:
-            items_response = await self.conversations_api.list_items(conversation_id)
+            items_response = await self.conversations_api.list_items(
+                ListItemsRequest(conversation_id=conversation_id)
+            )
             items = (
                 items_response.data
                 if hasattr(items_response, "data")
