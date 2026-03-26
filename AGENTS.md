@@ -98,7 +98,7 @@ lightspeed_stack_providers
 - **Pydantic Models**: Extend `ConfigurationBase` for config, `BaseModel` for data models
 - **Abstract Classes**: Use ABC for interfaces with `@abstractmethod` decorators
 - **Validation**: Use `@model_validator` and `@field_validator` for Pydantic models
-- **Type Hints**: Complete type annotations for all class attributes
+- **Type Hints**: Complete type annotations for all class attributes, use specific types, not `Any`
 
 #### Docstring Standards
 - Follow Google Python docstring conventions: https://google.github.io/styleguide/pyguide.html
@@ -126,11 +126,11 @@ tests/
 
 ### Unit Tests (pytest)
 - **Fixtures**: Use `conftest.py` for shared fixtures
-- **Mocking**: `pytest-mock` for AsyncMock objects
+- **Mocking**: `pytest-mock` for MagicMock and AsyncMock objects
 - **Common Pattern**:
   ```python
   @pytest.fixture(name="prepare_agent_mocks")
-  def prepare_agent_mocks_fixture(mocker):
+  def prepare_agent_mocks_fixture(mocker: MockerFixture) -> tuple[AsyncMockType, AsyncMockType]:
       mock_client = mocker.AsyncMock()
       mock_agent = mocker.AsyncMock()
       mock_agent._agent_id = "test_agent_id"
@@ -162,8 +162,8 @@ uv run make test-e2e         # End-to-end tests
 
 ### Linting Tools
 - **black**: Code formatting
-- **pylint**: Static analysis (`source-roots = "src"`)
-- **pyright**: Type checking (excludes `src/authentication/k8s.py`)
+- **pylint**: Static analysis (`source-roots = "lightspeed_stack_providers/"`)
+- **pyright**: Type checking
 - **ruff**: Fast linter
 - **pydocstyle**: Docstring style
 - **mypy**: Additional type checking
