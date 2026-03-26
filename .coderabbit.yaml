@@ -2,15 +2,18 @@ language: en-US
 tone_instructions: ''
 early_access: false
 enable_free_tier: true
+inheritance: false
 reviews:
-  profile: chill
+  profile: assertive
   request_changes_workflow: false
   high_level_summary: true
+  high_level_summary_instructions: ''
   high_level_summary_placeholder: '@coderabbitai summary'
   high_level_summary_in_walkthrough: false
   auto_title_placeholder: '@coderabbitai'
   auto_title_instructions: ''
   review_status: true
+  review_details: true
   commit_status: true
   fail_commit_status: false
   collapse_walkthrough: false
@@ -27,13 +30,18 @@ reviews:
   auto_assign_reviewers: false
   in_progress_fortune: true
   poem: false
+  enable_prompt_for_ai_agents: true
   path_filters: []
   path_instructions: []
   abort_on_close: true
   disable_cache: false
+  slop_detection:
+    enabled: true
   auto_review:
     enabled: true
+    description_keyword: ''
     auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 5
     ignore_title_keywords: []
     labels: []
     drafts: false
@@ -44,7 +52,11 @@ reviews:
       enabled: true
     unit_tests:
       enabled: true
+    simplify:
+      enabled: true
+    custom: []
   pre_merge_checks:
+    override_requested_reviewers_only: false
     docstrings:
       mode: warning
       threshold: 80
@@ -98,13 +110,19 @@ reviews:
       enabled: true
     gitleaks:
       enabled: true
+    trufflehog:
+      enabled: true
     checkov:
+      enabled: true
+    tflint:
       enabled: true
     detekt:
       enabled: true
     eslint:
       enabled: true
     flake8:
+      enabled: true
+    fortitudeLint:
       enabled: true
     rubocop:
       enabled: true
@@ -120,6 +138,8 @@ reviews:
       enabled: true
     cppcheck:
       enabled: true
+    opengrep:
+      enabled: true
     semgrep:
       enabled: true
     circleci:
@@ -127,6 +147,8 @@ reviews:
     clippy:
       enabled: true
     sqlfluff:
+      enabled: true
+    trivy:
       enabled: true
     prismaLint:
       enabled: true
@@ -144,12 +166,23 @@ reviews:
       enabled: true
     htmlhint:
       enabled: true
+    stylelint:
+      enabled: true
     checkmake:
       enabled: true
     osvScanner:
       enabled: true
+    blinter:
+      enabled: true
+    smartyLint:
+      enabled: true
+    emberTemplateLint:
+      enabled: true
+    psscriptanalyzer:
+      enabled: true
 chat:
   art: true
+  allow_non_org_members: true
   auto_reply: true
   integrations:
     jira:
@@ -178,10 +211,21 @@ knowledge_base:
   mcp:
     usage: auto
     disabled_servers: []
+  linked_repositories: []
 code_generation:
   docstrings:
     language: en-US
     path_instructions: []
   unit_tests:
     path_instructions: []
-
+issue_enrichment:
+  auto_enrich:
+    enabled: false
+  planning:
+    enabled: true
+    auto_planning:
+      enabled: true
+      labels: []
+  labeling:
+    labeling_instructions: []
+    auto_apply_labels: false
