@@ -140,6 +140,7 @@ class SolrIndex(EmbeddingIndex):
 
         Returns:
             QueryChunksResponse with matching chunks and scores
+
         """
         log.info(
             f"Performing vector search: k={k}, score_threshold={score_threshold}, "
@@ -224,6 +225,7 @@ class SolrIndex(EmbeddingIndex):
 
         Returns:
             QueryChunksResponse with matching chunks and scores
+
         """
         log.info(
             f"Performing keyword search: query='{query_string}', k={k}, "
@@ -327,6 +329,7 @@ class SolrIndex(EmbeddingIndex):
 
         Returns:
             QueryChunksResponse with combined results
+
         """
         if reranker_params is None:
             reranker_params = {}
@@ -451,6 +454,7 @@ class SolrIndex(EmbeddingIndex):
 
         Returns:
             Parent document metadata dict, or None if not found
+
         """
         schema = self.chunk_window_config
 
@@ -518,6 +522,7 @@ class SolrIndex(EmbeddingIndex):
 
         Returns:
             List of chunk documents sorted by chunk_index
+
         """
         schema = self.chunk_window_config
 
@@ -606,6 +611,7 @@ class SolrIndex(EmbeddingIndex):
 
         Returns:
             QueryChunksResponse with expanded context windows
+
         """
         from collections import defaultdict
 
@@ -845,6 +851,7 @@ class SolrIndex(EmbeddingIndex):
 
         Returns:
             List of selected chunks sorted by chunk_index
+
         """
         schema = self.chunk_window_config
         total_tokens = 0

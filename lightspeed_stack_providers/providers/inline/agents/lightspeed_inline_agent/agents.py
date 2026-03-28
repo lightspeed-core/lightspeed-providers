@@ -136,6 +136,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         Returns:
             Filtered list of tools
+
         """
         always_included_tools = set(self.config.tools_filter.always_include_tools)
 
@@ -311,6 +312,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         Returns:
             Set of tool names that were previously called
+
         """
         tool_names: set[str] = set()
         try:
@@ -356,6 +358,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             Tuple of (tool_definitions, tool_to_endpoint_map)
             - tool_definitions: List of dicts with tool_name and description
             - tool_to_endpoint_map: Dict mapping tool_name to MCP endpoint
+
         """
         tool_defs = []
         seen_tool_names: set[str] = set()
@@ -414,6 +417,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         Returns:
             List of tool definitions with tool_name, description, and endpoint
+
         """
         tool_defs = []
 
@@ -493,6 +497,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         Returns:
             Tool name string
+
         """
         tool_type = tool_dict.get("type", "unknown")
 

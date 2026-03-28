@@ -49,6 +49,7 @@ def generate_documentation_on_path(path):
 
     Parameters:
         path (str or os.PathLike): Directory in which to generate the README.md file.
+
     """
     directory = path
     cwd = os.getcwd()
