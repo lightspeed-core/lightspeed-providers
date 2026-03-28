@@ -6,9 +6,7 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_vali
 
 
 def test_question_validity_shield_config_defaults() -> None:
-    """
-    Test that the QuestionValidityShieldConfig model can be instantiated with default values.
-    """
+    """Test that the QuestionValidityShieldConfig model can be instantiated with default values."""
     config = QuestionValidityShieldConfig()
     assert config.model_id is None
     assert config.model_prompt == DEFAULT_MODEL_PROMPT
@@ -16,9 +14,7 @@ def test_question_validity_shield_config_defaults() -> None:
 
 
 def test_question_validity_shield_config_custom_values() -> None:
-    """
-    Test that the QuestionValidityShieldConfig model correctly assigns custom values.
-    """
+    """Test that the QuestionValidityShieldConfig model correctly assigns custom values."""
     custom_model_id = "test-model"
     custom_model_prompt = "test-prompt"
     custom_invalid_question_response = "test-response"
@@ -33,9 +29,7 @@ def test_question_validity_shield_config_custom_values() -> None:
 
 
 def test_sample_run_config() -> None:
-    """
-    Test that the sample_run_config class method returns the expected dictionary.
-    """
+    """Test that the sample_run_config class method returns the expected dictionary."""
     expected_config = {
         "model_id": "${env.INFERENCE_MODEL}",
         "model_prompt": DEFAULT_MODEL_PROMPT,
@@ -45,9 +39,7 @@ def test_sample_run_config() -> None:
 
 
 def test_sample_run_config_with_custom_values() -> None:
-    """
-    Test that the sample_run_config class method returns the expected dictionary with custom values.
-    """
+    """Test that the sample_run_config class method returns the expected dictionary with custom values."""
     custom_model_id = "custom-model"
     custom_model_prompt = "custom-prompt"
     custom_invalid_question_response = "custom-response"

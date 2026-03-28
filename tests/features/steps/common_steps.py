@@ -1,6 +1,4 @@
-"""
-Common step definitions for llama-stack question validity tests.
-"""
+"""Common step definitions for llama-stack question validity tests."""
 
 import time
 from typing import Optional
