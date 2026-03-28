@@ -326,10 +326,10 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             )
             for item in items:
                 item_type = getattr(item, "type", None)
-                if item_type == "function_call":
-                    if hasattr(item, "name") and item.name:
-                        tool_names.add(item.name)
-                elif item_type in ("mcp_call", "mcp_approval_request"):
+                if item_type == "function_call" or item_type in (
+                    "mcp_call",
+                    "mcp_approval_request",
+                ):
                     if hasattr(item, "name") and item.name:
                         tool_names.add(item.name)
                 # Also check for nested tool_calls (legacy format)
