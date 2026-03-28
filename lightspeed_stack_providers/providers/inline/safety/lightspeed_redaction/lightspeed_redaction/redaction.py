@@ -72,15 +72,12 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
 
     async def initialize(self) -> None:
         """Initialize the shield."""
-        pass
 
     async def shutdown(self) -> None:
         """Shutdown the shield."""
-        pass
 
     async def register_shield(self, shield: Shield) -> None:
         """Register a shield."""
-        pass
 
     async def run_shield(
         self,
