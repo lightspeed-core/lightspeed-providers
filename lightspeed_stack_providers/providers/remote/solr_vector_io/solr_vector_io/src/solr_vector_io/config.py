@@ -98,9 +98,7 @@ class ChunkWindowConfig(BaseModel):
 
 @json_schema_type
 class SolrVectorIOConfig(BaseModel):
-    """
-    Configuration for Solr Vector IO provider.
-    """
+    """Configuration for Solr Vector IO provider."""
 
     # Solr connection
     solr_url: str = Field(

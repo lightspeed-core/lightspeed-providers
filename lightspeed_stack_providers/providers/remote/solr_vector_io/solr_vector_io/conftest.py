@@ -1,6 +1,4 @@
-"""
-Pytest configuration file for Solr vector IO tests.
-"""
+"""Pytest configuration file for Solr vector IO tests."""
 
 from collections.abc import Generator
 

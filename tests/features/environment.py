@@ -1,6 +1,4 @@
-"""
-Behave environment configuration for Question Validity Shield tests.
-"""
+"""Behave environment configuration for Question Validity Shield tests."""
 
 import os
 
