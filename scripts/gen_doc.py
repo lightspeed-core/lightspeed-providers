@@ -47,7 +47,8 @@ def generate_documentation_on_path(path):
 
     This function generate README.md for Python sources in the given directory.
 
-    Parameters:
+    Parameters
+    ----------
         path (str or os.PathLike): Directory in which to generate the README.md file.
 
     """
