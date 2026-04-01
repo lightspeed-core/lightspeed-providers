@@ -86,7 +86,6 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         params: Optional[dict[str, Any]] = None,
     ) -> RunShieldResponse:
         """Run the redaction shield - mutates messages directly."""
-
         for message in messages:
             if hasattr(message, "content") and isinstance(message.content, str):
                 original_content: str = message.content
