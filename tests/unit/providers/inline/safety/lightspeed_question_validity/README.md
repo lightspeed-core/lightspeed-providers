@@ -4,6 +4,8 @@
 Unit tests for Question validity provider implementation.
 
 ## [test_config_question_validity.py](test_config_question_validity.py)
+Tests for the validity shield provider configuration.
 
 ## [test_safety_question_validity.py](test_safety_question_validity.py)
+Tests for the validity shield provider behaviour.
 

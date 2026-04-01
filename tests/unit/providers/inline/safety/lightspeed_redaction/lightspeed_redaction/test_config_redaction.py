@@ -1,3 +1,5 @@
+"""Unit tests for Lightspeed redaction provider configuration."""
+
 import pytest
 from pydantic import ValidationError
 

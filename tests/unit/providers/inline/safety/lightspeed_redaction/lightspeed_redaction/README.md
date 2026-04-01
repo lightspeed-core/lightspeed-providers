@@ -4,6 +4,8 @@
 Unit tests for Lightspeed redaction provider implementation.
 
 ## [test_config_redaction.py](test_config_redaction.py)
+Unit tests for Lightspeed redaction provider configuration.
 
 ## [test_redaction_redaction.py](test_redaction_redaction.py)
+Unit tests for Lightspeed redaction provider behaviour.
 
