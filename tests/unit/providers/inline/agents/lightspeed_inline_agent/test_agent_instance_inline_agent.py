@@ -1,3 +1,5 @@
+"""Unit tests for using Lightspeed inline agent provider implementation."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

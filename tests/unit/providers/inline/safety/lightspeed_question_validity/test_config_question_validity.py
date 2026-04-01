@@ -1,3 +1,5 @@
+"""Tests for the validity shield provider configuration."""
+
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
     DEFAULT_INVALID_QUESTION_RESPONSE,
     DEFAULT_MODEL_PROMPT,
