@@ -102,7 +102,7 @@ class ToolsFilter(BaseModel):
 
 
 class LightspeedAgentsImplConfig(MetaReferenceAgentsImplConfig):
-    """Lightspeed agent configuration"""
+    """Lightspeed agent configuration."""
 
     tools_filter: Optional[ToolsFilter] = ToolsFilter()
     chatbot_temperature_override: Optional[float] = None
