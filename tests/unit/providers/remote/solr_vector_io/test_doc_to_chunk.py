@@ -22,6 +22,14 @@ EMBEDDING_MODEL = "ibm-granite/granite-embedding-30m-english"
 
 @pytest.fixture
 def chunk_window_config():
+    """
+    Create a ChunkWindowConfig with explicit field names used by the tests.
+
+    Returns:
+        ChunkWindowConfig: Configuration mapping chunk fields (content, index, token count)
+        and parent document fields (id, title, url, totals) to the names expected
+        by the SolrIndex test fixtures.
+    """
     return ChunkWindowConfig(
         chunk_parent_id_field="parent_id",
         chunk_index_field="chunk_index",
@@ -37,7 +45,18 @@ def chunk_window_config():
 
 @pytest.fixture
 def solr_index(chunk_window_config):
-    """SolrIndex created without connecting to Solr (initialize() not called)."""
+    """
+    Create a SolrIndex configured for tests without calling initialize().
+
+    Parameters:
+        chunk_window_config (ChunkWindowConfig): Configuration that maps parent
+        document and chunk field names used by the index.
+
+    Returns:
+        SolrIndex: A SolrIndex instance pointing to a local test Solr
+        collection and using the provided chunk window configuration; the
+        instance is not initialized.
+    """
     vector_store = VectorDB(
         identifier="test-store",
         embedding_dimension=EMBEDDING_DIM,
@@ -58,6 +77,18 @@ def solr_index(chunk_window_config):
 
 
 def _basic_doc(**extra):
+    """
+    Return a baseline document dictionary representing a chunk, with sensible defaults.
+
+    Parameters:
+        **extra: Additional key-value pairs to merge into the returned
+        document; provided keys override defaults.
+
+    Returns:
+        dict: Document containing "id" (default "doc_chunk_0"), "chunk"
+        (default "Test content."), and "parent_id" (default "doc"), merged with
+        any entries from `extra`.
+    """
     return {"id": "doc_chunk_0", "chunk": "Test content.", "parent_id": "doc", **extra}
 
 
