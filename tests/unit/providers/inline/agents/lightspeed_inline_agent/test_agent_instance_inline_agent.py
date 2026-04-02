@@ -241,9 +241,14 @@ async def test_filter_tools_for_response_skips_filtering_below_threshold(
     lightspeed_agents_impl.config.tools_filter.min_tools = 10  # High threshold
 
     # Setup mock tool runtime to return few tools (below threshold)
+    # Setup mock tool runtime to return few tools (below threshold)
+    tool1_mock = MagicMock(description="Tool 1")
+    tool1_mock.name = "tool1"
+    tool2_mock = MagicMock(description="Tool 2")
+    tool2_mock.name = "tool2"
     lightspeed_agents_impl.tool_runtime_api.list_runtime_tools.side_effect = [
-        MagicMock(data=[MagicMock(name="tool1", description="Tool 1")]),
-        MagicMock(data=[MagicMock(name="tool2", description="Tool 2")]),
+        MagicMock(data=[tool1_mock]),
+        MagicMock(data=[tool2_mock]),
     ]
 
     tools = [

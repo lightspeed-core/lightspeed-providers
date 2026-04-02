@@ -25,6 +25,7 @@ def after_scenario(context: Context, scenario: Scenario) -> None:
             and context.client.last_response
         ):
             print(f"   Status: {context.client.last_response.status_code}")
-            print(f"   Data: {context.client.last_response_data}")
+            if hasattr(context.client, "last_response_data"):
+                print(f"   Data: {context.client.last_response_data}")
     else:
         print(f"✅ {scenario.name}")
