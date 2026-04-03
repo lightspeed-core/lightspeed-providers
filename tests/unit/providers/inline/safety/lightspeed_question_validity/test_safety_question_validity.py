@@ -18,7 +18,18 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_vali
 
 @pytest.fixture
 def mock_inference_api() -> AsyncMock:
-    """Fixture for mocking the Inference API."""
+    """Fixture for mocking the Inference API.
+
+    Provide a pytest fixture that supplies an AsyncMock
+    representing the inference API client for tests.
+
+    This mock is intended to stand in for the real inference API
+    and can be configured by tests to return specific async
+    responses or raise exceptions.
+
+    Returns:
+        AsyncMock: An asynchronous mock object that mimics the inference API client.
+    """
     return AsyncMock()
 
 
@@ -39,7 +50,14 @@ def question_validity_runner(mock_inference_api: AsyncMock) -> QuestionValidityR
 
 
 def create_mock_chat_response(content: str) -> MagicMock:
-    """Create a mock OpenAI chat completion response."""
+    """Create a mock OpenAI chat completion response.
+
+    Parameters:
+        content (str): The message content to place at response.choices[0].message.content.
+
+    Returns:
+        MagicMock: A mock response where `choices[0].message.content == content`.
+    """
     mock_message = MagicMock()
     mock_message.content = content
 
