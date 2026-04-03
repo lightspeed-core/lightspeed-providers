@@ -15,7 +15,17 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lig
 
 @pytest.fixture
 def redaction_shield_impl() -> RedactionShieldImpl:
-    """Fixture for creating a RedactionShieldImpl instance."""
+    """Fixture for creating a RedactionShieldImpl instance.
+
+    Create a RedactionShieldImpl configured for unit tests.
+
+    The instance is initialized with two pattern-replacement rules:
+    - Replace "secret" with "[REDACTED]".
+    - Replace any standalone four-digit sequence (regex `\b\d{4}\b`) with "[YEAR]".
+
+    Returns:
+        A RedactionShieldImpl configured with the above pattern replacements.
+    """
     config = RedactionShieldConfig(
         rules=[
             PatternReplacement(pattern="secret", replacement="[REDACTED]"),
