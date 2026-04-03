@@ -27,7 +27,14 @@ def mock_inference_api() -> AsyncMockType:
 
 @pytest.fixture
 def mock_conversations_api() -> AsyncMockType:
-    """Fixture for mocking the Conversations API."""
+    """Fixture for mocking the Conversations API.
+
+    The mock's `list_messages` coroutine is configured to return an
+    empty list by default.
+
+    Returns:
+        AsyncMock: Mocked Conversations API with `list_messages` returning [].
+    """
     mock = AsyncMock()
     mock.list_messages.return_value = []
     return mock
@@ -46,7 +53,17 @@ def lightspeed_agents_impl(
     mock_tool_runtime_api: AsyncMockType,
     mocker: MockerFixture,
 ) -> LightspeedAgentsImpl:
-    """Fixture for creating a LightspeedAgentsImpl instance."""
+    """Fixture for creating a LightspeedAgentsImpl instance.
+
+    The fixture constructs an AgentPersistenceConfig using
+    in-memory KV and responses stores and a
+    LightspeedAgentsImplConfig with tool filtering enabled
+    (min_tools=0), then returns a LightspeedAgentsImpl wired with
+    the provided mock APIs and additional mocked dependencies.
+
+    Returns:
+        LightspeedAgentsImpl: A LightspeedAgentsImpl configured for tests (in-memory persistence, tools filter enabled).
+    """
     persistence = AgentPersistenceConfig(
         agent_state=KVStoreReference(namespace="test", backend="in_memory"),
         responses=ResponsesStoreReference(
@@ -72,7 +89,17 @@ def lightspeed_agents_impl(
 
 
 def create_mock_chat_response(content: str) -> MockerFixture:
-    """Create a mock OpenAI chat completion response."""
+    """Create a mock OpenAI chat completion response.
+
+    Builds a MagicMock shaped like an OpenAI chat completion
+    containing the provided message content.
+
+    Parameters:
+        content (str): Text to set as choices[0].message.content on the mock response.
+
+    Returns:
+        mock_response (MockerFixture): A mock object whose `choices` attribute is a list with one choice whose `message.content` equals `content`.
+    """
     mock_message = MagicMock()
     mock_message.content = content
 

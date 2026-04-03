@@ -45,7 +45,13 @@ def test_tools_filter_with_nonexistent_system_prompt_path() -> None:
 
 
 def test_tools_filter_with_directory_as_system_prompt_path(tmp_path: Path) -> None:
-    """Test that a directory as system_prompt_path raises a ValueError."""
+    """Test that a directory as system_prompt_path raises a ValueError.
+
+    Ensure constructing ToolsFilter fails when `system_prompt_path` points to a directory.
+
+    Raises:
+        pydantic.ValidationError: If `system_prompt_path` is a directory instead of a readable file.
+    """
     with pytest.raises(ValidationError):
         ToolsFilter(system_prompt_path=tmp_path)
 
