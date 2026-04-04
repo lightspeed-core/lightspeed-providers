@@ -1,0 +1,1 @@
+"""Answer redactor provider."""
