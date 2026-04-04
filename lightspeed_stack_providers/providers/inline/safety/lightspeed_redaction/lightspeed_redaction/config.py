@@ -12,7 +12,18 @@ class PatternReplacement(BaseModel):
 
     @model_validator(mode="after")
     def validate_regex_pattern(self) -> Self:
-        """Validate that the pattern is a valid regular expression."""
+        """Validate that the pattern is a valid regular expression.
+
+        Ensure the model's `pattern` field is a valid regular expression.
+
+        Raises:
+            ValueError: If `pattern` cannot be compiled as a regular
+            expression; the error message includes the invalid pattern and the
+            underlying regex error.
+
+        Returns:
+            Self: The validated model instance.
+        """
         try:
             re.compile(self.pattern)
         except re.error as e:
@@ -42,6 +53,21 @@ class RedactionShieldConfig(BaseModel):
         case_sensitive: bool = False,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """
+        Builds a sample run configuration dictionary for redaction rules.
+
+        Parameters:
+            - rules (list[dict] | None): Optional list of raw rule mappings
+              (each with `pattern` and `replacement`) to include as the
+              `"rules"` value.
+            - case_sensitive (bool): Whether matching should be case sensitive;
+              set as the `"case_sensitive"` value.
+            - **kwargs: Additional ignored keyword arguments accepted for compatibility.
+
+        Returns:
+            dict[str, Any]: A dictionary with keys `"rules"` (the provided
+            `rules`) and `"case_sensitive"` (the provided `case_sensitive`).
+        """
         return {
             "rules": rules,
             "case_sensitive": case_sensitive,

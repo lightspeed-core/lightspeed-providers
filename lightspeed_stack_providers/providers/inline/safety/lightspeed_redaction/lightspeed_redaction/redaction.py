@@ -40,11 +40,35 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
     """Redaction shield that mutates messages with inline rules."""
 
     def __init__(self, config: RedactionShieldConfig, deps: dict[str, Any]) -> None:
+        """
+        Initialize the redaction shield and precompile regex replacement rules from configuration.
+
+        Parameters:
+            - config (RedactionShieldConfig): Configuration containing
+              redaction rules and options (for example, rule patterns,
+              replacements, and case sensitivity).
+            - deps (dict[str, Any]): Optional dependency map used by the
+              implementation (services or helpers).
+        """
         self.config: RedactionShieldConfig = config
         self.compiled_rules: list[dict[str, Any]] = self._compile_rules()
 
     def _compile_rules(self) -> list[dict[str, Any]]:
-        """Compile regex patterns from configuration rules."""
+        """Compile regex patterns from configuration rules.
+
+        Compile configured regex redaction rules into executable patterns.
+
+        Each rule from self.config.rules is compiled (respecting
+        self.config.case_sensitive) into a dictionary with keys:
+        - "pattern": the compiled `re.Pattern` object
+        - "replacement": the rule's replacement string
+        - "original_pattern": the original pattern string
+
+        Invalid or failing patterns are logged and skipped.
+
+        Returns:
+            list[dict[str, Any]]: Compiled rule dictionaries as described above.
+        """
         compiled_rules: list[dict[str, Any]] = []
 
         for rule in self.config.rules:
@@ -77,7 +101,15 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         """Shutdown the shield."""
 
     async def register_shield(self, shield: Shield) -> None:
-        """Register a shield."""
+        """Register a shield.
+
+        Register a shield instance with this redaction implementation.
+
+        Parameters:
+            shield (Shield): Shield instance to register. Current
+            implementation is a no-op and does not persist or modify the
+            shield.
+        """
 
     async def run_shield(
         self,
@@ -85,7 +117,24 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         messages: list[Message],
         params: Optional[dict[str, Any]] = None,
     ) -> RunShieldResponse:
-        """Run the redaction shield - mutates messages directly."""
+        """Run the redaction shield - mutates messages directly.
+
+        Apply configured redaction rules to each message in-place.
+
+        Each message in `messages` that has a string `content` will be
+        processed; if redaction modifies the text, the message's `content` is
+        replaced with the redacted string.
+
+        Parameters:
+            - shield_id (str): Identifier for the shield invocation.
+            - messages (list[Message]): Messages to process; any message with a
+              string `content` may be mutated in place.
+            - params (Optional[dict[str, Any]]): Optional execution parameters
+              (not required by this implementation).
+
+        Returns:
+            RunShieldResponse: A response object; `violation` is `None` for this implementation.
+        """
         for message in messages:
             if hasattr(message, "content") and isinstance(message.content, str):
                 original_content: str = message.content
@@ -102,6 +151,14 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         When sensitive data is detected, the content is flagged and blocked.
         This serves as a safety net for flows that don't use run_shield.
         For flows using lightspeed_inline_agent, redaction happens in the agent.
+
+        Returns:
+            ModerationObject: Contains a generated `id`, `model` (uses
+            `request.model` or "lightspeed-redaction" if unspecified), and a
+            `results` list where each ModerationObjectResults includes
+            `flagged` status and metadata with `{"contains_sensitive_data":
+                                                 True}` for altered inputs and
+            `{"contains_sensitive_data": False}` for unchanged inputs.
         """
         inputs = request.input if isinstance(request.input, list) else [request.input]
         results = []
@@ -142,7 +199,20 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         )
 
     def _apply_redaction_rules(self, content: str) -> str:
-        """Apply all redaction rules to content."""
+        """Apply all redaction rules to content.
+
+        Apply configured regex redaction rules to the provided text and return
+        the resulting string.
+
+        If `content` is empty or there are no compiled rules, the original
+        `content` is returned unchanged. When one or more rules match, their
+        substitutions are applied sequentially and the transformed string is
+        returned.
+
+        Returns:
+            str: The text after applying redaction substitutions; the original
+            text if no changes were made.
+        """
         if not content or not self.compiled_rules:
             return content
 
