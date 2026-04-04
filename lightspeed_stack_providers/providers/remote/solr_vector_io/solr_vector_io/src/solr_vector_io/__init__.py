@@ -14,6 +14,17 @@ __all__ = [
 
 
 async def get_adapter_impl(config: SolrVectorIOConfig, deps: dict[Api, Any]):
+    """
+    Create and return a configured SolrVectorIOAdapter instance.
+
+    Parameters:
+        - config (SolrVectorIOConfig): Configuration for the adapter.
+        - deps (dict[Api, Any]): Dependency mapping; expects an inference
+          client at `deps[Api.inference]`.
+
+    Returns:
+        SolrVectorIOAdapter: An initialized adapter instance ready for use.
+    """
     impl = SolrVectorIOAdapter(
         config,
         deps[Api.inference],

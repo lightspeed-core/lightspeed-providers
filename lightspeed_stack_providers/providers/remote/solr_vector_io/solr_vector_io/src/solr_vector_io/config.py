@@ -157,6 +157,25 @@ class SolrVectorIOConfig(BaseModel):
         embedding_dimension: int = "${env.SOLR_EMBEDDING_DIM:=384}",
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """
+        Builds a sample configuration dictionary for a Solr-backed vector I/O provider.
+
+        The returned mapping contains Solr connection and collection
+        identifiers, vector/content/id field names, embedding model and
+        dimension, and a default persistence backend configuration. It does not
+        include `chunk_window_config` by default (an example is shown in the
+        function body).
+
+        Parameters:
+            - __distro_dir__ (str): Unused placeholder for distributor
+              directory; accepted for API compatibility.
+
+        Returns:
+            dict[str, Any]: Configuration dictionary with keys `solr_url`,
+            `collection_name`, `vector_field`, `content_field`, `id_field`,
+            `embedding_model`, `embedding_dimension`, and `persistence` (with
+             `namespace` and `backend`).
+        """
         return {
             "solr_url": solr_url,
             "collection_name": collection_name,
