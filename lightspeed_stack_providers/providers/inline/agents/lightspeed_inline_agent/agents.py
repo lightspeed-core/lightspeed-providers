@@ -49,6 +49,19 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         connectors_api: Connectors,
         policy: list[AccessRule],
     ):
+        """
+        Initialize the LightspeedAgentsImpl instance.
+
+        Initialize the LightspeedAgentsImpl instance with required APIs,
+        clients, and access policy, and retain the provided configuration.
+
+        Parameters:
+            config (LightspeedAgentsImplConfig): Configuration for the agent
+            implementation; stored on the instance and used to control behavior
+            such as tool filtering and temperature overrides.
+            policy (list[AccessRule]): Access rules that govern agent behavior and permissions.
+
+        """
         super().__init__(
             config,
             inference_api,
@@ -73,6 +86,9 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         This overrides the parent implementation to add tool filtering functionality
         before passing to the base agent implementation.
+
+        Returns:
+            OpenAIResponseObject: The generated OpenAI-style response object.
         """
         # Apply temperature override if configured
         temperature = request.temperature
@@ -128,15 +144,22 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         """
         Filter tools using LLM based on user input.
 
-        Args:
-            input: User input (string or list of messages)
-            tools: List of tool configurations from Responses API
-            model: Model ID for inference
-            conversation: Conversation ID for retrieving history
+        Parameters:
+            input (str | list[OpenAIResponseInput]): The user prompt or a list
+            of message-like objects used to derive the user prompt.
+            tools (list[OpenAIResponseInputTool]): The original list of tool
+            configurations from the Responses API.
+            model (str): Model identifier to fall back to when no explicit
+            filtering model is configured.
+            conversation (str | None): Conversation ID used to include
+            previously invoked tools; may be None.
 
         Returns:
-            Filtered list of tools
-
+            list[OpenAIResponseInputTool]: A filtered list of tools. For MCP
+            tool entries, `allowed_tools` will be set (on dicts) or assigned as
+            an attribute (on objects) to list the permitted tool names for that
+            MCP endpoint. Returns the original `tools` list when filtering is
+            skipped; returns an empty list when filtering produced no matches.
         """
         always_included_tools = set(self.config.tools_filter.always_include_tools)
 
@@ -307,12 +330,11 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         """
         Extract tool names that were called in previous conversation turns.
 
-        Args:
-            conversation_id: The conversation ID
+        Parameters:
+            conversation_id (str): Identifier of the conversation to inspect.
 
         Returns:
-            Set of tool names that were previously called
-
+            set[str]: Tool names observed in the conversation history.
         """
         tool_names: set[str] = set()
         try:
@@ -351,14 +373,17 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         For MCP tools, we call the MCP server to list available tools.
         For other tool types, we extract what we can from the config.
 
-        Args:
-            tools: List of tool configurations
+        Parameters:
+            tools (list[OpenAIResponseInputTool]): Original tool
+            configurations; each entry may be a dict or a model object with
+            `model_dump()`.
 
         Returns:
-            Tuple of (tool_definitions, tool_to_endpoint_map)
-            - tool_definitions: List of dicts with tool_name and description
-            - tool_to_endpoint_map: Dict mapping tool_name to MCP endpoint
-
+            tuple[list[dict[str, str]], dict[str, str]]:
+                - First element: list of unique tool descriptor dicts (each
+                  contains at least `tool_name` and `description`, may include
+                  `parameters` and `endpoint`).
+                - Second element: mapping from MCP `tool_name` to its provider `endpoint`.
         """
         tool_defs = []
         seen_tool_names: set[str] = set()
@@ -412,12 +437,20 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         """
         Get tool definitions from an MCP server.
 
-        Args:
-            mcp_tool_config: MCP tool configuration dict
+        Parameters:
+            mcp_tool_config (dict): MCP tool configuration containing at least
+            `server_url` and optional `server_label`.
 
         Returns:
-            List of tool definitions with tool_name, description, and endpoint
-
+            list[dict[str, Any]]: A list of tool descriptor dictionaries. Each
+            descriptor contains at minimum:
+                - `tool_name`: the tool's name
+                - `description`: the tool's description (empty string if absent)
+                - `parameters`: the tool's parameter schema or `{}` if absent
+                - `endpoint`: the MCP endpoint identifier extracted from tool
+                  metadata or `None`
+            If the MCP query fails, returns a fallback single-item list with a
+            best-effort `tool_name` and `description`.
         """
         tool_defs = []
 
@@ -491,13 +524,18 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         """
         Extract a consistent tool name from a tool configuration.
 
-        Args:
-            tool_dict: Tool configuration dict
-            index: Index in the tools list (for fallback naming)
+        Parameters:
+            - tool_dict (dict): Tool configuration; expected keys include
+              "type", and depending on type, "server_label" or "name".
+            - index (int): Fallback index used to build a deterministic name
+              when a labeled name is missing.
 
         Returns:
-            Tool name string
-
+            str: A stable tool name:
+                - For type "mcp": `server_label` or "mcp_{index}".
+                - For type "file_search": "file_search".
+                - For type "function": `name` or "function_{index}".
+                - Otherwise: "{tool_type}_{index}".
         """
         tool_type = tool_dict.get("type", "unknown")
 

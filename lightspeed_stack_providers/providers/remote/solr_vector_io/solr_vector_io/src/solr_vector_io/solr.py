@@ -53,6 +53,24 @@ class SolrIndex(EmbeddingIndex):
         request_timeout: int = 30,
         chunk_window_config: Optional[ChunkWindowConfig] = None,
     ):
+        """
+        Initialize a SolrIndex with connection settings and schema field mappings for R/O searches.
+
+        Parameters:
+            - vector_store (VectorStore): Metadata describing the vector store this index serves.
+            - solr_url (str): Base Solr URL (trailing slash will be removed).
+            - collection_name (str): Solr collection name to query.
+            - vector_field (str): Name of the Solr field that holds vector embeddings.
+            - content_field (str): Name of the Solr field containing chunk text/content.
+            - id_field (str): Name of the Solr document identifier field.
+            - dimension (int): Embedding vector dimensionality expected by the index.
+            - embedding_model (str): Identifier of the embedding model
+              associated with stored vectors.
+            - request_timeout (int): HTTP request timeout in seconds (default: 30).
+            - chunk_window_config (Optional[ChunkWindowConfig]): Optional
+              configuration that enables chunk-window expansion and provides
+              related field and query parameters.
+        """
         self.vector_store = vector_store
         self.solr_url = solr_url.rstrip("/")
         self.collection_name = collection_name
@@ -79,6 +97,10 @@ class SolrIndex(EmbeddingIndex):
 
         Uses IPv4 by binding to 0.0.0.0. When Solr runs in a podman container,
         IPv4 is required unless podman has been explicitly configured to support IPv6.
+
+        Returns:
+            httpx.AsyncClient: An async HTTP client with the instance's request
+            timeout and an IPv4-bound transport.
         """
         return httpx.AsyncClient(
             timeout=self.request_timeout,
@@ -86,7 +108,14 @@ class SolrIndex(EmbeddingIndex):
         )
 
     async def initialize(self) -> None:
-        """Verify connection to Solr and collection exists."""
+        """Verify connection to Solr and collection exists.
+
+        Check that the configured Solr collection is reachable.
+
+        Raises:
+            RuntimeError: If the Solr collection is unavailable or an HTTP
+            error occurs while verifying the connection.
+        """
         log.info(f"Initializing connection to Solr collection: {self.collection_name}")
         async with self._create_http_client() as client:
             try:
@@ -113,12 +142,29 @@ class SolrIndex(EmbeddingIndex):
                 ) from e
 
     async def add_chunks(self, chunks: list[Chunk], embeddings: NDArray) -> None:
-        """Not implemented - this is a read-only provider."""
+        """Not implemented - this is a read-only provider.
+
+        Attempting to add chunks to this read-only SolrIndex is not supported.
+
+        Parameters:
+            chunks (list[Chunk]): Chunks provided for insertion (ignored).
+            embeddings (NDArray): Corresponding embeddings (ignored).
+
+        Raises:
+            NotImplementedError: Always raised because SolrIndex is read-only.
+        """
         log.warning(f"Attempted to add {len(chunks)} chunks to read-only SolrIndex")
         raise NotImplementedError("SolrVectorIO is read-only.")
 
     async def delete_chunks(self, chunks_for_deletion: list[ChunkForDeletion]) -> None:
-        """Not implemented - this is a read-only provider."""
+        """Not implemented - this is a read-only provider.
+
+        Rejects attempts to delete chunks from the Solr-backed index because
+        the store is read-only.
+
+        Raises:
+            NotImplementedError: always raised with message "SolrVectorIO is read-only."
+        """
         log.warning(f"Attempted to delete {
                 len(chunks_for_deletion)
             } chunks from read-only SolrIndex")
@@ -133,7 +179,7 @@ class SolrIndex(EmbeddingIndex):
         """
         Performs vector similarity search using Solr's KNN query.
 
-        Args:
+        Parameters:
             embedding: The query embedding vector
             k: Number of results to return
             score_threshold: Minimum similarity score threshold
@@ -218,7 +264,7 @@ class SolrIndex(EmbeddingIndex):
         """
         Performs keyword-based search using Solr's text search.
 
-        Args:
+        Parameters:
             query_string: The text query for keyword search
             k: Number of results to return
             score_threshold: Minimum similarity score threshold
@@ -232,7 +278,8 @@ class SolrIndex(EmbeddingIndex):
             f"score_threshold={score_threshold}"
         )
 
-        # Replace ? and * because when the edismax text parser is enabled, they are evaluated as lucene wildcards
+        # Replace ? and * because when the edismax text parser is enabled, they
+        # are evaluated as lucene wildcards
         query_string = query_string.replace("?", "").replace("*", "")
 
         async with self._create_http_client() as client:
@@ -319,13 +366,13 @@ class SolrIndex(EmbeddingIndex):
         """
         Hybrid search combining vector similarity and keyword search using Solr's native reranking.
 
-        Args:
-            embedding: The query embedding vector
-            query_string: The text query for keyword search
-            k: Number of results to return
-            score_threshold: Minimum similarity score threshold
-            reranker_type: Type of reranker (ignored, uses Solr's native capabilities)
-            reranker_params: Parameters for reranking (e.g., boost values)
+        Parameters:
+            - embedding: The query embedding vector
+            - query_string: The text query for keyword search
+            - k: Number of results to return
+            - score_threshold: Minimum similarity score threshold
+            - reranker_type: Type of reranker (ignored, uses Solr's native capabilities)
+            - reranker_params: Parameters for reranking (e.g., boost values)
 
         Returns:
             QueryChunksResponse with combined results
@@ -337,7 +384,8 @@ class SolrIndex(EmbeddingIndex):
         # Get boost parameters, defaulting to equal weighting
         vector_boost = reranker_params.get("vector_boost", 8.0)
 
-        # Replace ? and * because when the edismax text parser is enabled, they are evaluated as lucene wildcards
+        # Replace ? and * because when the edismax text parser is enabled, they
+        # are evaluated as lucene wildcards
         query_string = query_string.replace("?", "").replace("*", "")
 
         log.info(
@@ -448,7 +496,7 @@ class SolrIndex(EmbeddingIndex):
         """
         Fetch parent document metadata using configured field names.
 
-        Args:
+        Parameters:
             client: HTTP client for making requests
             parent_id: ID of the parent document
 
@@ -512,7 +560,7 @@ class SolrIndex(EmbeddingIndex):
         """
         Fetch chunks within a specified index range for a parent document.
 
-        Args:
+        Parameters:
             client: HTTP client for making requests
             parent_id: ID of the parent document
             window_start: Start index (inclusive)
@@ -604,7 +652,7 @@ class SolrIndex(EmbeddingIndex):
         chunk_family_fields, and orphan_token_budget for chunks missing all of
         those field values.
 
-        Args:
+        Parameters:
             initial_response: Initial query response with matched chunks
             min_chunk_gap: Minimum spacing between chunks from same parent
             min_chunk_window: Minimum chunks before windowing applies
@@ -683,7 +731,8 @@ class SolrIndex(EmbeddingIndex):
                         if value is not None:
                             boundary_values[field] = value
 
-                    # mark the chunk as an orphan if it is missing values for ALL the family fields.
+                    # mark the chunk as an orphan if it is missing values for
+                    # ALL the family fields.
                     is_orphan = all(
                         chunk.metadata.get(field) is None
                         for field in schema.chunk_family_fields
@@ -844,7 +893,7 @@ class SolrIndex(EmbeddingIndex):
         This algorithm starts with the matched chunk and expands to prev/next chunks,
         adding adjacent chunks until the token budget is exhausted.
 
-        Args:
+        Parameters:
             chunks: List of chunk documents with token counts
             match_index: Index of the matched chunk in the list
             token_budget: Maximum total tokens to include
@@ -916,6 +965,20 @@ class SolrIndex(EmbeddingIndex):
         return selected
 
     def _doc_to_chunk(self, doc: dict[str, Any]) -> Chunk | None:
+        """
+        Convert a Solr document dictionary into an EmbeddedChunk suitable for search responses.
+
+        Parameters:
+            doc (dict[str, Any]): A Solr document dictionary as returned by a Solr JSON query.
+
+        Returns:
+            EmbeddedChunk | None: An EmbeddedChunk populated with `chunk_id`,
+            `content`, and `metadata` (including parent/document identifiers
+            and any configured family/token fields), with embedding metadata
+            (model and dimension) set but an empty `embedding` list; returns
+            `None` if the document is not a chunk, lacks required content or
+            identifiers, or cannot be converted.
+        """
         try:
             if not doc.get("is_chunk", True):
                 log.info("Skipping non-chunk document")
@@ -968,7 +1031,8 @@ class SolrIndex(EmbeddingIndex):
                 metadata[self.chunk_window_config.chunk_token_count_field] = doc[
                     self.chunk_window_config.chunk_token_count_field
                 ]
-            # add family fields to the metadata since we need to access them for comparison with other chunks later on
+            # add family fields to the metadata since we need to access them
+            # for comparison with other chunks later on
             if self.chunk_window_config.chunk_family_fields:
                 for field in self.chunk_window_config.chunk_family_fields:
                     if field in doc:
@@ -1012,6 +1076,23 @@ class SolrVectorIOAdapter(
         inference_api: Inference,
         files_api: Files | None = None,
     ) -> None:
+        """
+        Initialize the Solr-backed read-only VectorIO adapter and prepare internal cache/state.
+
+        Parameters:
+            - config (SolrVectorIOConfig): Configuration for Solr connections,
+              collection, schema fields, and chunk-window expansion.
+            - inference_api (Inference): Inference service used for
+              embedding/reranking operations.
+            - files_api (Files | None): Optional file management API used by
+              higher-level utilities; may be None.
+
+        Notes:
+            - This adapter is read-only: KV persistence (if used) is managed
+              separately and `kvstore` is not provided here.
+            - Creates an empty in-memory cache for vector store indexes and
+              leaves `vector_store_table` uninitialized.
+        """
         super().__init__(inference_api=inference_api, files_api=files_api, kvstore=None)
         self.config = config
         self.inference_api = inference_api
@@ -1020,6 +1101,17 @@ class SolrVectorIOAdapter(
         log.info("SolrVectorIOAdapter instance created")
 
     async def initialize(self) -> None:
+        """
+        Initialize the Solr-backed VectorIO adapter and load any persisted vector store def.
+
+        If persistence is configured, initializes the KV store and the
+        read-only OpenAI vector store support. Then loads all stored vector
+        store metadata from the KV range prefixed by VECTOR_DBS_PREFIX,
+        constructs a SolrIndex for each entry, calls its initialize method, and
+        caches the resulting VectorStoreWithIndex instances for runtime use.
+        Logs progress and skips KV/openai initialization when persistence is
+        not configured.
+        """
         log.info("Initializing Solr vector_io adapter")
         log.info(
             f"Configuration: solr_url={self.config.solr_url}, "
@@ -1075,13 +1167,27 @@ class SolrVectorIOAdapter(
         log.info("Solr vector_io adapter initialization complete")
 
     async def shutdown(self) -> None:
+        """
+        Shuts down the SolrVectorIOAdapter and releases mixin-managed resources.
+
+        Performs cleanup of resources managed by the adapter's mixins (for
+        example, file batch tasks) and completes adapter shutdown.
+        """
         log.info("Shutting down Solr vector_io adapter")
         # Clean up mixin resources (file batch tasks)
         await super().shutdown()
         log.info("Shutdown complete")
 
     async def register_vector_store(self, vector_store: VectorStore) -> None:
-        """Register a vector store (read-only, just caches the metadata)."""
+        """Register a vector store (read-only, just caches the metadata).
+
+        Parameters:
+            - vector_store (VectorStore): Vector store metadata to register and
+              cache. The function will persist this metadata to the configured
+              KV store (keyed under VECTOR_DBS_PREFIX + identifier) if a KV
+              store is available, create and initialize a SolrIndex for the
+              store, and store a VectorStoreWithIndex in the adapter's cache.
+        """
         log.info(f"Registering vector store: {vector_store.identifier}")
         if self.kvstore is not None:
             key = f"{VECTOR_DBS_PREFIX}{vector_store.identifier}"
@@ -1109,7 +1215,12 @@ class SolrVectorIOAdapter(
         log.info(f"Successfully registered vector store: {vector_store.identifier}")
 
     async def unregister_vector_store(self, vector_store_id: str) -> None:
-        """Unregister a vector store (removes from cache and KV store)."""
+        """Unregister a vector store (removes from cache and KV store).
+
+        Parameters:
+            - vector_store_id (str): Identifier of the vector store; used as
+              the suffix for the KV key when deleting persisted metadata.
+        """
         log.info(f"Unregistering vector store: {vector_store_id}")
 
         if vector_store_id in self.cache:
@@ -1128,7 +1239,20 @@ class SolrVectorIOAdapter(
         chunks: list[EmbeddedChunk],
         ttl_seconds: int | None = None,
     ) -> None:
-        """Not implemented - this is a read-only provider."""
+        """Not implemented - this is a read-only provider.
+
+        Rejects insertion attempts because this VectorIO implementation is read-only.
+
+        Parameters:
+            - vector_store_id (str): Identifier of the target vector store.
+            - chunks (list[EmbeddedChunk]): Chunks proposed for insertion.
+            - ttl_seconds (int | None): Optional time-to-live in seconds for
+              inserted chunks (ignored).
+
+        Raises:
+            NotImplementedError: Always raised to indicate that write
+            operations are not supported.
+        """
         log.warning(
             f"Attempted to insert {len(chunks)} chunks into read-only provider "
             f"(vector_store_id={vector_store_id})"
@@ -1146,7 +1270,24 @@ class SolrVectorIOAdapter(
         ),
         params: dict[str, Any] | None = None,
     ) -> QueryChunksResponse:
-        """Query chunks from the Solr collection."""
+        """Query chunks from the Solr collection.
+
+        Retrieve matching chunks from the Solr-backed vector store identified
+        by `vector_store_id`.
+
+        The `query` may be a search string, a single content item, or a list of
+        content items; the adapter delegates retrieval to the underlying Solr
+        index which performs vector, keyword, or hybrid search as appropriate.
+        The optional `params` dictionary supplies provider-specific query
+        options (for example: `k`, `score_threshold`, `reranker_type`,
+        `reranker_params`) that control result count, filtering, and reranking.
+
+        Returns:
+            QueryChunksResponse: Search results containing a list of chunks and
+            their corresponding similarity scores. Results may include
+            chunk-window expansions when the vector store is configured to
+            expand matches into larger contextual windows.
+        """
         log.info(f"Query chunks request for vector_store_id={vector_store_id}")
         index = await self._get_and_cache_vector_store_index(vector_store_id)
         result = await index.query_chunks(query, params)
@@ -1165,6 +1306,24 @@ class SolrVectorIOAdapter(
     async def _get_and_cache_vector_store_index(
         self, vector_store_id: str
     ) -> VectorStoreWithIndex:
+        """
+        Retrieve the cached VectorStoreWithIndex.
+
+        Retrieve the cached VectorStoreWithIndex for a given vector store ID,
+        loading it from the vector store table and caching it if not already
+        present.
+
+        Parameters:
+            vector_store_id (str): Identifier of the vector store to retrieve.
+
+        Returns:
+            VectorStoreWithIndex: The cached or newly loaded vector store
+            paired with its Solr index and inference API.
+
+        Raises:
+            VectorStoreNotFoundError: If the vector store table is not
+            configured or the requested vector store does not exist.
+        """
         if vector_store_id in self.cache:
             log.debug(f"Retrieved vector store from cache: {vector_store_id}")
             return self.cache[vector_store_id]

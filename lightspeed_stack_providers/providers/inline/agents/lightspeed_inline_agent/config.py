@@ -76,6 +76,23 @@ class ToolsFilter(BaseModel):
     always_include_tools: Optional[list[str]] = []
 
     def model_post_init(self, context: Any, /) -> None:
+        """
+        Finalize ToolsFilter after model initialization.
+
+        If `system_prompt_path` is set, verifies the path exists, is a file,
+        and is readable; reads its UTF-8 contents into `self.system_prompt`. If
+        `system_prompt` remains empty after that, sets `self.system_prompt` to
+        the module `DEFAULT_SYSTEM_PROMPT`. Logs the final `system_prompt`
+        value.
+
+        Parameters:
+            context (Any): Post-initialization context provided by Pydantic
+            (unused by this method).
+
+        Raises:
+            ValueError: If `system_prompt_path` is set but does not exist, is
+            not a file, or is not readable.
+        """
         if self.system_prompt_path:
             if not os.path.exists(self.system_prompt_path):
                 raise ValueError(
@@ -109,6 +126,23 @@ class LightspeedAgentsImplConfig(MetaReferenceAgentsImplConfig):
 
     @classmethod
     def sample_run_config(cls, __distro_dir__: str) -> dict[str, Any]:
+        """
+        Produce a sample run configuration that includes a default configured ToolsFilter.
+
+        Parameters:
+            __distro_dir__ (str): Path to the distribution directory passed to
+            the base implementation to build the initial config.
+
+        Returns:
+            dict[str, Any]: The sample run configuration dictionary with a
+            "tools_filter" entry set to a ToolsFilter instance using:
+                - model_id: "${env.INFERENCE_MODEL_FILTER}:}"
+                - enabled: True
+                - min_tools: 10
+                - system_prompt_path: None
+                - system_prompt: DEFAULT_SYSTEM_PROMPT
+                - always_include_tools: []
+        """
         config = super().sample_run_config(__distro_dir__)
         config["tools_filter"] = ToolsFilter(
             model_id="${env.INFERENCE_MODEL_FILTER}:}",
