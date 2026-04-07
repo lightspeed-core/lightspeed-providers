@@ -238,7 +238,6 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             ],
             stream=False,
             temperature=0.1,
-            max_tokens=2048,
         )
         response = await self.inference_api.openai_chat_completion(request)
 
