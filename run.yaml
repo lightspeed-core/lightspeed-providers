@@ -9,7 +9,7 @@ apis:
   - vector_io
   - files
 
-external_providers_dir: ./resources/external_providers
+external_providers_dir: ./lightspeed_stack_providers/resources/external_providers
 
 storage:
   backends:
