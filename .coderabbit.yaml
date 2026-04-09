@@ -1,8 +1,17 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# =============================================================================
+# General
+# =============================================================================
 language: en-US
 tone_instructions: ''
 early_access: false
 enable_free_tier: true
 inheritance: false
+
+# =============================================================================
+# Reviews
+# =============================================================================
 reviews:
   profile: assertive
   request_changes_workflow: false
@@ -47,6 +56,10 @@ reviews:
     drafts: false
     base_branches: []
     ignore_usernames: []
+
+  # ---------------------------------------------------------------------------
+  # Finishing touches
+  # ---------------------------------------------------------------------------
   finishing_touches:
     docstrings:
       enabled: true
@@ -55,6 +68,10 @@ reviews:
     simplify:
       enabled: true
     custom: []
+
+  # ---------------------------------------------------------------------------
+  # Pre-merge checks
+  # ---------------------------------------------------------------------------
   pre_merge_checks:
     override_requested_reviewers_only: false
     docstrings:
@@ -65,9 +82,14 @@ reviews:
       requirements: ''
     description:
       mode: warning
+
     issue_assessment:
       mode: warning
     custom_checks: []
+
+  # ---------------------------------------------------------------------------
+  # Tools
+  # ---------------------------------------------------------------------------
   tools:
     ast-grep:
       rule_dirs: []
@@ -180,6 +202,10 @@ reviews:
       enabled: true
     psscriptanalyzer:
       enabled: true
+
+# =============================================================================
+# Chat
+# =============================================================================
 chat:
   art: true
   allow_non_org_members: true
@@ -189,6 +215,10 @@ chat:
       usage: auto
     linear:
       usage: auto
+
+# =============================================================================
+# Knowledge base
+# =============================================================================
 knowledge_base:
   opt_out: false
   web_search:
@@ -212,6 +242,10 @@ knowledge_base:
     usage: auto
     disabled_servers: []
   linked_repositories: []
+
+# =============================================================================
+# Code generation
+# =============================================================================
 code_generation:
   docstrings:
     language: en-US
