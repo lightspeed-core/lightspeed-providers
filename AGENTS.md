@@ -109,6 +109,10 @@ lightspeed_stack_providers
   - `Raises:` for exceptions that may be raised
   - `Attributes:` for class attributes (Pydantic models)
 
+#### Line length
+
+- Follow standard Black rule: the maximum line length should be 88 characters, excluding endline.
+- Strings and docstrings should follow the same rule.
 
 ## Testing Framework
 
