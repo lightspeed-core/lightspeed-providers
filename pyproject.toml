@@ -73,3 +73,8 @@ disallow_incomplete_defs = true
 ignore_missing_imports = true
 disable_error_code = "attr-defined"
 
+[dependency-groups]
+dev = [
+    "mypy>=1.20.0",
+]
+
