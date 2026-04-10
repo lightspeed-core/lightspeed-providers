@@ -1,7 +1,6 @@
 import logging
 import uuid
 from string import Template
-from typing import Any
 
 from llama_stack_api import (
     Api,
@@ -9,11 +8,11 @@ from llama_stack_api import (
     ModerationObject,
     ModerationObjectResults,
     RunModerationRequest,
+    RunShieldRequest,
     RunShieldResponse,
     Safety,
     SafetyViolation,
     ShieldsProtocolPrivate,
-    UserMessage,
     ViolationLevel,
 )
 from llama_stack_api.inference import (
@@ -103,7 +102,9 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         )
 
         for text in inputs:
-            run_response = await impl.run(UserMessage(content=text))
+            run_response = await impl.run(
+                OpenAIUserMessageParam(role="user", content=text)
+            )
             results.append(self._get_moderation_object_results(run_response))
 
         return ModerationObject(
@@ -156,11 +157,9 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
 
     async def run_shield(
         self,
-        shield_id: str,
-        messages: list[Message],
-        params: dict[str, Any] = None,
+        request: RunShieldRequest,
     ) -> RunShieldResponse:
-        # Take last user message (can be UserMessage or OpenAIUserMessageParam)
+        # Take last user message (OpenAIUserMessageParam)
         """
         Run the question-validity shield against the most recent user message in the message list.
 
@@ -170,29 +169,27 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         indicating no violation.
 
         Parameters:
-            - shield_id (str): Identifier of the shield being invoked.
-            - messages (list[Message]): A sequence of message objects (may
-              contain different message param types); the last message with
-              role "user" or a user message type will be evaluated.
-            - params (dict[str, Any], optional): Additional runtime parameters
-              (currently unused by this implementation).
+            - request (RunShieldRequest): Request containing shield_id and
+              messages; the last message with role "user" or a user message
+              type will be evaluated.
 
         Returns:
             RunShieldResponse: `violation=None` if no user message was found;
             otherwise the shield's decision for the evaluated user message.
         """
+        messages = request.messages
         user_messages = [
             m
             for m in messages
-            if isinstance(m, (UserMessage, OpenAIUserMessageParam))
+            if isinstance(m, OpenAIUserMessageParam)
             or (hasattr(m, "role") and m.role == "user")
         ]
         if not user_messages:
             return RunShieldResponse(violation=None)
         last_msg = user_messages[-1]
         content = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
-        message = UserMessage(content=content)
-        log.debug(f"Shield UserMessage: {message.content}")
+        message = OpenAIUserMessageParam(role="user", content=content)
+        log.debug(f"Shield message: {message.content}")
 
         impl = QuestionValidityRunner(
             model_id=self.config.model_id,
@@ -229,19 +226,21 @@ class QuestionValidityRunner:
         self.invalid_question_response = invalid_question_response
         self.inference_api = inference_api
 
-    def build_text_shield_input(self, message: UserMessage) -> UserMessage:
+    def build_text_shield_input(
+        self, message: OpenAIUserMessageParam
+    ) -> OpenAIUserMessageParam:
         """
-        Create a UserMessage whose content is the shield prompt generated from the provided message.
+        Create a message whose content is the shield prompt generated from the provided message.
 
         Parameters:
-            message (UserMessage): The original user message to base the shield prompt on.
+            message (OpenAIUserMessageParam): The original user message to base the shield prompt on.
 
         Returns:
-            UserMessage: A new UserMessage containing the generated shield prompt as its content.
+            OpenAIUserMessageParam: A new message containing the generated shield prompt as its content.
         """
-        return UserMessage(content=self.build_prompt(message))
+        return OpenAIUserMessageParam(role="user", content=self.build_prompt(message))
 
-    def build_prompt(self, message: UserMessage) -> str:
+    def build_prompt(self, message: OpenAIUserMessageParam) -> str:
         """
         Builds the shield prompt.
 
@@ -249,8 +248,8 @@ class QuestionValidityRunner:
         the message content and subject tokens.
 
         Parameters:
-            - message (UserMessage): The user message whose content will be
-              inserted into the template as `message`.
+            - message (OpenAIUserMessageParam): The user message whose content
+              will be inserted into the template as `message`.
 
         Returns:
             str: The prompt string with `allowed`, `rejected`, and `message` values substituted.
@@ -292,7 +291,7 @@ class QuestionValidityRunner:
             ),
         )
 
-    async def run(self, message: UserMessage) -> RunShieldResponse:
+    async def run(self, message: OpenAIUserMessageParam) -> RunShieldResponse:
         """
         Run the question-validity shield.
 

@@ -4,7 +4,8 @@ from string import Template
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from llama_stack_api import RunModerationRequest, UserMessage
+from llama_stack_api import RunModerationRequest, RunShieldRequest
+from llama_stack_api.inference import OpenAIUserMessageParam
 from llama_stack_api.safety import RunShieldResponse, SafetyViolation, ViolationLevel
 from pytest_mock import MockerFixture
 
@@ -72,7 +73,9 @@ def create_mock_chat_response(content: str) -> MagicMock:
 
 def test_build_prompt(question_validity_runner: QuestionValidityRunner) -> None:
     """Test that the prompt is built correctly."""
-    message = UserMessage(content="How do I create a Kubernetes service?")
+    message = OpenAIUserMessageParam(
+        role="user", content="How do I create a Kubernetes service?"
+    )
     prompt = question_validity_runner.build_prompt(message)
     assert "Is this question allowed?" in prompt
     assert SUBJECT_ALLOWED in prompt
@@ -107,7 +110,9 @@ async def test_run_allowed(
     question_validity_runner: QuestionValidityRunner, mock_inference_api: AsyncMock
 ) -> None:
     """Test the run method for an allowed question."""
-    message = UserMessage(content="How do I create a Kubernetes service?")
+    message = OpenAIUserMessageParam(
+        role="user", content="How do I create a Kubernetes service?"
+    )
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
         SUBJECT_ALLOWED
     )
@@ -123,7 +128,7 @@ async def test_run_rejected(
     question_validity_runner: QuestionValidityRunner, mock_inference_api: AsyncMock
 ) -> None:
     """Test the run method for a rejected question."""
-    message = UserMessage(content="What is the weather today?")
+    message = OpenAIUserMessageParam(role="user", content="What is the weather today?")
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
         SUBJECT_REJECTED
     )
@@ -164,16 +169,14 @@ async def test_run_shield_allowed(
     mock_runner.return_value.run = mocker.AsyncMock(
         return_value=RunShieldResponse(violation=None)
     )
-    # Use OpenAI message format
-    from llama_stack_api.inference import OpenAIUserMessageParam
-
     messages = [
         OpenAIUserMessageParam(
             role="user", content="How do I create a Kubernetes service?"
         )
     ]
+    request = RunShieldRequest(shield_id="test_shield", messages=messages)
 
-    response = await question_validity_shield_impl.run_shield("test_shield", messages)
+    response = await question_validity_shield_impl.run_shield(request)
 
     assert response.violation is None
     mock_runner.return_value.run.assert_called_once()
@@ -195,14 +198,12 @@ async def test_run_shield_rejected(
             )
         )
     )
-    # Use OpenAI message format
-    from llama_stack_api.inference import OpenAIUserMessageParam
-
     messages = [
         OpenAIUserMessageParam(role="user", content="What is the weather today?")
     ]
+    request = RunShieldRequest(shield_id="test_shield", messages=messages)
 
-    response = await question_validity_shield_impl.run_shield("test_shield", messages)
+    response = await question_validity_shield_impl.run_shield(request)
 
     assert isinstance(response.violation, SafetyViolation)
     mock_runner.return_value.run.assert_called_once()

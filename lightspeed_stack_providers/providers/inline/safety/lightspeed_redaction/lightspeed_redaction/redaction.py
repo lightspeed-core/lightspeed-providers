@@ -1,12 +1,13 @@
 import logging
 import re
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from llama_stack_api import (
     ModerationObject,
     ModerationObjectResults,
     RunModerationRequest,
+    RunShieldRequest,
     RunShieldResponse,
     Safety,
     Shield,
@@ -113,9 +114,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
 
     async def run_shield(
         self,
-        shield_id: str,
-        messages: list[Message],
-        params: Optional[dict[str, Any]] = None,
+        request: RunShieldRequest,
     ) -> RunShieldResponse:
         """Run the redaction shield - mutates messages directly.
 
@@ -126,15 +125,14 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
         replaced with the redacted string.
 
         Parameters:
-            - shield_id (str): Identifier for the shield invocation.
-            - messages (list[Message]): Messages to process; any message with a
-              string `content` may be mutated in place.
-            - params (Optional[dict[str, Any]]): Optional execution parameters
-              (not required by this implementation).
+            - request (RunShieldRequest): Request containing shield_id and
+              messages; any message with a string `content` may be mutated
+              in place.
 
         Returns:
             RunShieldResponse: A response object; `violation` is `None` for this implementation.
         """
+        messages = request.messages
         for message in messages:
             if hasattr(message, "content") and isinstance(message.content, str):
                 original_content: str = message.content

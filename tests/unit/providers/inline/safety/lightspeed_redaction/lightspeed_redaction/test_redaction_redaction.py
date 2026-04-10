@@ -1,7 +1,8 @@
 """Unit tests for Lightspeed redaction provider behaviour."""
 
 import pytest
-from llama_stack_api.inference import UserMessage
+from llama_stack_api import RunShieldRequest
+from llama_stack_api.inference import OpenAIUserMessageParam
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction.config import (
     PatternReplacement,
@@ -62,8 +63,11 @@ def test_apply_redaction_rules_case_insensitive(
 async def test_run_shield(redaction_shield_impl: RedactionShieldImpl) -> None:
     """Test the run_shield method."""
     messages: list[Message] = [
-        UserMessage(content="This is a secret message from 2023.")
+        OpenAIUserMessageParam(
+            role="user", content="This is a secret message from 2023."
+        )
     ]
-    response = await redaction_shield_impl.run_shield("test_shield", messages)
+    request = RunShieldRequest(shield_id="test_shield", messages=messages)
+    response = await redaction_shield_impl.run_shield(request)
     assert response.violation is None
     assert messages[0].content == "This is a [REDACTED] message from [YEAR]."
