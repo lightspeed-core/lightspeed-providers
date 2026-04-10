@@ -8,6 +8,7 @@
     * [Tooling installation](#tooling-installation)
 * [Setting up your development environment](#setting-up-your-development-environment)
 * [PR description](#pr-description)
+* [Pull request size](#pull-request-size)
 * [Definition of Done](#definition-of-done)
     * [A deliverable is to be considered “done” when](#a-deliverable-is-to-be-considered-done-when)
 * [AI assistants](#ai-assistants)
@@ -98,6 +99,50 @@ Happy hacking!
 * Fill-in all relevant information in the PR template
     - unused parts of PR template (like information about testing etc.) can be deleted
 * Please note that CodeRabbitAI will create a summary of your pull request
+
+
+## Pull request size
+
+* Keep pull requests small. Aim for about 200 lines when possible and generally
+  stay under 500 lines. Research shows smaller PRs are reviewed and merged more
+  quickly, reduce reviewer cognitive load, make testing easier, and lower the
+  risk of introducing bugs. If a change must be larger, break it into a clear
+  sequence of smaller commits or dependent PRs, include a concise summary of
+  the intent and scope, and highlight the critical files or areas to review.
+
+* Make each pull request address a single feature or bug fix. Combining
+  multiple unrelated changes in one PR makes reviews harder and increases the
+  chance of overlooked issues. Break larger work into smaller, self-contained
+  units that can be reviewed and merged independently. For bigger tasks,
+  sequence dependent PRs, provide clear descriptions of scope and intent, and
+  call out which files or behaviors need careful review.
+
+* Keep the count of modified files small in addition to limiting total lines
+  changed. Touching many files increases reviewer overhead, makes it harder to
+  understand the scope, and raises the chance of missed regressions. When a
+  change necessarily spans multiple files, group related edits into logical,
+  incremental PRs; move large, nonfunctional refactors into separate commits or
+  PRs; and add a clear summary and guided review notes that point reviewers to
+  the most important files and risk areas.
+
+* When you split a larger task into several smaller PRs, craft detailed commit
+  messages that explain what each change does and how it fits into the broader
+  effort. Include the rationale, any trade-offs, and links or references to
+  related PRs or tickets. Good messages preserve context across multiple
+  submissions, speed up reviews, and make it easier for future maintainers to
+  trace the evolution of the code.
+
+* Ensure each pull request is a self-contained unit that can be merged
+  independently. An atomic PR has a single, clear objective—such as fixing a
+  bug or adding one feature—and includes only the changes necessary to achieve
+  that goal. Avoid coupling the PR to other unmerged branches or relying on
+  external context; if work must be split, sequence dependent PRs so each stage
+  is reviewable on its own. Don’t mix unrelated change types (for example, bug
+  fixes, refactors, and new features) in the same PR. When appropriate,
+  separate large refactors or formatting changes into their own PRs, and add
+  concise descriptions that state the PR’s intent and any necessary migration
+  or rollout steps.
+
 
 
 ## Definition of Done
