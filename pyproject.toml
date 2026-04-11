@@ -77,5 +77,6 @@ disable_error_code = "attr-defined"
 dev = [
     "mypy>=1.20.0",
     "pydocstyle>=6.3.0",
+    "pylint>=4.0.5",
 ]
 
