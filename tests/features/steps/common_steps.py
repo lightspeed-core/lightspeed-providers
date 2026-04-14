@@ -13,6 +13,7 @@ class LlamaStackClient:
     """Client for interacting with the llama-stack API."""
 
     def __init__(self, base_url: str):
+        """Initialize Llama Stack client."""
         self.base_url = base_url
         self.session = requests.Session()
         self.session.headers.update(

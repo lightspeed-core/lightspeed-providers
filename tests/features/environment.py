@@ -7,7 +7,7 @@ from behave.runner import Context
 
 
 def before_all(context: Context) -> None:
-    """Setup before all tests."""
+    """Perform correct setup before all tests."""
     # Set default configuration
     context.config.setup_logging()
 
