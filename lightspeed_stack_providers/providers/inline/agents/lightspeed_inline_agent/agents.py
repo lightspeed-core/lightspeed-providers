@@ -1,5 +1,4 @@
 import json
-
 from typing import Optional
 
 from llama_stack.core.datatypes import AccessRule
