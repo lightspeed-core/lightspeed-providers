@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -43,15 +43,15 @@ please ask me a question related to OpenShift.
 
 
 class QuestionValidityShieldConfig(BaseModel):
-    model_id: str | None = Field(
+    model_id: Optional[str] = Field(
         default=None,
         description="The model_id to use for the guard",
     )
-    model_prompt: str | None = Field(
+    model_prompt: Optional[str] = Field(
         default=DEFAULT_MODEL_PROMPT,
         description="The default prompt sent to the LLM used to validate the Users' question.",
     )
-    invalid_question_response: str | None = Field(
+    invalid_question_response: Optional[str] = Field(
         default=DEFAULT_INVALID_QUESTION_RESPONSE,
         description="The default response when the Users' question is determined to be invalid.",
     )

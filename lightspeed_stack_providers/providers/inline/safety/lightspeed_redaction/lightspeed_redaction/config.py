@@ -1,5 +1,5 @@
 import re
-from typing import Any, Self
+from typing import Any, Self, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -49,7 +49,7 @@ class RedactionShieldConfig(BaseModel):
     @classmethod
     def sample_run_config(
         cls,
-        rules: list[dict] | None = None,
+        rules: Optional[list[dict]] = None,
         case_sensitive: bool = False,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -57,7 +57,7 @@ class RedactionShieldConfig(BaseModel):
         Builds a sample run configuration dictionary for redaction rules.
 
         Parameters:
-            - rules (list[dict] | None): Optional list of raw rule mappings
+            - rules (Optional[list[dict]): Optional list of raw rule mappings
               (each with `pattern` and `replacement`) to include as the
               `"rules"` value.
             - case_sensitive (bool): Whether matching should be case sensitive;
