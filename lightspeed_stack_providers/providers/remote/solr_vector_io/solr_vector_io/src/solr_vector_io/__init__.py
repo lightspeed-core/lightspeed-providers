@@ -1,3 +1,5 @@
+"""Solr vector IO provider implementation."""
+
 from typing import Any
 
 from llama_stack_api.datatypes import Api

@@ -1,0 +1,1 @@
+"""Solr vector IO provider."""

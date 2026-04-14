@@ -1,3 +1,5 @@
+"""Inline agent Lightspeed provider implementation."""
+
 from typing import Any
 
 from llama_stack.core.datatypes import AccessRule

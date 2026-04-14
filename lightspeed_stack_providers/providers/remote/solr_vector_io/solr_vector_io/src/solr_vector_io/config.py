@@ -1,3 +1,5 @@
+"""Solr vector IO provider configuration."""
+
 from typing import Any, Optional
 
 from llama_stack.core.storage.datatypes import KVStoreReference

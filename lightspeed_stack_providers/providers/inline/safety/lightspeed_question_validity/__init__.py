@@ -1,3 +1,5 @@
+"""Question validity safety provider implementation."""
+
 from typing import Any
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
