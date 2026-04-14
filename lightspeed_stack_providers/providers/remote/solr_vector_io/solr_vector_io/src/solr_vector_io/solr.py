@@ -1,3 +1,5 @@
+"""Solr vector IO provider implementation."""
+
 from typing import Any, Optional
 
 import httpx
