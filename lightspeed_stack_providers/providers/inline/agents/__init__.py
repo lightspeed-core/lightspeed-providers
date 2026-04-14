@@ -1,1 +1,1 @@
-"""Inline agents Lightspeed provider."""
+"""Inline agent Lightspeed provider."""

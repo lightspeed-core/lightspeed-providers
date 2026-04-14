@@ -1,3 +1,5 @@
+"""Inline agent Lightspeed provider implementation."""
+
 import json
 from typing import Optional
 
@@ -36,6 +38,8 @@ logger = get_logger(name=__name__, category="agents")
 
 
 class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
+    """Inline agent Lightspeed provider implementation."""
+
     def __init__(
         self,
         config: LightspeedAgentsImplConfig,

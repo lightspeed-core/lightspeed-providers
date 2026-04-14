@@ -1,3 +1,5 @@
+"""Inline agent Lightspeed provider configuration."""
+
 import os
 from typing import Any, Optional
 
@@ -61,6 +63,8 @@ logger = get_logger(name=__name__, category="agents")
 
 
 class ToolsFilter(BaseModel):
+    """Tools filter configuration."""
+
     model_id: Optional[str] = None
     enabled: Optional[bool] = True
     # minimum tools to enable filtering
