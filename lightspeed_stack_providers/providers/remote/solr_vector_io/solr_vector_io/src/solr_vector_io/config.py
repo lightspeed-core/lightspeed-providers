@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from llama_stack.core.storage.datatypes import KVStoreReference
 from llama_stack_api.schema_utils import json_schema_type
@@ -31,7 +31,7 @@ class ChunkWindowConfig(BaseModel):
     )
 
     # Optional: if you want to explicitly detect chunk docs (recommended for mixed results handlers)
-    chunk_is_chunk_field: str | None = Field(
+    chunk_is_chunk_field: Optional[str] = Field(
         default=None,
         description="Optional field that marks chunk documents (e.g. 'is_chunk')",
     )
@@ -49,28 +49,28 @@ class ChunkWindowConfig(BaseModel):
     )
 
     # Optional parent metadata fields
-    parent_content_id_field: str | None = Field(
+    parent_content_id_field: Optional[str] = Field(
         default=None,
         description="Field name for content identifier in parent documents (e.g. 'doc_id')",
     )
-    parent_content_title_field: str | None = Field(
+    parent_content_title_field: Optional[str] = Field(
         default=None,
         description="Field name for content title in parent documents (e.g. 'title')",
     )
-    parent_content_url_field: str | None = Field(
+    parent_content_url_field: Optional[str] = Field(
         default=None,
         description="Field name for content URL in parent documents (e.g. 'reference_url')",
     )
 
     # ---- Query filters ----
-    chunk_filter_query: str | None = Field(
+    chunk_filter_query: Optional[str] = Field(
         default="is_chunk:true",
         description="Filter query to restrict results to chunk documents (recommended).",
     )
 
     # ---- Chunk window expansion parameters ----
 
-    chunk_family_fields: list[str] | None = Field(
+    chunk_family_fields: Optional[list[str]] = Field(
         default=None,
         description=(
             "Solr fields that should match when concatenating chunks for additional context "
@@ -129,7 +129,7 @@ class SolrVectorIOConfig(BaseModel):
     )
 
     # Storage/persistence
-    persistence: KVStoreReference | None = Field(
+    persistence: Optional[KVStoreReference] = Field(
         default=None, description="KV store backend reference"
     )
 
@@ -139,7 +139,7 @@ class SolrVectorIOConfig(BaseModel):
     )
 
     # Chunk window expansion (optional)
-    chunk_window_config: ChunkWindowConfig | None = Field(
+    chunk_window_config: Optional[ChunkWindowConfig] = Field(
         default=None,
         description="Schema mapping + params for chunk window expansion",
     )
