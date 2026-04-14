@@ -11,7 +11,7 @@ from llama_stack.providers.utils.memory.vector_store import (
     EmbeddingIndex,
     VectorStoreWithIndex,
 )
-from llama_stack_api.common.content_types import ImageContentItem, TextContentItem
+from llama_stack.providers.utils.vector_io.filters import Filter
 from llama_stack_api.common.errors import VectorStoreNotFoundError
 from llama_stack_api.datatypes import VectorStoresProtocolPrivate
 from llama_stack_api.files import Files
@@ -19,6 +19,7 @@ from llama_stack_api.inference import Inference
 from llama_stack_api.vector_io import (
     Chunk,
     EmbeddedChunk,
+    QueryChunksRequest,
     QueryChunksResponse,
     VectorIO,
 )
@@ -362,6 +363,7 @@ class SolrIndex(EmbeddingIndex):
         score_threshold: float,
         reranker_type: str,
         reranker_params: dict[str, Any] | None = None,
+        filters: Filter | None = None,
     ) -> QueryChunksResponse:
         """
         Hybrid search combining vector similarity and keyword search using Solr's native reranking.
@@ -1261,24 +1263,17 @@ class SolrVectorIOAdapter(
 
     async def query_chunks(
         self,
-        vector_store_id: str,
-        query: (
-            str
-            | TextContentItem
-            | ImageContentItem
-            | list[TextContentItem | ImageContentItem]
-        ),
-        params: dict[str, Any] | None = None,
+        request: QueryChunksRequest,
     ) -> QueryChunksResponse:
         """Query chunks from the Solr collection.
 
         Retrieve matching chunks from the Solr-backed vector store identified
-        by `vector_store_id`.
+        by `request.vector_store_id`.
 
-        The `query` may be a search string, a single content item, or a list of
+        The `request.query` may be a search string, a single content item, or a list of
         content items; the adapter delegates retrieval to the underlying Solr
         index which performs vector, keyword, or hybrid search as appropriate.
-        The optional `params` dictionary supplies provider-specific query
+        The optional `request.params` dictionary supplies provider-specific query
         options (for example: `k`, `score_threshold`, `reranker_type`,
         `reranker_params`) that control result count, filtering, and reranking.
 
@@ -1288,9 +1283,9 @@ class SolrVectorIOAdapter(
             chunk-window expansions when the vector store is configured to
             expand matches into larger contextual windows.
         """
-        log.info(f"Query chunks request for vector_store_id={vector_store_id}")
-        index = await self._get_and_cache_vector_store_index(vector_store_id)
-        result = await index.query_chunks(query, params)
+        log.info(f"Query chunks request for vector_store_id={request.vector_store_id}")
+        index = await self._get_and_cache_vector_store_index(request.vector_store_id)
+        result = await index.query_chunks(request)
         log.info(f"Query returned {len(result.chunks)} chunks")
         return result
 
