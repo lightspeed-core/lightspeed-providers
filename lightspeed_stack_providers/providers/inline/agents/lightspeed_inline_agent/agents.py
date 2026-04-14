@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 from llama_stack.core.datatypes import AccessRule
 from llama_stack.log import get_logger
@@ -40,7 +41,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         config: LightspeedAgentsImplConfig,
         inference_api: Inference,
         vector_io_api: VectorIO,
-        safety_api: Safety | None,
+        safety_api: Optional[Safety],
         tool_runtime_api: ToolRuntime,
         tool_groups_api: ToolGroups,
         conversations_api: Conversations,
@@ -139,7 +140,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         input: str | list[OpenAIResponseInput],
         tools: list[OpenAIResponseInputTool],
         model: str,
-        conversation: str | None,
+        conversation: Optional[str],
     ) -> list[OpenAIResponseInputTool]:
         """
         Filter tools using LLM based on user input.
@@ -151,7 +152,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             configurations from the Responses API.
             model (str): Model identifier to fall back to when no explicit
             filtering model is configured.
-            conversation (str | None): Conversation ID used to include
+            conversation (Optional[str]): Conversation ID used to include
             previously invoked tools; may be None.
 
         Returns:

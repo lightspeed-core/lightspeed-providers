@@ -362,8 +362,8 @@ class SolrIndex(EmbeddingIndex):
         k: int,
         score_threshold: float,
         reranker_type: str,
-        reranker_params: dict[str, Any] | None = None,
-        filters: Filter | None = None,
+        reranker_params: Optional[dict[str, Any]] = None,
+        filters: Optional[Filter] = None,
     ) -> QueryChunksResponse:
         """
         Hybrid search combining vector similarity and keyword search using Solr's native reranking.
@@ -494,7 +494,7 @@ class SolrIndex(EmbeddingIndex):
 
     async def _fetch_parent_metadata(
         self, client: httpx.AsyncClient, parent_id: str
-    ) -> dict[str, Any] | None:
+    ) -> Optional[dict[str, Any]]:
         """
         Fetch parent document metadata using configured field names.
 
@@ -557,7 +557,7 @@ class SolrIndex(EmbeddingIndex):
         parent_id: str,
         window_start: int,
         window_end: int,
-        boundary_values: dict[str, Any] | None = None,
+        boundary_values: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """
         Fetch chunks within a specified index range for a parent document.
@@ -966,7 +966,7 @@ class SolrIndex(EmbeddingIndex):
         )
         return selected
 
-    def _doc_to_chunk(self, doc: dict[str, Any]) -> Chunk | None:
+    def _doc_to_chunk(self, doc: dict[str, Any]) -> Optional[Chunk]:
         """
         Convert a Solr document dictionary into an EmbeddedChunk suitable for search responses.
 
@@ -974,7 +974,7 @@ class SolrIndex(EmbeddingIndex):
             doc (dict[str, Any]): A Solr document dictionary as returned by a Solr JSON query.
 
         Returns:
-            EmbeddedChunk | None: An EmbeddedChunk populated with `chunk_id`,
+            Optional[EmbeddedChunk]: An EmbeddedChunk populated with `chunk_id`,
             `content`, and `metadata` (including parent/document identifiers
             and any configured family/token fields), with embedding metadata
             (model and dimension) set but an empty `embedding` list; returns
@@ -1076,7 +1076,7 @@ class SolrVectorIOAdapter(
         self,
         config: SolrVectorIOConfig,
         inference_api: Inference,
-        files_api: Files | None = None,
+        files_api: Optional[Files] = None,
     ) -> None:
         """
         Initialize the Solr-backed read-only VectorIO adapter and prepare internal cache/state.
@@ -1086,7 +1086,7 @@ class SolrVectorIOAdapter(
               collection, schema fields, and chunk-window expansion.
             - inference_api (Inference): Inference service used for
               embedding/reranking operations.
-            - files_api (Files | None): Optional file management API used by
+            - files_api (Optional[Files]): Optional file management API used by
               higher-level utilities; may be None.
 
         Notes:
@@ -1239,7 +1239,7 @@ class SolrVectorIOAdapter(
         self,
         vector_store_id: str,
         chunks: list[EmbeddedChunk],
-        ttl_seconds: int | None = None,
+        ttl_seconds: Optional[int] = None,
     ) -> None:
         """Not implemented - this is a read-only provider.
 
@@ -1248,7 +1248,7 @@ class SolrVectorIOAdapter(
         Parameters:
             - vector_store_id (str): Identifier of the target vector store.
             - chunks (list[EmbeddedChunk]): Chunks proposed for insertion.
-            - ttl_seconds (int | None): Optional time-to-live in seconds for
+            - ttl_seconds (Optional[int]): Optional time-to-live in seconds for
               inserted chunks (ignored).
 
         Raises:
