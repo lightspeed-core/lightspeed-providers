@@ -54,7 +54,7 @@ class RedactionShieldConfig(BaseModel):
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
-        Builds a sample run configuration dictionary for redaction rules.
+        Build a sample run configuration dictionary for redaction rules.
 
         Parameters:
             - rules (Optional[list[dict]): Optional list of raw rule mappings

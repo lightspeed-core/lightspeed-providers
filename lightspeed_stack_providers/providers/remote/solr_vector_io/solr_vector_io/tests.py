@@ -48,7 +48,7 @@ EMBEDDING_MODEL = "ibm-granite/granite-embedding-30m-english"
 
 @pytest.fixture
 def config_basic():
-    """Basic configuration without chunk window schema.
+    """Provide basic configuration without chunk window schema.
 
     Create a SolrVectorIOConfig using the module's test constants with no
     chunk-window or persistence enabled.
@@ -70,7 +70,7 @@ def config_basic():
 
 @pytest.fixture
 def config_with_chunk_window():
-    """Configuration with chunk window expansion enabled.
+    """Configure the provider with chunk window expansion enabled.
 
     Builds a SolrVectorIOConfig with chunk-window expansion enabled.
 
@@ -141,7 +141,7 @@ async def adapter_with_chunk_window(config_with_chunk_window):
 
 @pytest.fixture
 async def vector_store_basic(adapter_basic):
-    """Registered vector store with basic config.
+    """Register vector store with basic config.
 
     Register and yield a basic VectorDB named "test-basic-store" for use in tests.
 
@@ -166,7 +166,7 @@ async def vector_store_basic(adapter_basic):
 
 @pytest.fixture
 async def vector_store_chunk_window(adapter_with_chunk_window):
-    """Registered vector store with chunk window config.
+    """Register vector store with chunk window config.
 
     Pytest fixture that registers a VectorDB configured for chunk-window tests and yields it.
 
@@ -202,7 +202,7 @@ def random_embedding():
 
 @pytest.fixture
 def config_with_persistence(tmp_path):
-    """Configuration with persistence enabled using SQLite KV store.
+    """Configure with persistence enabled using SQLite KV store.
 
     Builds a SolrVectorIOConfig with SQLite-backed persistence enabled.
 
@@ -819,7 +819,7 @@ class TestRealEmbeddings:
 
     @pytest.fixture
     def get_embedding(self, embedding_model):
-        """Function to generate embeddings from text.
+        """Generate embeddings from text.
 
         Create a callable that converts input text to a dense embedding vector.
 

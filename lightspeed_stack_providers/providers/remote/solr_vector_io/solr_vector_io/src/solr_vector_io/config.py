@@ -158,7 +158,7 @@ class SolrVectorIOConfig(BaseModel):
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
-        Builds a sample configuration dictionary for a Solr-backed vector I/O provider.
+        Build a sample configuration dictionary for a Solr-backed vector I/O provider.
 
         The returned mapping contains Solr connection and collection
         identifiers, vector/content/id field names, embedding model and
