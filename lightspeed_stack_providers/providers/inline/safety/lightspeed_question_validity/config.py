@@ -1,3 +1,5 @@
+"""Question validity safety provider configuration."""
+
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -43,6 +45,8 @@ please ask me a question related to OpenShift.
 
 
 class QuestionValidityShieldConfig(BaseModel):
+    """Question validity safety provider configuration."""
+
     model_id: Optional[str] = Field(
         default=None,
         description="The model_id to use for the guard",

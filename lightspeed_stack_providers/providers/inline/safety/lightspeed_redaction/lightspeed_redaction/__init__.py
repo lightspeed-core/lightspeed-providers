@@ -1,3 +1,5 @@
+"""Answer redactor provider implementation."""
+
 from typing import Any
 
 from .config import RedactionShieldConfig

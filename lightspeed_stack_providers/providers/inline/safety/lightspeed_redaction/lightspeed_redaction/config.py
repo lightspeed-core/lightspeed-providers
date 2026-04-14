@@ -1,3 +1,5 @@
+"""Answer redactor provider configuration."""
+
 import re
 from typing import Any, Optional, Self
 

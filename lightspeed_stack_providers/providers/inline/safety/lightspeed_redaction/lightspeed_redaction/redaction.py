@@ -1,3 +1,5 @@
+"""Answer redactor provider implementation."""
+
 import logging
 import re
 import uuid
