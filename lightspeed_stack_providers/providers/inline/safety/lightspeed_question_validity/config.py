@@ -65,7 +65,7 @@ class QuestionValidityShieldConfig(BaseModel):
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
-        Builds a sample configuration dictionary for a shield run.
+        Build a sample configuration dictionary for a shield run.
 
         Parameters:
             - model_id (str): Identifier of the model to use; defaults to the

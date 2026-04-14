@@ -38,6 +38,7 @@ OKP_SOURCE = "okp"
 class SolrIndex(EmbeddingIndex):
     """
     Read-only Solr vector index implementation using DenseVectorField and KNN search.
+
     Supports hybrid search using Solr's native query reranking capabilities.
     """
 
@@ -178,7 +179,7 @@ class SolrIndex(EmbeddingIndex):
         score_threshold: float,
     ) -> QueryChunksResponse:
         """
-        Performs vector similarity search using Solr's KNN query.
+        Perform vector similarity search using Solr's KNN query.
 
         Parameters:
             embedding: The query embedding vector
@@ -263,7 +264,7 @@ class SolrIndex(EmbeddingIndex):
         score_threshold: float,
     ) -> QueryChunksResponse:
         """
-        Performs keyword-based search using Solr's text search.
+        Perform keyword-based search using Solr's text search.
 
         Parameters:
             query_string: The text query for keyword search

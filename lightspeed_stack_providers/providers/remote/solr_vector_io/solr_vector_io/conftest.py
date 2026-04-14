@@ -10,6 +10,7 @@ import requests
 def check_solr_running() -> Generator:
     """
     Pre-test check to ensure Solr is running before executing any tests.
+
     Aborts all tests if Solr is not accessible.
     """
     # Import SOLR_URL from test file to avoid duplication

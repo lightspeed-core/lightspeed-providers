@@ -242,9 +242,9 @@ class QuestionValidityRunner:
 
     def build_prompt(self, message: OpenAIUserMessageParam) -> str:
         """
-        Builds the shield prompt.
+        Build the shield prompt.
 
-        Builds the shield prompt by substituting the template variables with
+        Build the shield prompt by substituting the template variables with
         the message content and subject tokens.
 
         Parameters:
