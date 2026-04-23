@@ -29,12 +29,17 @@ from llama_stack_api.vector_stores import VectorStore
 from numpy.typing import NDArray
 
 from .config import ChunkWindowConfig, SolrVectorIOConfig
+from .filter_helpers import build_solr_filter_query
 
 log = get_logger(name=__name__, category="vector_io::solr")
 
 VERSION = "v1"
 VECTOR_DBS_PREFIX = f"vector_stores:solr:{VERSION}::"
 OKP_SOURCE = "okp"
+
+
+# Maintain backward compatibility with private function names
+_build_solr_filter_query = build_solr_filter_query
 
 
 class SolrIndex(EmbeddingIndex):
@@ -179,6 +184,7 @@ class SolrIndex(EmbeddingIndex):
         embedding: NDArray,
         k: int,
         score_threshold: float,
+        filters: Optional[Filter] = None,
     ) -> QueryChunksResponse:
         """
         Perform vector similarity search using Solr's KNN query.
@@ -187,6 +193,7 @@ class SolrIndex(EmbeddingIndex):
             embedding: The query embedding vector
             k: Number of results to return
             score_threshold: Minimum similarity score threshold
+            filters: Optional filters to apply to the search results
 
         Returns:
             QueryChunksResponse with matching chunks and scores
@@ -194,7 +201,7 @@ class SolrIndex(EmbeddingIndex):
         """
         log.info(
             f"Performing vector search: k={k}, score_threshold={score_threshold}, "
-            f"embedding_dim={len(embedding)}"
+            f"embedding_dim={len(embedding)}, filters={filters}"
         )
 
         async with self._create_http_client() as client:
@@ -213,8 +220,21 @@ class SolrIndex(EmbeddingIndex):
                 "wt": "json",
             }
 
-            if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                params["fq"] = self.chunk_window_config.chunk_filter_query
+            # Build combined filter query from static config and dynamic filters
+            chunk_filter = (
+                self.chunk_window_config.chunk_filter_query
+                if self.chunk_window_config
+                else None
+            )
+            combined_filter = _build_solr_filter_query(chunk_filter, filters)
+            if combined_filter:
+                params["fq"] = combined_filter
+                log.info(f"Applying filter query (fq): {combined_filter}")
+            else:
+                log.info("No filter query applied (fq parameter not set)")
+
+            # Log presence of fq in params
+            log.info(f"Solr request has fq parameter: {'fq' in params}")
 
             try:
                 response = await client.post(
@@ -264,6 +284,7 @@ class SolrIndex(EmbeddingIndex):
         query_string: str,
         k: int,
         score_threshold: float,
+        filters: Optional[Filter] = None,
     ) -> QueryChunksResponse:
         """
         Perform keyword-based search using Solr's text search.
@@ -272,6 +293,7 @@ class SolrIndex(EmbeddingIndex):
             query_string: The text query for keyword search
             k: Number of results to return
             score_threshold: Minimum similarity score threshold
+            filters: Optional filters to apply to the search results
 
         Returns:
             QueryChunksResponse with matching chunks and scores
@@ -279,7 +301,7 @@ class SolrIndex(EmbeddingIndex):
         """
         log.info(
             f"Performing keyword search: query='{query_string}', k={k}, "
-            f"score_threshold={score_threshold}"
+            f"score_threshold={score_threshold}, filters={filters}"
         )
 
         # Replace ? and * because when the edismax text parser is enabled, they
@@ -294,12 +316,21 @@ class SolrIndex(EmbeddingIndex):
                 "wt": "json",
             }
 
-            # Add filter query for chunk documents if schema is configured
-            if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                solr_params["fq"] = self.chunk_window_config.chunk_filter_query
-                log.info(f"Applying chunk filter: {
-                        self.chunk_window_config.chunk_filter_query
-                    }")
+            # Build combined filter query from static config and dynamic filters
+            chunk_filter = (
+                self.chunk_window_config.chunk_filter_query
+                if self.chunk_window_config
+                else None
+            )
+            combined_filter = _build_solr_filter_query(chunk_filter, filters)
+            if combined_filter:
+                solr_params["fq"] = combined_filter
+                log.info(f"Applying filter query (fq): {combined_filter}")
+            else:
+                log.info("No filter query applied (fq parameter not set)")
+
+            # Log presence of fq in params
+            log.info(f"Solr request has fq parameter: {'fq' in solr_params}")
 
             try:
                 log.info("Sending keyword query to Solr")
@@ -378,6 +409,7 @@ class SolrIndex(EmbeddingIndex):
             - score_threshold: Minimum similarity score threshold
             - reranker_type: Type of reranker (ignored, uses Solr's native capabilities)
             - reranker_params: Parameters for reranking (e.g., boost values)
+            - filters: Optional filters to apply to the search results
 
         Returns:
             QueryChunksResponse with combined results
@@ -396,6 +428,7 @@ class SolrIndex(EmbeddingIndex):
         log.info(
             f"Performing hybrid search: query='{query_string}', k={k}, "
             f"score_threshold={score_threshold}, vector_boost={vector_boost}, "
+            f"filters={filters}"
         )
 
         async with self._create_http_client() as client:
@@ -416,12 +449,21 @@ class SolrIndex(EmbeddingIndex):
                 "wt": "json",
             }
 
-            # Add filter query for chunk documents if schema is configured
-            if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                data_params["fq"] = self.chunk_window_config.chunk_filter_query
-                log.info(f"Applying chunk filter: {
-                        self.chunk_window_config.chunk_filter_query
-                    }")
+            # Build combined filter query from static config and dynamic filters
+            chunk_filter = (
+                self.chunk_window_config.chunk_filter_query
+                if self.chunk_window_config
+                else None
+            )
+            combined_filter = _build_solr_filter_query(chunk_filter, filters)
+            if combined_filter:
+                data_params["fq"] = combined_filter
+                log.info(f"Applying filter query (fq): {combined_filter}")
+            else:
+                log.info("No filter query applied (fq parameter not set)")
+
+            # Log presence of fq in params
+            log.info(f"Solr request has fq parameter: {'fq' in data_params}")
 
             try:
                 log.info(
@@ -442,8 +484,20 @@ class SolrIndex(EmbeddingIndex):
                 num_docs = data.get("response", {}).get("numFound", 0)
                 log.info(f"Solr returned {num_docs} documents for hybrid search")
 
-                for doc in data.get("response", {}).get("docs", []):
+                for idx, doc in enumerate(data.get("response", {}).get("docs", [])):
                     score = float(doc.get("score", 0))
+
+                    # Log first few documents for debugging filters
+                    if filters and idx < 3:
+                        log.info(f"Doc {idx} id={doc.get('id')}: score={score}")
+                        log.info(f"Doc {idx} available fields: {list(doc.keys())[:10]}")
+                        # Try to log the filter field value
+                        from llama_stack_api import ComparisonFilter
+
+                        if isinstance(filters, ComparisonFilter):
+                            filter_key = filters.key
+                            filter_value = doc.get(filter_key, "FIELD_NOT_FOUND")
+                            log.info(f"Doc {idx} {filter_key}={filter_value}")
 
                     # Apply score threshold
                     if score < score_threshold:
