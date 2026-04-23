@@ -8,6 +8,7 @@ A read-only vector_io provider implementation for llama-stack that integrates wi
 - **Vector similarity search** using Solr's KNN query parser
 - **Keyword search** using Solr's text search
 - **Hybrid search** combining vector and keyword search with Solr's native reranking
+- **Dynamic metadata filtering** using structured filter objects with comparison and compound operators
 - **Chunk window expansion** for retrieving extended context around matched chunks
 - **Schema-agnostic** field mapping for flexible Solr schema support
 - **OpenAI-compatible API** for vector store operations (read-only methods)
@@ -192,6 +193,119 @@ params = {
     }
 }
 ```
+
+## Dynamic Metadata Filtering
+
+The provider supports dynamic filtering of search results by metadata fields using structured filter objects. Filters are translated to Solr's filter query (`fq`) syntax and combined with the static `chunk_filter_query` from configuration.
+
+### Filter Types
+
+**Comparison Filters:**
+- `eq` - Equal to
+- `ne` - Not equal to  
+- `in` - Value in list
+- `nin` - Value not in list
+
+> **Note:** Range operators (`gt`, `gte`, `lt`, `lte`) are not supported as they use lexicographic comparison on string fields, which can produce unexpected results.
+
+**Compound Filters:**
+- `and` - All filters must match
+- `or` - Any filter must match
+
+### Usage Examples
+
+**Simple equality filter:**
+
+```python
+from llama_stack_api import ComparisonFilter
+
+response = await adapter.query_chunks(
+    vector_store_id="my-store",
+    query="How to install ansible?",
+    params={
+        "k": 5,
+        "filters": ComparisonFilter(
+            type="eq",
+            key="platform",
+            value="ansible"
+        )
+    }
+)
+# Solr query: fq=(is_chunk:true AND platform:"ansible")
+```
+
+**Multiple values with 'in' filter:**
+
+```python
+response = await adapter.query_chunks(
+    vector_store_id="my-store",
+    query="Security best practices",
+    params={
+        "k": 5,
+        "filters": ComparisonFilter(
+            type="in",
+            key="platform",
+            value=["openshift", "kubernetes", "ansible"]
+        )
+    }
+)
+# Solr query: fq=(is_chunk:true AND platform:("openshift" OR "kubernetes" OR "ansible"))
+```
+
+**Compound filters (AND/OR):**
+
+```python
+from llama_stack_api import CompoundFilter, ComparisonFilter
+
+response = await adapter.query_chunks(
+    vector_store_id="my-store",
+    query="Advanced configuration",
+    params={
+        "k": 5,
+        "filters": CompoundFilter(
+            type="and",
+            filters=[
+                ComparisonFilter(type="eq", key="platform", value="openshift"),
+                ComparisonFilter(type="ne", key="status", value="archived")
+            ]
+        )
+    }
+)
+# Solr query: fq=(is_chunk:true AND (platform:"openshift" AND -status:"archived"))
+```
+
+**Nested compound filters:**
+
+```python
+response = await adapter.query_chunks(
+    vector_store_id="my-store",
+    query="Troubleshooting guide",
+    params={
+        "k": 5,
+        "filters": CompoundFilter(
+            type="and",
+            filters=[
+                ComparisonFilter(type="eq", key="doc_type", value="guide"),
+                CompoundFilter(
+                    type="or",
+                    filters=[
+                        ComparisonFilter(type="eq", key="platform", value="openshift"),
+                        ComparisonFilter(type="eq", key="platform", value="ansible")
+                    ]
+                )
+            ]
+        )
+    }
+)
+# Solr query: fq=(is_chunk:true AND (doc_type:"guide" AND (platform:"openshift" OR platform:"ansible")))
+```
+
+### Filter Behavior
+
+- **Static filters preserved:** The configured `chunk_filter_query` (e.g., `"is_chunk:true"`) is always applied to maintain proper chunk/parent document separation
+- **Dynamic filters added:** Request filters are combined with static filters using AND logic
+- **String escaping:** Special Solr characters in filter values are automatically escaped
+- **Works with all search types:** Filters apply to vector, keyword, and hybrid search
 
 ## Limitations
 
