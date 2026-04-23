@@ -1,5 +1,6 @@
 """Solr vector IO provider implementation."""
 
+import re
 from typing import Any, Optional
 
 import httpx
@@ -13,7 +14,11 @@ from llama_stack.providers.utils.memory.vector_store import (
     EmbeddingIndex,
     VectorStoreWithIndex,
 )
-from llama_stack.providers.utils.vector_io.filters import Filter
+from llama_stack.providers.utils.vector_io.filters import (
+    ComparisonFilter,
+    CompoundFilter,
+    Filter,
+)
 from llama_stack_api.common.errors import VectorStoreNotFoundError
 from llama_stack_api.datatypes import VectorStoresProtocolPrivate
 from llama_stack_api.files import Files
@@ -35,6 +40,181 @@ log = get_logger(name=__name__, category="vector_io::solr")
 VERSION = "v1"
 VECTOR_DBS_PREFIX = f"vector_stores:solr:{VERSION}::"
 OKP_SOURCE = "okp"
+
+# Pattern for valid Solr field names: start with letter or underscore,
+# followed by letters, digits, underscores, dots, or hyphens
+_FIELD_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
+
+
+def _validate_field_name(field_name: str) -> None:
+    """
+    Validate that a field name is safe for use in Solr queries.
+
+    Parameters:
+        field_name: The field name to validate.
+
+    Raises:
+        ValueError: If the field name contains invalid characters.
+    """
+    if not _FIELD_NAME_PATTERN.match(field_name):
+        raise ValueError(
+            f"Invalid field name '{field_name}': must start with a letter or "
+            f"underscore and contain only letters, digits, underscores, dots, or hyphens"
+        )
+
+
+def _escape_solr_value(value: str) -> str:
+    """
+    Escape special characters in Solr query string values.
+
+    Parameters:
+        value: The string value to escape.
+
+    Returns:
+        Escaped string safe for use in Solr queries.
+    """
+    # Backslash must be escaped first to avoid double-escaping
+    value = value.replace("\\", "\\\\")
+    # Escape double quotes for quoted field values
+    return value.replace('"', '\\"')
+
+
+def _format_solr_value(value: Any) -> str:
+    """
+    Format a value for use in Solr queries.
+
+    Parameters:
+        value: The value to format.
+
+    Returns:
+        Formatted value string.
+    """
+    if isinstance(value, str):
+        escaped_value = _escape_solr_value(value)
+        return f'"{escaped_value}"'
+    return str(value)
+
+
+def _handle_in_filter(key: str, value: Any, negate: bool = False) -> str:
+    """
+    Handle 'in' and 'nin' filters.
+
+    Parameters:
+        key: Field name.
+        value: List of values.
+        negate: Whether to negate the filter.
+
+    Returns:
+        Solr filter query string.
+
+    Raises:
+        ValueError: If value is not a list or field name is invalid.
+    """
+    # Validate field name for security
+    _validate_field_name(key)
+
+    if not isinstance(value, list):
+        op_name = "nin" if negate else "in"
+        raise ValueError(f"'{op_name}' filter requires a list value, got {type(value)}")
+
+    if not value:
+        return "*:*" if negate else "*:* NOT *:*"
+
+    or_parts = [_format_solr_value(v) for v in value]
+    filter_expr = f"{key}:({' OR '.join(or_parts)})"
+    return f"-{filter_expr}" if negate else filter_expr
+
+
+def _filter_to_solr_fq(filter_obj: Filter) -> str:
+    """
+    Convert llama-stack Filter to Solr filter query (fq) syntax.
+
+    Translates ComparisonFilter and CompoundFilter objects to Solr's
+    native filter query language for metadata-based filtering.
+
+    Parameters:
+        filter_obj: Filter object (ComparisonFilter or CompoundFilter).
+
+    Returns:
+        Solr filter query string.
+
+    Raises:
+        ValueError: If filter type is unsupported or value type is invalid.
+    """
+    if isinstance(filter_obj, ComparisonFilter):
+        key = filter_obj.key
+        value = filter_obj.value
+        filter_type = filter_obj.type
+
+        # Validate field name for security
+        _validate_field_name(key)
+
+        if filter_type == "eq":
+            return f"{key}:{_format_solr_value(value)}"
+        if filter_type == "ne":
+            return f"-{key}:{_format_solr_value(value)}"
+        if filter_type == "in":
+            return _handle_in_filter(key, value, negate=False)
+        if filter_type == "nin":
+            return _handle_in_filter(key, value, negate=True)
+
+        raise ValueError(
+            f"Unsupported comparison filter type '{filter_type}'. "
+            f"Solr only supports: eq, ne, in, nin"
+        )
+
+    if isinstance(filter_obj, CompoundFilter):
+        filter_type = filter_obj.type
+        sub_filters = filter_obj.filters
+
+        if not sub_filters:
+            return "*:*"
+
+        # Recursively convert sub-filters
+        converted_filters = [_filter_to_solr_fq(f) for f in sub_filters]
+
+        if filter_type == "and":
+            return "(" + " AND ".join(converted_filters) + ")"
+        if filter_type == "or":
+            return "(" + " OR ".join(converted_filters) + ")"
+
+        raise ValueError(f"Unsupported compound filter type: {filter_type}")
+
+    raise ValueError(f"Unsupported filter object type: {type(filter_obj)}")
+
+
+def _build_solr_filter_query(
+    chunk_filter_query: Optional[str], filters: Optional[Filter]
+) -> Optional[str]:
+    """
+    Build Solr filter query combining static chunk filter and dynamic filters.
+
+    Parameters:
+        chunk_filter_query: Static filter query from config (e.g., "is_chunk:true").
+        filters: Dynamic filters from the request.
+
+    Returns:
+        Combined filter query string, or None if no filters.
+    """
+    filter_parts: list[str] = []
+
+    # Add static chunk filter if configured
+    if chunk_filter_query:
+        filter_parts.append(chunk_filter_query)
+
+    # Add dynamic filters if provided
+    if filters:
+        dynamic_fq = _filter_to_solr_fq(filters)
+        filter_parts.append(dynamic_fq)
+
+    if not filter_parts:
+        return None
+
+    # Combine with AND if multiple filters
+    if len(filter_parts) == 1:
+        return filter_parts[0]
+
+    return "(" + " AND ".join(filter_parts) + ")"
 
 
 class SolrIndex(EmbeddingIndex):
@@ -179,6 +359,7 @@ class SolrIndex(EmbeddingIndex):
         embedding: NDArray,
         k: int,
         score_threshold: float,
+        filters: Optional[Filter] = None,
     ) -> QueryChunksResponse:
         """
         Perform vector similarity search using Solr's KNN query.
@@ -187,6 +368,7 @@ class SolrIndex(EmbeddingIndex):
             embedding: The query embedding vector
             k: Number of results to return
             score_threshold: Minimum similarity score threshold
+            filters: Optional filters to apply to the search results
 
         Returns:
             QueryChunksResponse with matching chunks and scores
@@ -213,8 +395,16 @@ class SolrIndex(EmbeddingIndex):
                 "wt": "json",
             }
 
-            if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                params["fq"] = self.chunk_window_config.chunk_filter_query
+            # Build combined filter query from static config and dynamic filters
+            chunk_filter = (
+                self.chunk_window_config.chunk_filter_query
+                if self.chunk_window_config
+                else None
+            )
+            combined_filter = _build_solr_filter_query(chunk_filter, filters)
+            if combined_filter:
+                params["fq"] = combined_filter
+                log.debug(f"Applying filter query: {combined_filter}")
 
             try:
                 response = await client.post(
@@ -264,6 +454,7 @@ class SolrIndex(EmbeddingIndex):
         query_string: str,
         k: int,
         score_threshold: float,
+        filters: Optional[Filter] = None,
     ) -> QueryChunksResponse:
         """
         Perform keyword-based search using Solr's text search.
@@ -272,6 +463,7 @@ class SolrIndex(EmbeddingIndex):
             query_string: The text query for keyword search
             k: Number of results to return
             score_threshold: Minimum similarity score threshold
+            filters: Optional filters to apply to the search results
 
         Returns:
             QueryChunksResponse with matching chunks and scores
@@ -294,12 +486,16 @@ class SolrIndex(EmbeddingIndex):
                 "wt": "json",
             }
 
-            # Add filter query for chunk documents if schema is configured
-            if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                solr_params["fq"] = self.chunk_window_config.chunk_filter_query
-                log.info(f"Applying chunk filter: {
-                        self.chunk_window_config.chunk_filter_query
-                    }")
+            # Build combined filter query from static config and dynamic filters
+            chunk_filter = (
+                self.chunk_window_config.chunk_filter_query
+                if self.chunk_window_config
+                else None
+            )
+            combined_filter = _build_solr_filter_query(chunk_filter, filters)
+            if combined_filter:
+                solr_params["fq"] = combined_filter
+                log.debug(f"Applying filter query: {combined_filter}")
 
             try:
                 log.info("Sending keyword query to Solr")
@@ -378,6 +574,7 @@ class SolrIndex(EmbeddingIndex):
             - score_threshold: Minimum similarity score threshold
             - reranker_type: Type of reranker (ignored, uses Solr's native capabilities)
             - reranker_params: Parameters for reranking (e.g., boost values)
+            - filters: Optional filters to apply to the search results
 
         Returns:
             QueryChunksResponse with combined results
@@ -416,12 +613,16 @@ class SolrIndex(EmbeddingIndex):
                 "wt": "json",
             }
 
-            # Add filter query for chunk documents if schema is configured
-            if self.chunk_window_config and self.chunk_window_config.chunk_filter_query:
-                data_params["fq"] = self.chunk_window_config.chunk_filter_query
-                log.info(f"Applying chunk filter: {
-                        self.chunk_window_config.chunk_filter_query
-                    }")
+            # Build combined filter query from static config and dynamic filters
+            chunk_filter = (
+                self.chunk_window_config.chunk_filter_query
+                if self.chunk_window_config
+                else None
+            )
+            combined_filter = _build_solr_filter_query(chunk_filter, filters)
+            if combined_filter:
+                data_params["fq"] = combined_filter
+                log.debug(f"Applying filter query: {combined_filter}")
 
             try:
                 log.info(
