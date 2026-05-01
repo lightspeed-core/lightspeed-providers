@@ -237,15 +237,16 @@ class TestBuildSolrFilterQuery:
         assert result == 'product:"openshift_container_platform"'
 
     def test_combined_static_and_dynamic_filters(self) -> None:
-        """Test combining static and dynamic filters with AND."""
+        """Test combining static and dynamic filters returns list for multiple fq params."""
         filter_obj = ComparisonFilter(
             type="eq", key="product", value="openshift_container_platform"
         )
         result = _build_solr_filter_query("is_chunk:true", filter_obj)
-        assert result == '(is_chunk:true AND product:"openshift_container_platform")'
+        # Multiple filters should return a list (Solr will AND them implicitly)
+        assert result == ["is_chunk:true", 'product:"openshift_container_platform"']
 
     def test_combined_with_compound_filter(self) -> None:
-        """Test combining static filter with compound dynamic filter."""
+        """Test combining static filter with compound dynamic filter returns list."""
         filter_obj = CompoundFilter(
             type="and",
             filters=[
@@ -256,8 +257,9 @@ class TestBuildSolrFilterQuery:
             ],
         )
         result = _build_solr_filter_query("is_chunk:true", filter_obj)
-        expected = (
-            '(is_chunk:true AND '
-            '(product:"openshift_container_platform" AND -status:"archived"))'
-        )
+        # Multiple filters should return a list
+        expected = [
+            "is_chunk:true",
+            '(product:"openshift_container_platform" AND -status:"archived")',
+        ]
         assert result == expected

@@ -13,7 +13,7 @@ from llama_stack.providers.utils.memory.vector_store import (
     EmbeddingIndex,
     VectorStoreWithIndex,
 )
-from llama_stack.providers.utils.vector_io.filters import Filter
+from llama_stack.providers.utils.vector_io.filters import ComparisonFilter, Filter
 from llama_stack_api.common.errors import VectorStoreNotFoundError
 from llama_stack_api.datatypes import VectorStoresProtocolPrivate
 from llama_stack_api.files import Files
@@ -201,8 +201,9 @@ class SolrIndex(EmbeddingIndex):
         """
         log.info(
             f"Performing vector search: k={k}, score_threshold={score_threshold}, "
-            f"embedding_dim={len(embedding)}, filters={filters}"
+            f"embedding_dim={len(embedding)}, filters_present={bool(filters)}"
         )
+        log.debug(f"Vector search filters: {filters}")
 
         async with self._create_http_client() as client:
             # Solr KNN query using the dense vector field
@@ -229,12 +230,16 @@ class SolrIndex(EmbeddingIndex):
             combined_filter = _build_solr_filter_query(chunk_filter, filters)
             if combined_filter:
                 params["fq"] = combined_filter
-                log.info(f"Applying filter query (fq): {combined_filter}")
+                if isinstance(combined_filter, list):
+                    log.info(
+                        f"Applying {len(combined_filter)} filter queries (multiple fq params)"
+                    )
+                    log.debug(f"Filter queries: {combined_filter}")
+                else:
+                    log.info("Applying 1 filter query (single fq param)")
+                    log.debug(f"Filter query: {combined_filter}")
             else:
                 log.info("No filter query applied (fq parameter not set)")
-
-            # Log presence of fq in params
-            log.info(f"Solr request has fq parameter: {'fq' in params}")
 
             try:
                 response = await client.post(
@@ -301,8 +306,9 @@ class SolrIndex(EmbeddingIndex):
         """
         log.info(
             f"Performing keyword search: query='{query_string}', k={k}, "
-            f"score_threshold={score_threshold}, filters={filters}"
+            f"score_threshold={score_threshold}, filters_present={bool(filters)}"
         )
+        log.debug(f"Keyword search filters: {filters}")
 
         # Replace ? and * because when the edismax text parser is enabled, they
         # are evaluated as lucene wildcards
@@ -325,12 +331,16 @@ class SolrIndex(EmbeddingIndex):
             combined_filter = _build_solr_filter_query(chunk_filter, filters)
             if combined_filter:
                 solr_params["fq"] = combined_filter
-                log.info(f"Applying filter query (fq): {combined_filter}")
+                if isinstance(combined_filter, list):
+                    log.info(
+                        f"Applying {len(combined_filter)} filter queries (multiple fq params)"
+                    )
+                    log.debug(f"Filter queries: {combined_filter}")
+                else:
+                    log.info("Applying 1 filter query (single fq param)")
+                    log.debug(f"Filter query: {combined_filter}")
             else:
                 log.info("No filter query applied (fq parameter not set)")
-
-            # Log presence of fq in params
-            log.info(f"Solr request has fq parameter: {'fq' in solr_params}")
 
             try:
                 log.info("Sending keyword query to Solr")
@@ -428,8 +438,9 @@ class SolrIndex(EmbeddingIndex):
         log.info(
             f"Performing hybrid search: query='{query_string}', k={k}, "
             f"score_threshold={score_threshold}, vector_boost={vector_boost}, "
-            f"filters={filters}"
+            f"filters_present={bool(filters)}"
         )
+        log.debug(f"Hybrid search filters: {filters}")
 
         async with self._create_http_client() as client:
             # Use POST to avoid URI length limits with large embeddings
@@ -458,12 +469,16 @@ class SolrIndex(EmbeddingIndex):
             combined_filter = _build_solr_filter_query(chunk_filter, filters)
             if combined_filter:
                 data_params["fq"] = combined_filter
-                log.info(f"Applying filter query (fq): {combined_filter}")
+                if isinstance(combined_filter, list):
+                    log.info(
+                        f"Applying {len(combined_filter)} filter queries (multiple fq params)"
+                    )
+                    log.debug(f"Filter queries: {combined_filter}")
+                else:
+                    log.info("Applying 1 filter query (single fq param)")
+                    log.debug(f"Filter query: {combined_filter}")
             else:
                 log.info("No filter query applied (fq parameter not set)")
-
-            # Log presence of fq in params
-            log.info(f"Solr request has fq parameter: {'fq' in data_params}")
 
             try:
                 log.info(
@@ -492,8 +507,6 @@ class SolrIndex(EmbeddingIndex):
                         log.info(f"Doc {idx} id={doc.get('id')}: score={score}")
                         log.info(f"Doc {idx} available fields: {list(doc.keys())[:10]}")
                         # Try to log the filter field value
-                        from llama_stack_api import ComparisonFilter
-
                         if isinstance(filters, ComparisonFilter):
                             filter_key = filters.key
                             filter_value = doc.get(filter_key, "FIELD_NOT_FOUND")

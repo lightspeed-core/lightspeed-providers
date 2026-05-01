@@ -183,16 +183,21 @@ def filter_to_solr_fq(filter_obj: Filter) -> str:
 
 def build_solr_filter_query(
     chunk_filter_query: Optional[str], filters: Optional[Filter]
-) -> Optional[str]:
+) -> Optional[list[str] | str]:
     """
     Build Solr filter query combining static chunk filter and dynamic filters.
+
+    Solr expects multiple fq parameters (implicitly ANDed) rather than a single
+    combined boolean expression. Returns a list when multiple filters exist,
+    or a single string for backward compatibility with single filters.
 
     Parameters:
         chunk_filter_query: Static filter query from config (e.g., "is_chunk:true").
         filters: Dynamic filters from the request.
 
     Returns:
-        Combined filter query string, or None if no filters.
+        List of filter query strings (for multiple fq parameters),
+        single filter string, or None if no filters.
     """
     filter_parts: list[str] = []
 
@@ -208,8 +213,9 @@ def build_solr_filter_query(
     if not filter_parts:
         return None
 
-    # Combine with AND if multiple filters
+    # Return list for multiple filters (Solr will AND them implicitly)
+    # Return single string for backward compatibility
     if len(filter_parts) == 1:
         return filter_parts[0]
 
-    return "(" + " AND ".join(filter_parts) + ")"
+    return filter_parts
