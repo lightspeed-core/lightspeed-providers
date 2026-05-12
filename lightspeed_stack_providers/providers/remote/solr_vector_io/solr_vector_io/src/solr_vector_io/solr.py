@@ -342,6 +342,8 @@ class SolrIndex(EmbeddingIndex):
             else:
                 log.info("No filter query applied (fq parameter not set)")
 
+            log.debug(f"Final fq param in request: {solr_params.get('fq')}")
+
             try:
                 log.info("Sending keyword query to Solr")
                 response = await client.get(
@@ -479,6 +481,8 @@ class SolrIndex(EmbeddingIndex):
                     log.debug(f"Filter query: {combined_filter}")
             else:
                 log.info("No filter query applied (fq parameter not set)")
+
+            log.debug(f"Final fq param in request: {data_params.get('fq')}")
 
             try:
                 log.info(
