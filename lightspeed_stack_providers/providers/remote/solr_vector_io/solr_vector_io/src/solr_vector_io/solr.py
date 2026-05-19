@@ -593,8 +593,6 @@ class SolrIndex(EmbeddingIndex):
             fields.append(schema.parent_content_id_field)
         if schema.parent_content_title_field:
             fields.append(schema.parent_content_title_field)
-        if schema.parent_content_url_field:
-            fields.append(schema.parent_content_url_field)
 
         try:
             log.info(f"Fetching parent metadata for parent_id={parent_id}")
@@ -932,11 +930,6 @@ class SolrIndex(EmbeddingIndex):
                     if title:
                         expanded_metadata["title"] = title
 
-                if schema.parent_content_url_field:
-                    url = parent_doc.get(schema.parent_content_url_field)
-                    if url:
-                        expanded_metadata["reference_url"] = url
-
                 expanded_metadata["source"] = OKP_SOURCE
 
                 # Create expanded chunk
@@ -1095,8 +1088,20 @@ class SolrIndex(EmbeddingIndex):
             # helpful extras if present
             if "title" in doc:
                 metadata["title"] = doc["title"]
-            if "reference_url" in doc:
-                metadata["reference_url"] = doc["reference_url"]
+            if (
+                self.chunk_window_config
+                and self.chunk_window_config.chunk_online_source_url_field
+            ):
+                url_field = self.chunk_window_config.chunk_online_source_url_field
+                if url_field in doc:
+                    metadata["reference_url"] = doc[url_field]
+            if (
+                self.chunk_window_config
+                and self.chunk_window_config.chunk_source_path_field
+            ):
+                path_field = self.chunk_window_config.chunk_source_path_field
+                if path_field in doc:
+                    metadata["source_path"] = doc[path_field]
             if "resourceName" in doc:
                 metadata["resourceName"] = doc["resourceName"]
             if "chunk_index" in doc:

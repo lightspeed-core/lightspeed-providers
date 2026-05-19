@@ -35,11 +35,12 @@ def chunk_window_config():
         chunk_index_field="chunk_index",
         chunk_content_field="chunk",
         chunk_token_count_field="num_tokens",
+        chunk_online_source_url_field="online_source_url",
+        chunk_source_path_field="source_path",
         parent_total_chunks_field="total_chunks",
         parent_total_tokens_field="total_tokens",
         parent_content_id_field="doc_id",
         parent_content_title_field="title",
-        parent_content_url_field="reference_url",
     )
 
 
@@ -128,12 +129,19 @@ class TestOptionalFields:
         assert chunk is not None
         assert "title" not in chunk.metadata
 
-    def test_reference_url_included_when_present(self, solr_index):
+    def test_online_source_url_mapped_to_reference_url(self, solr_index):
         chunk = solr_index._doc_to_chunk(
-            _basic_doc(reference_url="https://example.com/doc")
+            _basic_doc(online_source_url="https://example.com/doc#chunk1")
         )
         assert chunk is not None
-        assert chunk.metadata["reference_url"] == "https://example.com/doc"
+        assert chunk.metadata["reference_url"] == "https://example.com/doc#chunk1"
+
+    def test_source_path_included_when_present(self, solr_index):
+        chunk = solr_index._doc_to_chunk(
+            _basic_doc(source_path="/docs/install.html#step-3")
+        )
+        assert chunk is not None
+        assert chunk.metadata["source_path"] == "/docs/install.html#step-3"
 
     def test_token_count_included_when_present(self, solr_index):
         chunk = solr_index._doc_to_chunk(_basic_doc(num_tokens=42))

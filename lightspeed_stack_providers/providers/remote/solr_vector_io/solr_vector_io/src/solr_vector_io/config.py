@@ -59,9 +59,13 @@ class ChunkWindowConfig(BaseModel):
         default=None,
         description="Field name for content title in parent documents (e.g. 'title')",
     )
-    parent_content_url_field: Optional[str] = Field(
+    chunk_online_source_url_field: Optional[str] = Field(
         default=None,
-        description="Field name for content URL in parent documents (e.g. 'reference_url')",
+        description="Solr field name for per-chunk online URL (e.g. 'online_source_url')",
+    )
+    chunk_source_path_field: Optional[str] = Field(
+        default=None,
+        description="Solr field name for per-chunk offline relative path (e.g. 'source_path')",
     )
 
     # ---- Query filters ----
@@ -202,7 +206,8 @@ class SolrVectorIOConfig(BaseModel):
             #   "parent_total_tokens_field": "total_tokens",
             #   "parent_content_id_field": "doc_id",
             #   "parent_content_title_field": "title",
-            #   "parent_content_url_field": "reference_url",
+            #   "chunk_online_source_url_field": "online_source_url",
+            #   "chunk_source_path_field": "source_path",
             #   "chunk_filter_query": "is_chunk:true",
             #   "family_token_budget": 3072,
             #   "orphan_token_budget": 1536,
