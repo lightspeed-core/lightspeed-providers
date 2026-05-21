@@ -1,7 +1,7 @@
 """Inline agent Lightspeed provider implementation."""
 
 import json
-from typing import Optional
+from typing import Any, Optional
 
 from llama_stack.core.datatypes import AccessRule
 from llama_stack.log import get_logger
@@ -103,7 +103,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         # Apply tool filtering if enabled and tools are provided
         filtered_tools = request.tools
-        if request.tools and self.config.tools_filter.enabled:
+        if request.tools and self.config.tools_filter and self.config.tools_filter.enabled:
             filtered_tools = await self._filter_tools_for_response(
                 input=request.input,
                 tools=request.tools,
@@ -436,7 +436,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         return tool_defs, tool_to_endpoint
 
     async def _get_mcp_tool_definitions(
-        self, mcp_tool_config: dict
+        self, mcp_tool_config: dict[str, str]
     ) -> list[dict[str, str]]:
         """
         Get tool definitions from an MCP server.
@@ -456,7 +456,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             If the MCP query fails, returns a fallback single-item list with a
             best-effort `tool_name` and `description`.
         """
-        tool_defs = []
+        tool_defs: list[dict[str, Any]] = []
 
         try:
             server_url = mcp_tool_config.get("server_url")
@@ -524,7 +524,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         return tool_defs
 
-    def _get_tool_name_from_config(self, tool_dict: dict, index: int) -> str:
+    def _get_tool_name_from_config(self, tool_dict: dict[str, str], index: int) -> str:
         """
         Extract a consistent tool name from a tool configuration.
 
