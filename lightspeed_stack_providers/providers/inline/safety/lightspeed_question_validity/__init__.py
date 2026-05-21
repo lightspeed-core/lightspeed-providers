@@ -1,16 +1,21 @@
 """Question validity safety provider implementation."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
     QuestionValidityShieldConfig,
 )
 
+if TYPE_CHECKING:
+    from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (
+        QuestionValidityShieldImpl,
+    )
+
 
 async def get_provider_impl(
     config: QuestionValidityShieldConfig,
     deps: dict[str, Any],
-):
+) -> "QuestionValidityShieldImpl":
     """
     Load and initialize a QuestionValidityShield implementation for the provided configuration.
 
