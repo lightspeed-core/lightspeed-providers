@@ -103,7 +103,11 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         # Apply tool filtering if enabled and tools are provided
         filtered_tools = request.tools
-        if request.tools and self.config.tools_filter and self.config.tools_filter.enabled:
+        if (
+            request.tools
+            and self.config.tools_filter
+            and self.config.tools_filter.enabled
+        ):
             filtered_tools = await self._filter_tools_for_response(
                 input=request.input,
                 tools=request.tools,
