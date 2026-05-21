@@ -1,14 +1,17 @@
 """Answer redactor provider implementation."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .config import RedactionShieldConfig
+
+if TYPE_CHECKING:
+    from .redaction import RedactionShieldImpl
 
 
 async def get_provider_impl(
     config: RedactionShieldConfig,
     deps: dict[str, Any],
-):
+) -> "RedactionShieldImpl":
     """
     Create and initialize a RedactionShield provider implementation from the given config and deps.
 
@@ -29,6 +32,6 @@ async def get_provider_impl(
     assert isinstance(
         config, RedactionShieldConfig
     ), f"Unexpected config type: {type(config)}"
-    impl = RedactionShieldImpl(config, deps)
+    impl = RedactionShieldImpl(config, deps)  # pyright: ignore[reportAbstractUsage]
     await impl.initialize()
     return impl

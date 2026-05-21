@@ -51,7 +51,7 @@ class RedactionShieldConfig(BaseModel):
     @classmethod
     def sample_run_config(
         cls,
-        rules: Optional[list[dict]] = None,
+        rules: Optional[list[dict[Any, Any]]] = None,
         case_sensitive: bool = False,
         **kwargs: Any,
     ) -> dict[str, Any]:
