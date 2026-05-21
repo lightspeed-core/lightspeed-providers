@@ -53,6 +53,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
             - deps (dict[str, Any]): Optional dependency map used by the
               implementation (services or helpers).
         """
+        self.deps = deps
         self.config: RedactionShieldConfig = config
         self.compiled_rules: list[dict[str, Any]] = self._compile_rules()
 
@@ -113,6 +114,19 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
             implementation is a no-op and does not persist or modify the
             shield.
         """
+        _ = shield
+
+    async def unregister_shield(self, identifier: str) -> None:
+        """Unregister a shield.
+
+        Register a shield instance with this redaction implementation.
+
+        Parameters:
+            shield (Shield): Shield instance to register. Current
+            implementation is a no-op and does not persist or modify the
+            shield.
+        """
+        _ = identifier
 
     async def run_shield(
         self,
@@ -189,7 +203,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
                         categories={},
                         category_scores={},
                         metadata={"contains_sensitive_data": False},
-                    )
+                    )  # pyright: ignore[reportCallIssue]
                 )
 
         return ModerationObject(
