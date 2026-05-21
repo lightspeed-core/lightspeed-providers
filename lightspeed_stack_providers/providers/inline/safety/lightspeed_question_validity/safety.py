@@ -3,7 +3,6 @@
 import logging
 import uuid
 from string import Template
-
 from typing import Any
 
 from llama_stack_api import (
