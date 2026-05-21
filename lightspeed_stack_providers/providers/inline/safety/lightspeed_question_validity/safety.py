@@ -3,6 +3,7 @@
 import logging
 import uuid
 from string import Template
+from typing import Any
 
 from llama_stack_api import (
     Api,
@@ -45,11 +46,16 @@ log = logging.getLogger(__name__)
 SUBJECT_REJECTED = "REJECTED"
 SUBJECT_ALLOWED = "ALLOWED"
 
+DEFAULT_MODEL = ""
+DEFAULT_RESPONSE = ""
+
 
 class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
     """Question validity safety provider implementation."""
 
-    def __init__(self, config: QuestionValidityShieldConfig, deps) -> None:
+    def __init__(
+        self, config: QuestionValidityShieldConfig, deps: dict[Any, Any]
+    ) -> None:
         """
         Initialize the shield implementation with its configuration and runtime dependencies.
 
@@ -99,9 +105,10 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         results = []
 
         impl = QuestionValidityRunner(
-            model_id=self.config.model_id,
+            model_id=self.config.model_id or DEFAULT_MODEL,
             model_prompt_template=self.model_prompt_template,
-            invalid_question_response=self.config.invalid_question_response,
+            invalid_question_response=self.config.invalid_question_response
+            or DEFAULT_RESPONSE,
             inference_api=self.inference_api,
         )
 
@@ -113,7 +120,7 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
 
         return ModerationObject(
             id=f"modr-{uuid.uuid4()}",
-            model=request.model or self.config.model_id,
+            model=request.model or self.config.model_id or DEFAULT_MODEL,
             results=results,
         )
 
@@ -196,9 +203,10 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
         log.debug(f"Shield message: {message.content}")
 
         impl = QuestionValidityRunner(
-            model_id=self.config.model_id,
+            model_id=self.config.model_id or DEFAULT_MODEL,
             model_prompt_template=self.model_prompt_template,
-            invalid_question_response=self.config.invalid_question_response,
+            invalid_question_response=self.config.invalid_question_response
+            or DEFAULT_RESPONSE,
             inference_api=self.inference_api,
         )
         return await impl.run(message)
@@ -327,6 +335,8 @@ class QuestionValidityRunner:
             stream=False,
         )
         response = await self.inference_api.openai_chat_completion(request)
-        content = response.choices[0].message.content
-        content = content.strip()
-        return self.get_shield_response(content)
+        content = response.choices[0].message.content  # pyright: ignore
+        if content is not None:
+            content = content.strip()
+            return self.get_shield_response(content)
+        return self.get_shield_response("")
