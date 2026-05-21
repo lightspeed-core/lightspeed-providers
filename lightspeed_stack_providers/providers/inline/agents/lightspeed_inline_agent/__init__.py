@@ -1,19 +1,21 @@
 """Inline agent Lightspeed provider implementation."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from llama_stack.core.datatypes import AccessRule
 from llama_stack_api import Api
 
-from .agents import LightspeedAgentsImpl
 from .config import LightspeedAgentsImplConfig
+
+if TYPE_CHECKING:
+    from .agents import LightspeedAgentsImpl
 
 
 async def get_provider_impl(
     config: LightspeedAgentsImplConfig,
     deps: dict[Api, Any],
     policy: list[AccessRule],
-) -> LightspeedAgentsImpl:
+) -> "LightspeedAgentsImpl":
     """
     Create and initialize a LightspeedAgentsImpl.
 
@@ -32,6 +34,8 @@ async def get_provider_impl(
         LightspeedAgentsImpl: An initialized LightspeedAgentsImpl instance ready for use.
     """
     import litellm
+
+    from .agents import LightspeedAgentsImpl
 
     litellm.drop_params = True
 
