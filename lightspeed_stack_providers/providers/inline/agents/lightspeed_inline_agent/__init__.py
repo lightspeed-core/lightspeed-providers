@@ -5,6 +5,7 @@ from typing import Any
 from llama_stack.core.datatypes import AccessRule
 from llama_stack_api import Api
 
+from .agents import LightspeedAgentsImpl
 from .config import LightspeedAgentsImplConfig
 
 
@@ -12,7 +13,7 @@ async def get_provider_impl(
     config: LightspeedAgentsImplConfig,
     deps: dict[Api, Any],
     policy: list[AccessRule],
-):
+) -> LightspeedAgentsImpl:
     """
     Create and initialize a LightspeedAgentsImpl.
 
@@ -33,8 +34,6 @@ async def get_provider_impl(
     import litellm
 
     litellm.drop_params = True
-
-    from .agents import LightspeedAgentsImpl
 
     impl = LightspeedAgentsImpl(
         config,
