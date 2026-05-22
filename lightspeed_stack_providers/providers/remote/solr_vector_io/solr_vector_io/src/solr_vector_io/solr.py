@@ -150,7 +150,7 @@ class SolrIndex(EmbeddingIndex):
                     f"Error connecting to Solr collection {self.collection_name}: {e}"
                 ) from e
 
-    async def add_chunks(self, chunks: list[Chunk], embeddings: NDArray) -> None:
+    async def add_chunks(self, chunks: list[Chunk], embeddings: NDArray[Any]) -> None:
         """Not implemented - this is a read-only provider.
 
         Attempting to add chunks to this read-only SolrIndex is not supported.
@@ -181,7 +181,7 @@ class SolrIndex(EmbeddingIndex):
 
     async def query_vector(
         self,
-        embedding: NDArray,
+        embedding: NDArray[Any],
         k: int,
         score_threshold: float,
         filters: Optional[Filter] = None,
@@ -403,7 +403,7 @@ class SolrIndex(EmbeddingIndex):
 
     async def query_hybrid(
         self,
-        embedding: NDArray,
+        embedding: NDArray[Any],
         query_string: str,
         k: int,
         score_threshold: float,
@@ -582,6 +582,10 @@ class SolrIndex(EmbeddingIndex):
         """
         schema = self.chunk_window_config
 
+        if schema is None:
+            log.error("Missing chunk window configuration")
+            return None
+
         # Build field list from configured field names
         fields = [
             schema.parent_id_field,
@@ -647,6 +651,10 @@ class SolrIndex(EmbeddingIndex):
 
         """
         schema = self.chunk_window_config
+
+        if schema is None:
+            log.error("Missing chunk window configuration")
+            return []
 
         # Build field list for chunks
         fields = [
@@ -738,11 +746,16 @@ class SolrIndex(EmbeddingIndex):
         from collections import defaultdict
 
         schema = self.chunk_window_config
+
+        if schema is None:
+            log.error("Missing chunk window configuration")
+            return QueryChunksResponse(chunks=[], scores=[])
+
         expanded_chunks = []
         expanded_scores = []
 
         # Track kept indices by parent to prevent duplicates
-        kept_indices_by_parent = defaultdict(list)
+        kept_indices_by_parent: dict[Any, list[Any]] = defaultdict(list)
 
         async with self._create_http_client() as client:
             for chunk, score in zip(initial_response.chunks, initial_response.scores):
@@ -972,6 +985,11 @@ class SolrIndex(EmbeddingIndex):
 
         """
         schema = self.chunk_window_config
+
+        if schema is None:
+            log.error("Missing chunk window configuration")
+            return []
+
         total_tokens = 0
         selected_chunks = []
 
@@ -1177,7 +1195,7 @@ class SolrVectorIOAdapter(
         super().__init__(inference_api=inference_api, files_api=files_api, kvstore=None)
         self.config = config
         self.inference_api = inference_api
-        self.cache = {}
+        self.cache: dict[Any, Any] = {}
         self.vector_store_table = None
         log.info("SolrVectorIOAdapter instance created")
 
