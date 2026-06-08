@@ -170,7 +170,17 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             MCP endpoint. Returns the original `tools` list when filtering is
             skipped; returns an empty list when filtering produced no matches.
         """
-        always_included_tools = set(self.config.tools_filter.always_include_tools)
+        if self.config is None:
+            logger.warning("Missing configuration")
+            return tools
+
+        if self.config.tools_filter is None:
+            logger.warning("Missing tools filter configuration")
+            return tools
+
+        always_included_tools = set()
+        if self.config.tools_filter.always_include_tools is not None:
+            always_included_tools = set(self.config.tools_filter.always_include_tools)
 
         # Previously called tools from conversation history
         if conversation:
@@ -194,7 +204,11 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             logger.warning("No tool definitions found for filtering")
             return tools
 
-        if len(tools_for_filtering) <= self.config.tools_filter.min_tools:
+        min_tools = 0
+        if self.config.tools_filter.min_tools is not None:
+            min_tools = self.config.tools_filter.min_tools
+
+        if len(tools_for_filtering) <= min_tools:
             logger.info(
                 "Skipping tool filtering - %d tools (threshold: %d)",
                 len(tools_for_filtering),
