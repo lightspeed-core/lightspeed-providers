@@ -29,8 +29,19 @@ dependencies = [
 [tool.setuptools]
 include-package-data = true
 
-[tool.setuptools.packages]
-find = {}
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lightspeed_stack_providers*"]
+
+[tool.setuptools.package-data]
+"lightspeed_stack_providers" = [
+    "resources/external_providers/inline/agents/lightspeed_inline_agent.yaml",
+    "resources/external_providers/inline/safety/lightspeed_question_validity.yaml",
+    "resources/external_providers/inline/safety/lightspeed_redaction.yaml",
+    "resources/external_providers/remote/agents/lightspeed_agent.yaml",
+    "resources/external_providers/remote/tool_runtime/lightspeed.yaml",
+    "resources/external_providers/remote/vector_io/solr_vector_io.yaml",
+]
 
 [project.optional-dependencies]
 dev = [
