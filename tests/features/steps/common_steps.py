@@ -4,7 +4,7 @@ import time
 from typing import Optional
 
 import requests
-from behave import given  # pyright: ignore[reportCallIssue]
+from behave import given
 from behave.runner import Context
 from requests import Response
 
@@ -53,7 +53,9 @@ class LlamaStackClient:
 
 
 # Background steps
-@given('the llama-stack is running on "{base_url}"')
+@given(
+    'the llama-stack is running on "{base_url}"'
+)  # pyright: ignore[attributeAccessIssue]
 def step_given_llama_stack_running(context: Context, base_url: str) -> None:
     """Ensure the llama-stack is running and accessible."""
     context.client = LlamaStackClient(base_url)
