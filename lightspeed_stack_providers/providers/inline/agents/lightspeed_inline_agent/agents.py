@@ -143,6 +143,85 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         # Call parent with modified request
         return await super().create_openai_response(modified_request)
 
+    def _extract_user_prompt(self, input: str | list[OpenAIResponseInput]) -> str:
+        """Flatten the polymorphic input arg into a plain string for the LLM prompt."""
+        if isinstance(input, str):
+            return input
+        if isinstance(input, list):
+            return "\n".join(
+                msg.get("content", "") if isinstance(msg, dict) else str(msg)
+                for msg in input
+            )
+        return str(input)
+
+    def _parse_llm_tool_names(self, content: str) -> list[str]:
+        """Extract the JSON tool-name list from a freeform LLM response string."""
+        if "[" not in content or "]" not in content:
+            return []
+        list_str = content[content.rfind("[") : content.rfind("]") + 1]
+        try:
+            names = json.loads(list_str)
+            logger.info("Filtered tool names from LLM: %s", names)
+            return names
+        except Exception as exp:
+            logger.error("Failed to parse LLM response as JSON: %s", exp)
+            return []
+
+    def _build_filtered_tool_list(
+        self,
+        tools: list[OpenAIResponseInputTool],
+        filtered_tool_names: list[str],
+        tool_to_endpoint: dict[str, str],
+    ) -> list[OpenAIResponseInputTool]:
+        """Walk tools and set allowed_tools on MCP entries; pass non-MCP tools through."""
+        result = []
+        for tool in tools:
+            tool_dict = tool if isinstance(tool, dict) else tool.model_dump()
+            tool_type = tool_dict.get("type")
+
+            if tool_type == "mcp":
+                mcp_endpoint = tool_dict.get("server_url", "")
+                server_label = tool_dict.get("server_label", "unknown")
+                logger.debug(
+                    "Processing MCP config: server_label=%s, server_url=%s",
+                    server_label,
+                    mcp_endpoint,
+                )
+                logger.debug("All filtered tool names: %s", filtered_tool_names)
+                endpoint_tools = [
+                    tool_name
+                    for tool_name in filtered_tool_names
+                    if tool_to_endpoint.get(tool_name) == mcp_endpoint
+                ]
+                logger.debug(
+                    "MCP server %s (%s): Setting allowed_tools = %s (filtered from %d total tools)",
+                    server_label,
+                    mcp_endpoint,
+                    endpoint_tools,
+                    len(filtered_tool_names),
+                )
+                if endpoint_tools:
+                    if isinstance(tool, dict):
+                        tool["allowed_tools"] = endpoint_tools
+                    else:
+                        tool.allowed_tools = endpoint_tools
+                    result.append(tool)
+                else:
+                    logger.warning(
+                        "MCP server %s (%s) has no matching tools - skipping from result",
+                        server_label,
+                        mcp_endpoint,
+                    )
+            else:
+                # Non-MCP tools (file_search, function) are always included
+                logger.debug(
+                    "Including non-MCP tool: type=%s, config=%s",
+                    tool_type,
+                    tool_dict.get("name") if tool_type == "function" else tool_type,
+                )
+                result.append(tool)
+        return result
+
     async def _filter_tools_for_response(
         self,
         input: str | list[OpenAIResponseInput],
@@ -222,20 +301,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             self.config.tools_filter.min_tools,
         )
 
-        # Extract user prompt text from input
-        if isinstance(input, str):
-            user_prompt = input
-        elif isinstance(input, list):
-            user_prompt = "\n".join(
-                [
-                    msg.get("content", "") if isinstance(msg, dict) else str(msg)
-                    for msg in input
-                ]
-            )
-        else:
-            user_prompt = str(input)
+        user_prompt = self._extract_user_prompt(input)
 
-        # Call LLM to filter tools
         tools_filter_model_id = self.config.tools_filter.model_id or model
         logger.debug("Using model %s for tool filtering", tools_filter_model_id)
         logger.debug("System prompt: %s", self.config.tools_filter.system_prompt)
@@ -264,89 +331,24 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         )
         response = await self.inference_api.openai_chat_completion(request)
 
-        # Parse filtered tool names from LLM response
         content: str = response.choices[0].message.content
         logger.debug("LLM filter response: %s", content)
 
-        filtered_tool_names = []
-        if "[" in content and "]" in content:
-            list_str = content[content.rfind("[") : content.rfind("]") + 1]
-            try:
-                filtered_tool_names = json.loads(list_str)
-                logger.info("Filtered tool names from LLM: %s", filtered_tool_names)
-            except Exception as exp:
-                logger.error("Failed to parse LLM response as JSON: %s", exp)
-                filtered_tool_names = []
+        filtered_tool_names = list(
+            set(self._parse_llm_tool_names(content)) | always_included_tools
+        )
 
-        # Merge always-included tools into filtered list
-        filtered_tool_names = list(set(filtered_tool_names) | always_included_tools)
+        if not filtered_tool_names:
+            logger.warning("No tools matched filtering criteria, returning empty list")
+            return []
 
-        # Filter using expanded tool definitions
-        if filtered_tool_names:
-            result = []
-            for tool in tools:
-                tool_dict = tool if isinstance(tool, dict) else tool.model_dump()
-                tool_type = tool_dict.get("type")
-
-                if tool_type == "mcp" and len(filtered_tool_names) > 0:
-                    # Get the endpoint for this MCP config
-                    mcp_endpoint = tool_dict.get("server_url", "")
-                    server_label = tool_dict.get("server_label", "unknown")
-
-                    logger.debug(
-                        "Processing MCP config: server_label=%s, server_url=%s",
-                        server_label,
-                        mcp_endpoint,
-                    )
-                    logger.debug(
-                        "All filtered tool names: %s",
-                        filtered_tool_names,
-                    )
-
-                    # Filter to only include tools that belong to this endpoint
-                    endpoint_tools = [
-                        tool_name
-                        for tool_name in filtered_tool_names
-                        if tool_to_endpoint.get(tool_name) == mcp_endpoint
-                    ]
-
-                    logger.debug(
-                        "MCP server %s (%s): Setting allowed_tools = %s (filtered from %d total tools)",  # pylint: disable=line-too-long
-                        server_label,
-                        mcp_endpoint,
-                        endpoint_tools,
-                        len(filtered_tool_names),
-                    )
-
-                    if endpoint_tools:
-                        if isinstance(tool, dict):
-                            tool["allowed_tools"] = endpoint_tools
-                        else:
-                            tool.allowed_tools = endpoint_tools
-                        result.append(tool)
-                    else:
-                        logger.warning(
-                            "MCP server %s (%s) has no matching tools - skipping from result",
-                            server_label,
-                            mcp_endpoint,
-                        )
-                else:
-                    # Non-MCP tools (file_search, function) are always included
-                    logger.debug(
-                        "Including non-MCP tool: type=%s, config=%s",
-                        tool_type,
-                        tool_dict.get("name") if tool_type == "function" else tool_type,
-                    )
-                    result.append(tool)
-
-            logger.info(
-                "Filtered tools: %d removed, %d remaining",
-                len(tools_for_filtering) - len(filtered_tool_names),
-                len(filtered_tool_names),
-            )
-            return result
-        logger.warning("No tools matched filtering criteria, returning empty list")
-        return []
+        result = self._build_filtered_tool_list(tools, filtered_tool_names, tool_to_endpoint)
+        logger.info(
+            "Filtered tools: %d removed, %d remaining",
+            len(tools_for_filtering) - len(filtered_tool_names),
+            len(filtered_tool_names),
+        )
+        return result
 
     async def _get_previously_called_tools(self, conversation_id: str) -> set[str]:
         """
