@@ -721,6 +721,148 @@ class SolrIndex(EmbeddingIndex):
             log.error(f"Error fetching context chunks for {parent_id}: {e}")
             return []
 
+    def _get_chunk_boundary_and_budget(
+        self,
+        chunk: EmbeddedChunk,
+        schema: ChunkWindowConfig,
+    ) -> tuple[Optional[dict[str, Any]], int, bool]:
+        """Return (boundary_values, token_budget, is_orphan) for a chunk."""
+        if not schema.chunk_family_fields:
+            return None, schema.family_token_budget, False
+
+        boundary_values: dict[str, Any] = {}
+        for field in schema.chunk_family_fields:
+            value = chunk.metadata.get(field)
+            if value is not None:
+                boundary_values[field] = value
+
+        # Orphan: chunk is missing values for ALL configured family fields
+        is_orphan = all(
+            chunk.metadata.get(field) is None for field in schema.chunk_family_fields
+        )
+        if is_orphan:
+            log.debug(
+                f"Chunk at index {chunk.metadata.get(schema.chunk_index_field)} is an orphan "
+                f"(missing family field values), using orphan_token_budget"
+            )
+        token_budget = schema.orphan_token_budget if is_orphan else schema.family_token_budget
+        return boundary_values, token_budget, is_orphan
+
+    async def _select_context_chunks_in_window(
+        self,
+        client: httpx.AsyncClient,
+        parent_id: str,
+        matched_chunk_index: int,
+        total_chunks: int,
+        total_tokens: int,
+        token_budget: int,
+        boundary_values: Optional[dict[str, Any]],
+        schema: ChunkWindowConfig,
+        min_chunk_window: int,
+    ) -> Optional[list[dict[str, Any]]]:
+        """
+        Select context chunks for a matched chunk.
+
+        Returns the selected chunk list, or None when the caller should fall back
+        to the original chunk (empty fetch or match position not found).
+        """
+        if total_chunks < min_chunk_window or total_tokens <= schema.family_token_budget:
+            log.info(
+                f"Document is short (total_chunks={total_chunks}, "
+                f"total_tokens={total_tokens}), fetching all chunks"
+            )
+            return await self._fetch_context_chunks(
+                client, parent_id, 0, max(0, total_chunks - 1)
+            )
+
+        window_start = max(0, matched_chunk_index - 10)
+        window_end = (
+            min(total_chunks - 1, matched_chunk_index + 10) if total_chunks > 0 else 0
+        )
+        log.info(
+            f"Document exceeds token budget (total_chunks={total_chunks}, "
+            f"total_tokens={total_tokens}, token_budget={token_budget}), "
+            f"fetching bounded window: [{window_start}, {window_end}] "
+            f"around match at index {matched_chunk_index}"
+        )
+        context_chunks = await self._fetch_context_chunks(
+            client, parent_id, window_start, window_end, boundary_values=boundary_values
+        )
+
+        if not context_chunks:
+            log.warning("No context chunks fetched, using original chunk")
+            return None
+
+        window_tokens = sum(
+            c.get(schema.chunk_token_count_field, 0) for c in context_chunks
+        )
+        if window_tokens <= token_budget:
+            log.info(
+                f"All {len(context_chunks)} context chunks fit in "
+                f"token budget ({window_tokens}/{token_budget}), skipping expansion loop"
+            )
+            return context_chunks
+
+        match_pos = next(
+            (
+                i
+                for i, c in enumerate(context_chunks)
+                if c.get(schema.chunk_index_field) == matched_chunk_index
+            ),
+            None,
+        )
+        if match_pos is None:
+            log.warning(
+                "Matched chunk not found in context window, using original chunk"
+            )
+            return None
+
+        return self._expand_chunk_window(context_chunks, match_pos, token_budget)
+
+    def _assemble_expanded_chunk(
+        self,
+        chunk: EmbeddedChunk,
+        selected_chunks: list[dict[str, Any]],
+        parent_doc: dict[str, Any],
+        schema: ChunkWindowConfig,
+        matched_chunk_index: int,
+    ) -> EmbeddedChunk:
+        """Build the final EmbeddedChunk from the selected context window."""
+        content_parts = [
+            c.get(self.content_field, "")
+            for c in selected_chunks
+            if c.get(self.content_field)
+        ]
+        final_content = "\n\n".join(content_parts)
+
+        expanded_metadata = dict(chunk.metadata) if chunk.metadata else {}
+        expanded_metadata["chunk_window_expanded"] = True
+        expanded_metadata["chunk_window_size"] = len(selected_chunks)
+        expanded_metadata["matched_chunk_index"] = matched_chunk_index
+
+        if schema.parent_content_id_field:
+            doc_id = parent_doc.get(schema.parent_content_id_field)
+            if doc_id:
+                expanded_metadata["doc_id"] = doc_id
+
+        if schema.parent_content_title_field:
+            title = parent_doc.get(schema.parent_content_title_field)
+            if title:
+                expanded_metadata["title"] = title
+
+        expanded_metadata["source"] = OKP_SOURCE
+
+        return EmbeddedChunk(
+            chunk_id=chunk.chunk_id,
+            content=final_content,
+            metadata=expanded_metadata,
+            chunk_metadata=expanded_metadata,
+            embedding=[],
+            embedding_model=self.embedding_model,
+            embedding_dimension=self.dimension,
+            metadata_token_count=None,
+        )
+
     async def _apply_chunk_window_expansion(
         self,
         initial_response: QueryChunksResponse,
@@ -762,7 +904,6 @@ class SolrIndex(EmbeddingIndex):
 
         async with self._create_http_client() as client:
             for chunk, score in zip(initial_response.chunks, initial_response.scores):
-                # Extract parent_id and chunk_index from metadata
                 if not chunk.metadata:
                     log.warning(
                         "Chunk missing metadata, skipping chunk window expansion"
@@ -794,179 +935,50 @@ class SolrIndex(EmbeddingIndex):
                     )
                     continue
 
-                # Keep this anchor
                 kept_indices_by_parent[parent_id].append(matched_chunk_index)
 
-                # Fetch parent metadata
                 parent_doc = await self._fetch_parent_metadata(client, parent_id)
                 if not parent_doc:
-                    log.warning(f"Parent document not found for {
-                            parent_id
-                        }, using original chunk")
+                    log.warning(
+                        f"Parent document not found for {parent_id}, using original chunk"
+                    )
                     expanded_chunks.append(chunk)
                     expanded_scores.append(score)
                     continue
 
                 total_chunks = parent_doc.get(schema.parent_total_chunks_field, 0)
                 total_tokens = parent_doc.get(schema.parent_total_tokens_field, 0)
-
-                # Build boundary values from matched chunk metadata and
-                # determine whether this chunk is an orphan (missing family fields)
-                boundary_values = None
-                is_orphan = False
-                if schema.chunk_family_fields:
-                    boundary_values = {}
-                    for field in schema.chunk_family_fields:
-                        value = chunk.metadata.get(field)
-                        if value is not None:
-                            boundary_values[field] = value
-
-                    # mark the chunk as an orphan if it is missing values for
-                    # ALL the family fields.
-                    is_orphan = all(
-                        chunk.metadata.get(field) is None
-                        for field in schema.chunk_family_fields
-                    )
-                    if is_orphan:
-                        log.debug(
-                            f"Chunk at index {matched_chunk_index} is an orphan "
-                            f"(missing family field values), using orphan_token_budget"
-                        )
-
-                token_budget = (
-                    schema.orphan_token_budget
-                    if is_orphan
-                    else schema.family_token_budget
+                boundary_values, token_budget, _ = self._get_chunk_boundary_and_budget(
+                    chunk, schema
                 )
 
-                # If short doc, return all chunks
-                if (
-                    total_chunks < min_chunk_window
-                    or total_tokens <= schema.family_token_budget
-                ):
-                    log.info(
-                        f"Document is short (total_chunks={total_chunks}, "
-                        f"total_tokens={total_tokens}), fetching all chunks"
-                    )
-                    context_chunks = await self._fetch_context_chunks(
-                        client, parent_id, 0, max(0, total_chunks - 1)
-                    )
-                    selected_chunks = context_chunks
-                else:
-                    log.info(
-                        f"Document exceeds token budget (total_chunks={total_chunks}, "
-                        f"total_tokens={total_tokens}, "
-                        f"{'orphan' if is_orphan else 'family'}_token_budget={token_budget}), "
-                        f"expanding window around match"
-                    )
-
-                    # Fetch bounded window around match (±10 chunks)
-                    window_start = max(0, matched_chunk_index - 10)
-                    window_end = (
-                        min(total_chunks - 1, matched_chunk_index + 10)
-                        if total_chunks > 0
-                        else 0
-                    )
-
-                    log.info(
-                        f"Fetching bounded window: [{window_start}, {window_end}] "
-                        f"around match at index {matched_chunk_index}"
-                    )
-                    context_chunks = await self._fetch_context_chunks(
-                        client,
-                        parent_id,
-                        window_start,
-                        window_end,
-                        boundary_values=boundary_values,
-                    )
-
-                    if not context_chunks:
-                        log.warning("No context chunks fetched, using original chunk")
-                        expanded_chunks.append(chunk)
-                        expanded_scores.append(score)
-                        continue
-
-                    # If all fetched chunks fit in the token budget, use them
-                    # all directly (no need to run expansion loop)
-                    window_tokens = sum(
-                        c.get(schema.chunk_token_count_field, 0) for c in context_chunks
-                    )
-                    if window_tokens <= token_budget:
-                        log.info(
-                            f"All {len(context_chunks)} context chunks fit in "
-                            f"token budget ({window_tokens}/{token_budget}), "
-                            f"skipping expansion loop"
-                        )
-                        selected_chunks = context_chunks
-                    else:
-                        # Find local match index in the fetched window
-                        match_pos = None
-                        for i, c in enumerate(context_chunks):
-                            if c.get(schema.chunk_index_field) == matched_chunk_index:
-                                match_pos = i
-                                break
-
-                        if match_pos is None:
-                            log.warning(
-                                "Matched chunk not found in context window, "
-                                "using original chunk"
-                            )
-                            expanded_chunks.append(chunk)
-                            expanded_scores.append(score)
-                            continue
-
-                        # Apply token budget expansion
-                        selected_chunks = self._expand_chunk_window(
-                            context_chunks, match_pos, token_budget
-                        )
-
-                # Concatenate selected chunks into final content
-                content_parts = []
-                for selected_chunk in selected_chunks:
-                    content = selected_chunk.get(self.content_field, "")
-                    if content:
-                        content_parts.append(content)
-
-                final_content = "\n\n".join(content_parts)
-
-                # Build expanded chunk metadata
-                expanded_metadata = dict(chunk.metadata) if chunk.metadata else {}
-                expanded_metadata["chunk_window_expanded"] = True
-                expanded_metadata["chunk_window_size"] = len(selected_chunks)
-                expanded_metadata["matched_chunk_index"] = matched_chunk_index
-
-                # Add optional parent metadata if available
-                if schema.parent_content_id_field:
-                    doc_id = parent_doc.get(schema.parent_content_id_field)
-                    if doc_id:
-                        expanded_metadata["doc_id"] = doc_id
-
-                if schema.parent_content_title_field:
-                    title = parent_doc.get(schema.parent_content_title_field)
-                    if title:
-                        expanded_metadata["title"] = title
-
-                expanded_metadata["source"] = OKP_SOURCE
-
-                # Create expanded chunk
-                expanded_chunk = EmbeddedChunk(
-                    chunk_id=chunk.chunk_id,
-                    content=final_content,
-                    metadata=expanded_metadata,
-                    chunk_metadata=expanded_metadata,
-                    embedding=[],
-                    embedding_model=self.embedding_model,
-                    embedding_dimension=self.dimension,
-                    metadata_token_count=None,
+                selected_chunks = await self._select_context_chunks_in_window(
+                    client,
+                    parent_id,
+                    matched_chunk_index,
+                    total_chunks,
+                    total_tokens,
+                    token_budget,
+                    boundary_values,
+                    schema,
+                    min_chunk_window,
                 )
 
+                if selected_chunks is None:
+                    expanded_chunks.append(chunk)
+                    expanded_scores.append(score)
+                    continue
+
+                expanded_chunk = self._assemble_expanded_chunk(
+                    chunk, selected_chunks, parent_doc, schema, matched_chunk_index
+                )
                 expanded_chunks.append(expanded_chunk)
                 expanded_scores.append(score)
 
-        log.info(f"Chunk window expansion complete: {
-                len(initial_response.chunks)
-            } initial chunks -> " f"{len(expanded_chunks)} expanded chunks")
-
+        log.info(
+            f"Chunk window expansion complete: {len(initial_response.chunks)} "
+            f"initial chunks -> {len(expanded_chunks)} expanded chunks"
+        )
         return QueryChunksResponse(chunks=expanded_chunks, scores=expanded_scores)
 
     def _expand_chunk_window(
@@ -1054,6 +1066,43 @@ class SolrIndex(EmbeddingIndex):
         )
         return selected
 
+    def _add_window_config_metadata(
+        self, doc: dict[str, Any], metadata: dict[str, Any]
+    ) -> None:
+        """Populate metadata with fields sourced from chunk_window_config."""
+        if not self.chunk_window_config:
+            return
+        schema = self.chunk_window_config
+        if schema.chunk_online_source_url_field and schema.chunk_online_source_url_field in doc:
+            metadata["reference_url"] = doc[schema.chunk_online_source_url_field]
+        if schema.chunk_source_path_field and schema.chunk_source_path_field in doc:
+            metadata["source_path"] = doc[schema.chunk_source_path_field]
+        if schema.chunk_token_count_field in doc:
+            metadata[schema.chunk_token_count_field] = doc[schema.chunk_token_count_field]
+        # Family fields are needed later for cross-chunk comparison
+        for field in schema.chunk_family_fields or []:
+            if field in doc:
+                metadata[field] = doc[field]
+
+    def _build_doc_metadata(
+        self,
+        doc: dict[str, Any],
+        chunk_id: Any,
+        parent_id: Optional[str],
+    ) -> dict[str, Any]:
+        """Build the full metadata dict for a Solr document."""
+        metadata: dict[str, Any] = {
+            "document_id": parent_id,
+            "doc_id": parent_id,
+            "chunk_id": chunk_id,
+            "source": OKP_SOURCE,
+        }
+        for field in ("title", "resourceName", "chunk_index", "parent_id"):
+            if field in doc:
+                metadata[field] = doc[field]
+        self._add_window_config_metadata(doc, metadata)
+        return metadata
+
     def _doc_to_chunk(self, doc: dict[str, Any]) -> Optional[Chunk]:
         """
         Convert a Solr document dictionary into an EmbeddedChunk suitable for search responses.
@@ -1099,58 +1148,13 @@ class SolrIndex(EmbeddingIndex):
                 )
             )
 
-            metadata: dict[str, Any] = {
-                "document_id": parent_id,
-                "doc_id": parent_id,
-                "chunk_id": chunk_id,
-                "source": OKP_SOURCE,
-            }
-
-            # helpful extras if present
-            if "title" in doc:
-                metadata["title"] = doc["title"]
-            if (
-                self.chunk_window_config
-                and self.chunk_window_config.chunk_online_source_url_field
-            ):
-                url_field = self.chunk_window_config.chunk_online_source_url_field
-                if url_field in doc:
-                    metadata["reference_url"] = doc[url_field]
-            if (
-                self.chunk_window_config
-                and self.chunk_window_config.chunk_source_path_field
-            ):
-                path_field = self.chunk_window_config.chunk_source_path_field
-                if path_field in doc:
-                    metadata["source_path"] = doc[path_field]
-            if "resourceName" in doc:
-                metadata["resourceName"] = doc["resourceName"]
-            if "chunk_index" in doc:
-                metadata["chunk_index"] = doc["chunk_index"]
-            if "parent_id" in doc:
-                metadata["parent_id"] = doc["parent_id"]
-            if (
-                self.chunk_window_config is not None
-                and self.chunk_window_config.chunk_token_count_field in doc
-            ):
-                metadata[self.chunk_window_config.chunk_token_count_field] = doc[
-                    self.chunk_window_config.chunk_token_count_field
-                ]
-            # add family fields to the metadata since we need to access them
-            # for comparison with other chunks later on
-            if (
-                self.chunk_window_config is not None
-                and self.chunk_window_config.chunk_family_fields
-            ):
-                for field in self.chunk_window_config.chunk_family_fields:
-                    if field in doc:
-                        metadata[field] = doc[field]
+            metadata = self._build_doc_metadata(doc, chunk_id, parent_id)
 
             embedding = doc.get(self.vector_field)
-            if isinstance(embedding, list):
-                embedding = [float(x) for x in embedding]
-            else:
+            if not isinstance(embedding, list):
                 embedding = []
+            else:
+                embedding = [float(x) for x in embedding]
 
             return EmbeddedChunk(
                 chunk_id=str(chunk_id),
