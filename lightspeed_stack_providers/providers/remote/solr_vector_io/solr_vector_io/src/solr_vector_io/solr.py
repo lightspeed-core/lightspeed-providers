@@ -1,5 +1,7 @@
 """Solr vector IO provider implementation."""
 
+# pylint: disable=too-many-lines
+
 from typing import Any, Optional
 
 import httpx
@@ -42,6 +44,7 @@ OKP_SOURCE = "okp"
 _build_solr_filter_query = build_solr_filter_query
 
 
+# pylint: disable=too-many-instance-attributes
 class SolrIndex(EmbeddingIndex):
     """
     Read-only Solr vector index implementation using DenseVectorField and KNN search.
@@ -347,7 +350,7 @@ class SolrIndex(EmbeddingIndex):
             try:
                 log.info("Sending keyword query to Solr")
                 response = await client.get(
-                    f"{self.base_url}/select", params=solr_params
+                    f"{self.base_url}/select", params=solr_params  # type: ignore
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -1126,13 +1129,19 @@ class SolrIndex(EmbeddingIndex):
                 metadata["chunk_index"] = doc["chunk_index"]
             if "parent_id" in doc:
                 metadata["parent_id"] = doc["parent_id"]
-            if self.chunk_window_config.chunk_token_count_field in doc:
+            if (
+                self.chunk_window_config is not None
+                and self.chunk_window_config.chunk_token_count_field in doc
+            ):
                 metadata[self.chunk_window_config.chunk_token_count_field] = doc[
                     self.chunk_window_config.chunk_token_count_field
                 ]
             # add family fields to the metadata since we need to access them
             # for comparison with other chunks later on
-            if self.chunk_window_config.chunk_family_fields:
+            if (
+                self.chunk_window_config is not None
+                and self.chunk_window_config.chunk_family_fields
+            ):
                 for field in self.chunk_window_config.chunk_family_fields:
                     if field in doc:
                         metadata[field] = doc[field]
@@ -1228,7 +1237,8 @@ class SolrVectorIOAdapter(
             log.info("OpenAI vector stores initialized")
         else:
             log.info(
-                "No persistence configured, skipping KV store and OpenAI vector store initialization"
+                "No persistence configured, skipping KV store and OpenAI vector "
+                "store initialization"
             )
 
         # Load any persisted vector stores

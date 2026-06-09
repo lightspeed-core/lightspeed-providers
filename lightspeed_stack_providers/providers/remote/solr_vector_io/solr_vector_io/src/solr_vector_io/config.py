@@ -80,12 +80,16 @@ class ChunkWindowConfig(BaseModel):
         default=None,
         description=(
             "Solr fields that should match when concatenating chunks for additional context "
-            "(e.g. ['headings']). The `chunk_parent_id_field` field is included by default and should not be re-listed here."
+            "(e.g. ['headings']). The `chunk_parent_id_field` field is included by default and "
+            "should not be re-listed here."
         ),
     )
     family_token_budget: int = Field(
         default=3072,
-        description="Max token budget per expanded context window for chunks that belong to a family",
+        description=(
+            "Max token budget per expanded context window for chunks "
+            "that belong to a family"
+        ),
     )
     orphan_token_budget: int = Field(
         default=1536,
@@ -115,14 +119,19 @@ class SolrVectorIOConfig(BaseModel):
     # Fields
     vector_field: str = Field(description="DenseVectorField name (e.g. 'chunk_vector')")
     content_field: str = Field(description="Chunk content field name (e.g. 'chunk')")
-    id_field: str = Field(
+    id_field: str = Field(  # type: ignore
         default="id",
-        description="Unique identifier field. For chunk docs this might be 'resourceName' or 'id'.",
+        description=(
+            "Unique identifier field. For chunk docs this might be 'resourceName' or 'id'.",
+        ),
     )
 
     # Embeddings (required by EmbeddedChunk in your 0.4.3 flow)
     embedding_model: str = Field(
-        description="Embedding model identifier used to produce query embeddings (e.g. 'sentence-transformers/all-mpnet-base-v2')"
+        description=(
+            "Embedding model identifier used to produce query embeddings "
+            "(e.g. 'sentence-transformers/all-mpnet-base-v2')"
+        ),
     )
     embedding_dimension: int = Field(
         description="Embedding vector dimension (e.g. 384)"
@@ -131,7 +140,10 @@ class SolrVectorIOConfig(BaseModel):
     # Optional: if your handler mixes parents/chunks, give your provider a clue
     chunk_only: bool = Field(
         default=True,
-        description="If true, provider will try to return only chunk docs (uses chunk_filter_query when available).",
+        description=(
+            "If true, provider will try to return only chunk docs "
+            "(uses chunk_filter_query when available)."
+        ),
     )
 
     # Storage/persistence
@@ -159,8 +171,8 @@ class SolrVectorIOConfig(BaseModel):
         vector_field: str = "${env.SOLR_VECTOR_FIELD:=chunk_vector}",
         content_field: str = "${env.SOLR_CONTENT_FIELD:=chunk}",
         id_field: str = "${env.SOLR_ID_FIELD:=resourceName}",
-        embedding_model: str = "${env.SOLR_EMBEDDING_MODEL:=sentence-transformers/all-mpnet-base-v2}",
-        embedding_dimension: int = "${env.SOLR_EMBEDDING_DIM:=384}",
+        embedding_model: str = "${env.SOLR_EMBEDDING_MODEL:=sentence-transformers/all-mpnet-base-v2}",  # pylint: disable=line-too-long
+        embedding_dimension: int = "${env.SOLR_EMBEDDING_DIM:=384}",  # type: ignore
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
