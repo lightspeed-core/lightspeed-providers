@@ -726,7 +726,20 @@ class SolrIndex(EmbeddingIndex):
         chunk: EmbeddedChunk,
         schema: ChunkWindowConfig,
     ) -> tuple[Optional[dict[str, Any]], int, bool]:
-        """Return (boundary_values, token_budget, is_orphan) for a chunk."""
+        """
+        Return (boundary_values, token_budget, is_orphan) for a chunk.
+
+        Parameters:
+            chunk: The matched EmbeddedChunk to evaluate.
+            schema: ChunkWindowConfig defining family fields and token budgets.
+
+        Returns:
+            A tuple of (boundary_values, token_budget, is_orphan): boundary_values is a dict
+            of family field values used to scope sibling queries (None if no family fields are
+            configured), token_budget is the applicable token ceiling, and is_orphan indicates
+            whether the chunk is missing all configured family field values.
+
+        """
         if not schema.chunk_family_fields:
             return None, schema.family_token_budget, False
 
@@ -765,6 +778,21 @@ class SolrIndex(EmbeddingIndex):
 
         Returns the selected chunk list, or None when the caller should fall back
         to the original chunk (empty fetch or match position not found).
+
+        Parameters:
+            client: The async HTTP client for Solr requests.
+            parent_id: The parent document identifier used to scope the chunk query.
+            matched_chunk_index: The index of the matched chunk within the document.
+            total_chunks: Total number of chunks in the parent document.
+            total_tokens: Total token count across all chunks in the document.
+            token_budget: Maximum tokens allowed for the context window.
+            boundary_values: Family field values used to filter sibling chunks, or None.
+            schema: ChunkWindowConfig governing field names and expansion behavior.
+            min_chunk_window: Minimum chunk count below which the full document is returned.
+
+        Returns:
+            The selected list of Solr chunk dicts, or None if the caller should fall back to the original chunk.
+
         """
         if total_chunks < min_chunk_window or total_tokens <= schema.family_token_budget:
             log.info(
@@ -827,7 +855,20 @@ class SolrIndex(EmbeddingIndex):
         schema: ChunkWindowConfig,
         matched_chunk_index: int,
     ) -> EmbeddedChunk:
-        """Build the final EmbeddedChunk from the selected context window."""
+        """
+        Build the final EmbeddedChunk from the selected context window.
+
+        Parameters:
+            chunk: The original matched EmbeddedChunk whose metadata is used as the base.
+            selected_chunks: Ordered list of Solr chunk dicts forming the context window.
+            parent_doc: The parent Solr document dict used to populate content ID metadata.
+            schema: ChunkWindowConfig governing field names used during assembly.
+            matched_chunk_index: The index of the matched chunk within the document.
+
+        Returns:
+            A new EmbeddedChunk with concatenated content from the window and expanded metadata.
+
+        """
         content_parts = [
             c.get(self.content_field, "")
             for c in selected_chunks
@@ -1069,7 +1110,14 @@ class SolrIndex(EmbeddingIndex):
     def _add_window_config_metadata(
         self, doc: dict[str, Any], metadata: dict[str, Any]
     ) -> None:
-        """Populate metadata with fields sourced from chunk_window_config."""
+        """
+        Populate metadata with fields sourced from chunk_window_config.
+
+        Parameters:
+            doc: The Solr document dict to read field values from.
+            metadata: The metadata dict to populate in place.
+
+        """
         if not self.chunk_window_config:
             return
         schema = self.chunk_window_config
@@ -1090,7 +1138,18 @@ class SolrIndex(EmbeddingIndex):
         chunk_id: Any,
         parent_id: Optional[str],
     ) -> dict[str, Any]:
-        """Build the full metadata dict for a Solr document."""
+        """
+        Build the full metadata dict for a Solr document.
+
+        Parameters:
+            doc: The Solr document dict to read field values from.
+            chunk_id: The chunk identifier value.
+            parent_id: The parent document identifier, or None if unavailable.
+
+        Returns:
+            A metadata dict populated with standard document fields and any configured window metadata.
+
+        """
         metadata: dict[str, Any] = {
             "document_id": parent_id,
             "doc_id": parent_id,

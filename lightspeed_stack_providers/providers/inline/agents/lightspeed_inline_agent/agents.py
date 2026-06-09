@@ -144,7 +144,16 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         return await super().create_openai_response(modified_request)
 
     def _extract_user_prompt(self, input: str | list[OpenAIResponseInput]) -> str:
-        """Flatten the polymorphic input arg into a plain string for the LLM prompt."""
+        """
+        Flatten the polymorphic input arg into a plain string for the LLM prompt.
+
+        Parameters:
+            input: The raw user input, either a plain string or a list of OpenAIResponseInput messages.
+
+        Returns:
+            A single concatenated string suitable for passing to the LLM.
+
+        """
         if isinstance(input, str):
             return input
         if isinstance(input, list):
@@ -155,7 +164,16 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         return str(input)
 
     def _parse_llm_tool_names(self, content: str) -> list[str]:
-        """Extract the JSON tool-name list from a freeform LLM response string."""
+        """
+        Extract the JSON tool-name list from a freeform LLM response string.
+
+        Parameters:
+            content: The raw string returned by the LLM, expected to contain a JSON array of tool names.
+
+        Returns:
+            A list of tool name strings parsed from the response, or an empty list if no valid JSON array is found.
+
+        """
         if "[" not in content or "]" not in content:
             return []
         list_str = content[content.rfind("[") : content.rfind("]") + 1]
@@ -173,7 +191,18 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         filtered_tool_names: list[str],
         tool_to_endpoint: dict[str, str],
     ) -> list[OpenAIResponseInputTool]:
-        """Walk tools and set allowed_tools on MCP entries; pass non-MCP tools through."""
+        """
+        Walk tools and set allowed_tools on MCP entries; pass non-MCP tools through.
+
+        Parameters:
+            tools: The full list of tools available for the response.
+            filtered_tool_names: Tool names selected by the LLM to restrict MCP server access.
+            tool_to_endpoint: Mapping of tool name to MCP server endpoint URL.
+
+        Returns:
+            A filtered tool list with allowed_tools populated on each MCP entry.
+
+        """
         result = []
         for tool in tools:
             tool_dict = tool if isinstance(tool, dict) else tool.model_dump()
@@ -194,7 +223,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                     if tool_to_endpoint.get(tool_name) == mcp_endpoint
                 ]
                 logger.debug(
-                    "MCP server %s (%s): Setting allowed_tools = %s (filtered from %d total tools)",
+                    "MCP server %s (%s): Setting allowed_tools = %s"
+                    "(filtered from %d total tools)",
                     server_label,
                     mcp_endpoint,
                     endpoint_tools,
