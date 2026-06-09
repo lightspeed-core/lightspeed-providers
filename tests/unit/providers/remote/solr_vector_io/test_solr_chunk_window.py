@@ -49,7 +49,9 @@ def chunk_window_config() -> ChunkWindowConfig:
 
 
 @pytest.fixture
-def chunk_window_config_with_family(chunk_window_config: ChunkWindowConfig) -> ChunkWindowConfig:
+def chunk_window_config_with_family(
+    chunk_window_config: ChunkWindowConfig,
+) -> ChunkWindowConfig:
     """
     Return a ChunkWindowConfig with chunk_family_fields set to ['heading'].
 
@@ -93,7 +95,9 @@ def solr_index(chunk_window_config: ChunkWindowConfig) -> SolrIndex:
 
 
 @pytest.fixture
-def solr_index_with_family(chunk_window_config_with_family: ChunkWindowConfig) -> SolrIndex:
+def solr_index_with_family(
+    chunk_window_config_with_family: ChunkWindowConfig,
+) -> SolrIndex:
     """
     Return a SolrIndex with chunk_family_fields=['heading'].
 
@@ -165,8 +169,8 @@ class TestGetChunkBoundaryAndBudget:
         """Test that a chunk with a family field value gets its boundary dict and family budget."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 2, "heading": "Intro"})
         schema = solr_index_with_family.chunk_window_config
-        boundary, budget, is_orphan = solr_index_with_family._get_chunk_boundary_and_budget(
-            chunk, schema
+        boundary, budget, is_orphan = (
+            solr_index_with_family._get_chunk_boundary_and_budget(chunk, schema)
         )
         assert boundary == {"heading": "Intro"}
         assert budget == 3072
@@ -178,8 +182,8 @@ class TestGetChunkBoundaryAndBudget:
         """Test that a chunk missing all family field values is flagged as orphan and gets orphan budget."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 5})
         schema = solr_index_with_family.chunk_window_config
-        boundary, budget, is_orphan = solr_index_with_family._get_chunk_boundary_and_budget(
-            chunk, schema
+        boundary, budget, is_orphan = (
+            solr_index_with_family._get_chunk_boundary_and_budget(chunk, schema)
         )
         assert boundary == {}
         assert budget == 1536
@@ -191,7 +195,9 @@ class TestGetChunkBoundaryAndBudget:
         """Test that a chunk with at least one family field value is not treated as an orphan."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 2, "heading": "Ch1"})
         schema = solr_index_with_family.chunk_window_config
-        _, _, is_orphan = solr_index_with_family._get_chunk_boundary_and_budget(chunk, schema)
+        _, _, is_orphan = solr_index_with_family._get_chunk_boundary_and_budget(
+            chunk, schema
+        )
         assert is_orphan is False
 
 
@@ -201,7 +207,10 @@ class TestAssembleExpandedChunk:
     def test_content_joined_with_double_newline(self, solr_index: SolrIndex) -> None:
         """Test that selected chunk content is concatenated with double newlines."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 1})
-        selected = [{"chunk": "First.", "num_tokens": 5}, {"chunk": "Second.", "num_tokens": 5}]
+        selected = [
+            {"chunk": "First.", "num_tokens": 5},
+            {"chunk": "Second.", "num_tokens": 5},
+        ]
         result = solr_index._assemble_expanded_chunk(
             chunk, selected, {}, solr_index.chunk_window_config, matched_chunk_index=1
         )
@@ -210,7 +219,10 @@ class TestAssembleExpandedChunk:
     def test_empty_content_chunks_are_skipped(self, solr_index: SolrIndex) -> None:
         """Test that chunks with an empty content field are excluded from the joined output."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 0})
-        selected = [{"chunk": "", "num_tokens": 0}, {"chunk": "Only this.", "num_tokens": 5}]
+        selected = [
+            {"chunk": "", "num_tokens": 0},
+            {"chunk": "Only this.", "num_tokens": 5},
+        ]
         result = solr_index._assemble_expanded_chunk(
             chunk, selected, {}, solr_index.chunk_window_config, matched_chunk_index=0
         )
@@ -231,9 +243,11 @@ class TestAssembleExpandedChunk:
         """Test that doc_id from the parent document is included when the field is configured."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 0})
         result = solr_index._assemble_expanded_chunk(
-            chunk, [{"chunk": "x", "num_tokens": 5}],
+            chunk,
+            [{"chunk": "x", "num_tokens": 5}],
             {"doc_id": "content-abc", "title": "My Doc"},
-            solr_index.chunk_window_config, matched_chunk_index=0,
+            solr_index.chunk_window_config,
+            matched_chunk_index=0,
         )
         assert result.metadata["doc_id"] == "content-abc"
 
@@ -241,9 +255,11 @@ class TestAssembleExpandedChunk:
         """Test that title from the parent document is included when the field is configured."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 0})
         result = solr_index._assemble_expanded_chunk(
-            chunk, [{"chunk": "x", "num_tokens": 5}],
+            chunk,
+            [{"chunk": "x", "num_tokens": 5}],
             {"doc_id": "content-abc", "title": "My Doc"},
-            solr_index.chunk_window_config, matched_chunk_index=0,
+            solr_index.chunk_window_config,
+            matched_chunk_index=0,
         )
         assert result.metadata["title"] == "My Doc"
 
@@ -251,8 +267,11 @@ class TestAssembleExpandedChunk:
         """Test that source is always set to OKP_SOURCE regardless of parent doc content."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 0})
         result = solr_index._assemble_expanded_chunk(
-            chunk, [{"chunk": "x", "num_tokens": 5}], {},
-            solr_index.chunk_window_config, matched_chunk_index=0,
+            chunk,
+            [{"chunk": "x", "num_tokens": 5}],
+            {},
+            solr_index.chunk_window_config,
+            matched_chunk_index=0,
         )
         assert result.metadata["source"] == OKP_SOURCE
 
@@ -260,8 +279,11 @@ class TestAssembleExpandedChunk:
         """Test that chunk_id on the result matches the original chunk's chunk_id."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 0})
         result = solr_index._assemble_expanded_chunk(
-            chunk, [{"chunk": "x", "num_tokens": 5}], {},
-            solr_index.chunk_window_config, matched_chunk_index=0,
+            chunk,
+            [{"chunk": "x", "num_tokens": 5}],
+            {},
+            solr_index.chunk_window_config,
+            matched_chunk_index=0,
         )
         assert result.chunk_id == "doc_chunk_0"
 
@@ -274,7 +296,9 @@ class TestSelectContextChunksInWindow:
         self, solr_index: SolrIndex, mocker: MockerFixture
     ) -> None:
         """Test that total_chunks < min_chunk_window triggers a full fetch of all chunks."""
-        all_chunks = [{"chunk_index": i, "chunk": f"c{i}", "num_tokens": 10} for i in range(3)]
+        all_chunks = [
+            {"chunk_index": i, "chunk": f"c{i}", "num_tokens": 10} for i in range(3)
+        ]
         mocker.patch.object(
             solr_index, "_fetch_context_chunks", AsyncMock(return_value=all_chunks)
         )
@@ -296,7 +320,9 @@ class TestSelectContextChunksInWindow:
         self, solr_index: SolrIndex, mocker: MockerFixture
     ) -> None:
         """Test that context chunks fitting within the token budget are returned without expansion."""
-        window = [{"chunk_index": i, "chunk": f"c{i}", "num_tokens": 50} for i in range(5)]
+        window = [
+            {"chunk_index": i, "chunk": f"c{i}", "num_tokens": 50} for i in range(5)
+        ]
         mocker.patch.object(
             solr_index, "_fetch_context_chunks", AsyncMock(return_value=window)
         )
@@ -318,11 +344,15 @@ class TestSelectContextChunksInWindow:
         self, solr_index: SolrIndex, mocker: MockerFixture
     ) -> None:
         """Test that an over-budget window calls _expand_chunk_window and returns its result."""
-        big_window = [{"chunk_index": i, "chunk": f"c{i}", "num_tokens": 1000} for i in range(5)]
+        big_window = [
+            {"chunk_index": i, "chunk": f"c{i}", "num_tokens": 1000} for i in range(5)
+        ]
         mocker.patch.object(
             solr_index, "_fetch_context_chunks", AsyncMock(return_value=big_window)
         )
-        mocker.patch.object(solr_index, "_expand_chunk_window", return_value=big_window[:2])
+        mocker.patch.object(
+            solr_index, "_expand_chunk_window", return_value=big_window[:2]
+        )
         result = await solr_index._select_context_chunks_in_window(
             client=mocker.MagicMock(),
             parent_id="doc1",

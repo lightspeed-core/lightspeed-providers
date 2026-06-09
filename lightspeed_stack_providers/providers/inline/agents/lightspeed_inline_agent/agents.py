@@ -148,7 +148,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         Flatten the polymorphic input arg into a plain string for the LLM prompt.
 
         Parameters:
-            input: The raw user input, either a plain string or a list of OpenAIResponseInput messages.
+            input: The raw user input, either a plain string or a list of
+                OpenAIResponseInput messages.
 
         Returns:
             A single concatenated string suitable for passing to the LLM.
@@ -168,10 +169,12 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         Extract the JSON tool-name list from a freeform LLM response string.
 
         Parameters:
-            content: The raw string returned by the LLM, expected to contain a JSON array of tool names.
+            content: The raw string returned by the LLM, expected to
+                contain a JSON array of tool names.
 
         Returns:
-            A list of tool name strings parsed from the response, or an empty list if no valid JSON array is found.
+            A list of tool name strings parsed from the response, or an
+                empty list if no valid JSON array is found.
 
         """
         if "[" not in content or "]" not in content:
@@ -196,7 +199,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
 
         Parameters:
             tools: The full list of tools available for the response.
-            filtered_tool_names: Tool names selected by the LLM to restrict MCP server access.
+            filtered_tool_names: Tool names selected by the LLM to restrict
+                MCP server access.
             tool_to_endpoint: Mapping of tool name to MCP server endpoint URL.
 
         Returns:
@@ -372,7 +376,9 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             logger.warning("No tools matched filtering criteria, returning empty list")
             return []
 
-        result = self._build_filtered_tool_list(tools, filtered_tool_names, tool_to_endpoint)
+        result = self._build_filtered_tool_list(
+            tools, filtered_tool_names, tool_to_endpoint
+        )
         logger.info(
             "Filtered tools: %d removed, %d remaining",
             len(tools_for_filtering) - len(filtered_tool_names),

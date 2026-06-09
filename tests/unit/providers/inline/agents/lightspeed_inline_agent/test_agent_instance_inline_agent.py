@@ -522,5 +522,3 @@ def test_parse_llm_tool_names_uses_last_bracket_pair(
     """Test that when the response contains multiple bracket pairs, the last one is used."""
     content = 'ignore [this] use ["tool1"]'
     assert lightspeed_agents_impl._parse_llm_tool_names(content) == ["tool1"]
-
-

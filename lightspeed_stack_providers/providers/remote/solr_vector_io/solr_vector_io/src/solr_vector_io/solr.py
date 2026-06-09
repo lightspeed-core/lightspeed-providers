@@ -350,7 +350,8 @@ class SolrIndex(EmbeddingIndex):
             try:
                 log.info("Sending keyword query to Solr")
                 response = await client.get(
-                    f"{self.base_url}/select", params=solr_params  # type: ignore
+                    f"{self.base_url}/select",
+                    params=solr_params,  # type: ignore
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -734,10 +735,11 @@ class SolrIndex(EmbeddingIndex):
             schema: ChunkWindowConfig defining family fields and token budgets.
 
         Returns:
-            A tuple of (boundary_values, token_budget, is_orphan): boundary_values is a dict
-            of family field values used to scope sibling queries (None if no family fields are
-            configured), token_budget is the applicable token ceiling, and is_orphan indicates
-            whether the chunk is missing all configured family field values.
+            A tuple of (boundary_values, token_budget, is_orphan): boundary_values
+                is a dict of family field values used to scope sibling queries
+                (None if no family fields are configured), token_budget is the
+                applicable token ceiling, and is_orphan indicates whether the
+                chunk is missing all configured family field values.
 
         """
         if not schema.chunk_family_fields:
@@ -758,7 +760,9 @@ class SolrIndex(EmbeddingIndex):
                 f"Chunk at index {chunk.metadata.get(schema.chunk_index_field)} is an orphan "
                 f"(missing family field values), using orphan_token_budget"
             )
-        token_budget = schema.orphan_token_budget if is_orphan else schema.family_token_budget
+        token_budget = (
+            schema.orphan_token_budget if is_orphan else schema.family_token_budget
+        )
         return boundary_values, token_budget, is_orphan
 
     async def _select_context_chunks_in_window(
@@ -788,13 +792,18 @@ class SolrIndex(EmbeddingIndex):
             token_budget: Maximum tokens allowed for the context window.
             boundary_values: Family field values used to filter sibling chunks, or None.
             schema: ChunkWindowConfig governing field names and expansion behavior.
-            min_chunk_window: Minimum chunk count below which the full document is returned.
+            min_chunk_window: Minimum chunk count below which the full
+                document is returned.
 
         Returns:
-            The selected list of Solr chunk dicts, or None if the caller should fall back to the original chunk.
+            The selected list of Solr chunk dicts, or None if the caller
+                should fall back to the original chunk.
 
         """
-        if total_chunks < min_chunk_window or total_tokens <= schema.family_token_budget:
+        if (
+            total_chunks < min_chunk_window
+            or total_tokens <= schema.family_token_budget
+        ):
             log.info(
                 f"Document is short (total_chunks={total_chunks}, "
                 f"total_tokens={total_tokens}), fetching all chunks"
@@ -859,14 +868,18 @@ class SolrIndex(EmbeddingIndex):
         Build the final EmbeddedChunk from the selected context window.
 
         Parameters:
-            chunk: The original matched EmbeddedChunk whose metadata is used as the base.
-            selected_chunks: Ordered list of Solr chunk dicts forming the context window.
-            parent_doc: The parent Solr document dict used to populate content ID metadata.
+            chunk: The original matched EmbeddedChunk whose metadata is used
+                as the base.
+            selected_chunks: Ordered list of Solr chunk dicts forming the
+                context window.
+            parent_doc: The parent Solr document dict used to populate content
+                ID metadata.
             schema: ChunkWindowConfig governing field names used during assembly.
             matched_chunk_index: The index of the matched chunk within the document.
 
         Returns:
-            A new EmbeddedChunk with concatenated content from the window and expanded metadata.
+            A new EmbeddedChunk with concatenated content from the window and
+                expanded metadata.
 
         """
         content_parts = [
@@ -1121,12 +1134,17 @@ class SolrIndex(EmbeddingIndex):
         if not self.chunk_window_config:
             return
         schema = self.chunk_window_config
-        if schema.chunk_online_source_url_field and schema.chunk_online_source_url_field in doc:
+        if (
+            schema.chunk_online_source_url_field
+            and schema.chunk_online_source_url_field in doc
+        ):
             metadata["reference_url"] = doc[schema.chunk_online_source_url_field]
         if schema.chunk_source_path_field and schema.chunk_source_path_field in doc:
             metadata["source_path"] = doc[schema.chunk_source_path_field]
         if schema.chunk_token_count_field in doc:
-            metadata[schema.chunk_token_count_field] = doc[schema.chunk_token_count_field]
+            metadata[schema.chunk_token_count_field] = doc[
+                schema.chunk_token_count_field
+            ]
         # Family fields are needed later for cross-chunk comparison
         for field in schema.chunk_family_fields or []:
             if field in doc:
@@ -1147,7 +1165,8 @@ class SolrIndex(EmbeddingIndex):
             parent_id: The parent document identifier, or None if unavailable.
 
         Returns:
-            A metadata dict populated with standard document fields and any configured window metadata.
+            A metadata dict populated with standard document fields and any
+                configured window metadata.
 
         """
         metadata: dict[str, Any] = {

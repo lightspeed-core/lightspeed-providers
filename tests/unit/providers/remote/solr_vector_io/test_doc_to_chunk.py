@@ -178,5 +178,3 @@ class TestGuardClauses:
     def test_missing_chunk_id_returns_none(self, solr_index):
         chunk = solr_index._doc_to_chunk({"chunk": "Content."})
         assert chunk is None
-
-
