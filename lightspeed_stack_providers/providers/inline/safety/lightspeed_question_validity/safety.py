@@ -247,10 +247,12 @@ class QuestionValidityRunner:
         Create a message whose content is the shield prompt generated from the provided message.
 
         Parameters:
-            message (OpenAIUserMessageParam): The original user message to base the shield prompt on.
+            message (OpenAIUserMessageParam): The original user message to base the "
+            shield prompt on.
 
         Returns:
-            OpenAIUserMessageParam: A new message containing the generated shield prompt as its content.
+            OpenAIUserMessageParam: A new message containing the generated shield prompt "
+            as its content.
         """
         return OpenAIUserMessageParam(role="user", content=self.build_prompt(message))
 

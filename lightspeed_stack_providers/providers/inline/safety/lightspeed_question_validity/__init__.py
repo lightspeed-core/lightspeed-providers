@@ -7,7 +7,7 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_vali
 )
 
 if TYPE_CHECKING:
-    from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (
+    from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (  # pylint: disable=line-too-long
         QuestionValidityShieldImpl,
     )
 
@@ -29,7 +29,7 @@ async def get_provider_impl(
     Raises:
         AssertionError: If `config` is not an instance of `QuestionValidityShieldConfig`.
     """
-    from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (
+    from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (  # pylint: disable=line-too-long
         QuestionValidityShieldImpl,
     )
 

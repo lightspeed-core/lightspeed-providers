@@ -311,7 +311,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                     ]
 
                     logger.debug(
-                        "MCP server %s (%s): Setting allowed_tools = %s (filtered from %d total tools)",
+                        "MCP server %s (%s): Setting allowed_tools = %s (filtered from %d total tools)",  # pylint: disable=line-too-long
                         server_label,
                         mcp_endpoint,
                         endpoint_tools,
