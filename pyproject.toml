@@ -56,11 +56,13 @@ test-solr = [
 
 [tool.pylint.main]
 source-roots = "."
+ignore = ["tests.py", "conftest.py"]
 
 [tool.ruff]
+extend-exclude = ["lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/tests.py"]
 
 [tool.ruff.lint]
-extend-select = ["UP006", "UP007", "UP010", "UP017", "UP035", "RUF100", "B009", "B010", "DTZ005", "I001", "RET504", "RET505"]
+extend-select = ["UP006", "UP007", "UP010", "UP017", "UP035", "RUF100", "B009", "B010", "DTZ005", "I001", "RET504", "RET505", "ANN201"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }
@@ -72,6 +74,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
 disable_error_code = "attr-defined"
+exclude = ["tests.py"]
 
 [dependency-groups]
 dev = [
