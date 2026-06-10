@@ -45,7 +45,7 @@ class LlamaStackClient:
         }
 
         self.last_response = self.session.post(
-            f"{self.base_url}/v1/safety/run-shield", json=payload
+            f"{self.base_url}/v1/safety/run-shield", json=payload  # type: ignore[arg-type]
         )
         if self.last_response.status_code == 200:
             self.last_response_data = self.last_response.json()

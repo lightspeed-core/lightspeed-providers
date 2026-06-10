@@ -170,6 +170,7 @@ async def test_filter_tools_for_response_includes_always_included_tools(
 ) -> None:
     """Test that always-included tools are preserved even when not in LLM response."""
     # Configure always-included tools (uses actual tool names, not server labels)
+    assert lightspeed_agents_impl.config.tools_filter is not None
     lightspeed_agents_impl.config.tools_filter.always_include_tools = ["tool2"]
 
     # Setup mock LLM response to return only one tool name
@@ -226,6 +227,7 @@ async def test_create_openai_response_skips_filtering_when_disabled(
     lightspeed_agents_impl: LightspeedAgentsImpl, mocker: MockerFixture
 ) -> None:
     """Test that create_openai_response skips filtering when disabled."""
+    assert lightspeed_agents_impl.config.tools_filter is not None
     lightspeed_agents_impl.config.tools_filter.enabled = False
 
     # Mock the parent's create_openai_response
@@ -265,6 +267,7 @@ async def test_filter_tools_for_response_skips_filtering_below_threshold(
     lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
 ) -> None:
     """Test that _filter_tools_for_response skips filtering when expanded tools are below threshold."""
+    assert lightspeed_agents_impl.config.tools_filter is not None
     lightspeed_agents_impl.config.tools_filter.min_tools = 10  # High threshold
 
     # Setup mock tool runtime to return few tools (below threshold)

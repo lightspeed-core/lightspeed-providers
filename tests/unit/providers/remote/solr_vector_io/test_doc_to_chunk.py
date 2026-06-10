@@ -5,6 +5,8 @@ Tests the chunk-building logic directly without requiring a running Solr
 instance.
 """
 
+from typing import Any
+
 import pytest
 from llama_stack_api.vector_stores import VectorStore as VectorDB
 
@@ -21,7 +23,7 @@ EMBEDDING_MODEL = "ibm-granite/granite-embedding-30m-english"
 
 
 @pytest.fixture
-def chunk_window_config():
+def chunk_window_config() -> ChunkWindowConfig:
     """
     Create a ChunkWindowConfig with explicit field names used by the tests.
 
@@ -45,7 +47,7 @@ def chunk_window_config():
 
 
 @pytest.fixture
-def solr_index(chunk_window_config):
+def solr_index(chunk_window_config: ChunkWindowConfig) -> SolrIndex:
     """
     Create a SolrIndex configured for tests without calling initialize().
 
@@ -77,7 +79,7 @@ def solr_index(chunk_window_config):
     )
 
 
-def _basic_doc(**extra):
+def _basic_doc(**extra: Any) -> dict[str, Any]:
     """
     Return a baseline document dictionary representing a chunk, with sensible defaults.
 
@@ -94,72 +96,76 @@ def _basic_doc(**extra):
 
 
 class TestMetadataFields:
-    def test_source_present(self, solr_index):
+    def test_source_present(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc())
         assert chunk is not None
         assert chunk.metadata["source"] == OKP_SOURCE
         assert chunk.chunk_metadata.source == OKP_SOURCE
 
-    def test_metadata_and_chunk_metadata_both_set(self, solr_index):
+    def test_metadata_and_chunk_metadata_both_set(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc())
         assert chunk is not None
         assert chunk.metadata is not None
         assert chunk.chunk_metadata is not None
 
-    def test_document_id_in_metadata(self, solr_index):
+    def test_document_id_in_metadata(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc())
         assert chunk is not None
         assert chunk.metadata["document_id"] == "doc"
         assert chunk.metadata["doc_id"] == "doc"
 
-    def test_chunk_id_in_metadata(self, solr_index):
+    def test_chunk_id_in_metadata(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc())
         assert chunk is not None
         assert chunk.metadata["chunk_id"] == "doc_chunk_0"
 
 
 class TestOptionalFields:
-    def test_title_included_when_present(self, solr_index):
+    def test_title_included_when_present(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc(title="My Title"))
         assert chunk is not None
         assert chunk.metadata["title"] == "My Title"
 
-    def test_title_absent_when_missing(self, solr_index):
+    def test_title_absent_when_missing(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc())
         assert chunk is not None
         assert "title" not in chunk.metadata
 
-    def test_online_source_url_mapped_to_reference_url(self, solr_index):
+    def test_online_source_url_mapped_to_reference_url(
+        self, solr_index: SolrIndex
+    ) -> None:
         chunk = solr_index._doc_to_chunk(
             _basic_doc(online_source_url="https://example.com/doc#chunk1")
         )
         assert chunk is not None
         assert chunk.metadata["reference_url"] == "https://example.com/doc#chunk1"
 
-    def test_source_path_included_when_present(self, solr_index):
+    def test_source_path_included_when_present(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(
             _basic_doc(source_path="/docs/install.html#step-3")
         )
         assert chunk is not None
         assert chunk.metadata["source_path"] == "/docs/install.html#step-3"
 
-    def test_token_count_included_when_present(self, solr_index):
+    def test_token_count_included_when_present(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc(num_tokens=42))
         assert chunk is not None
         assert chunk.metadata["num_tokens"] == 42
 
-    def test_chunk_index_included_when_present(self, solr_index):
+    def test_chunk_index_included_when_present(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc(chunk_index=3))
         assert chunk is not None
         assert chunk.metadata["chunk_index"] == 3
 
-    def test_resource_name_used_as_chunk_id(self, solr_index):
+    def test_resource_name_used_as_chunk_id(self, solr_index: SolrIndex) -> None:
         doc = {"resourceName": "res_chunk_1", "chunk": "Content.", "parent_id": "res"}
         chunk = solr_index._doc_to_chunk(doc)
         assert chunk is not None
         assert chunk.chunk_id == "res_chunk_1"
 
-    def test_parent_id_derived_from_chunk_id_pattern(self, solr_index):
+    def test_parent_id_derived_from_chunk_id_pattern(
+        self, solr_index: SolrIndex
+    ) -> None:
         doc = {"id": "mydoc_chunk_2", "chunk": "Content."}
         chunk = solr_index._doc_to_chunk(doc)
         assert chunk is not None
@@ -167,14 +173,14 @@ class TestOptionalFields:
 
 
 class TestGuardClauses:
-    def test_missing_content_returns_none(self, solr_index):
+    def test_missing_content_returns_none(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk({"id": "doc_chunk_0", "parent_id": "doc"})
         assert chunk is None
 
-    def test_non_chunk_doc_returns_none(self, solr_index):
+    def test_non_chunk_doc_returns_none(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk(_basic_doc(is_chunk=False))
         assert chunk is None
 
-    def test_missing_chunk_id_returns_none(self, solr_index):
+    def test_missing_chunk_id_returns_none(self, solr_index: SolrIndex) -> None:
         chunk = solr_index._doc_to_chunk({"chunk": "Content."})
         assert chunk is None

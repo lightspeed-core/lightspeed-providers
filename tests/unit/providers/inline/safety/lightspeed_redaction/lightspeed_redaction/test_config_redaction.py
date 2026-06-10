@@ -35,7 +35,7 @@ def test_redaction_shield_config_defaults() -> None:
 def test_redaction_shield_config_custom_values() -> None:
     """Test that the RedactionShieldConfig model correctly assigns custom values."""
     rules = [{"pattern": "foo", "replacement": "bar"}]
-    config = RedactionShieldConfig(rules=rules, case_sensitive=True)
+    config = RedactionShieldConfig(rules=rules, case_sensitive=True)  # type: ignore[arg-type]
     assert len(config.rules) == 1
     assert config.rules[0].pattern == "foo"
     assert config.rules[0].replacement == "bar"

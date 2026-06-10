@@ -132,7 +132,7 @@ async def test_get_tool_name_from_config_file_search(
     """Test _get_tool_name_from_config for file_search tools."""
     tool_dict = {"type": "file_search", "vector_store_ids": ["vs_123"]}
     # pylint: disable=protected-access
-    name = lightspeed_agents_impl._get_tool_name_from_config(tool_dict, 0)
+    name = lightspeed_agents_impl._get_tool_name_from_config(tool_dict, 0)  # type: ignore[arg-type]
     assert name == "file_search"
 
 
