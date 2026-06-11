@@ -33,6 +33,7 @@ async def get_provider_impl(
     Returns:
         LightspeedAgentsImpl: An initialized LightspeedAgentsImpl instance ready for use.
     """
+    # pylint: disable=import-outside-toplevel
     import litellm
 
     from .agents import LightspeedAgentsImpl
