@@ -60,6 +60,7 @@ class QuestionValidityShieldConfig(BaseModel):
         description="The default response when the Users' question is determined to be invalid.",
     )
 
+    # pylint: disable=unused-argument
     @classmethod
     def sample_run_config(
         cls,

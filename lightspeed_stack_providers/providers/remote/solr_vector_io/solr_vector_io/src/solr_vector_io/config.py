@@ -162,6 +162,7 @@ class SolrVectorIOConfig(BaseModel):
         description="Schema mapping + params for chunk window expansion",
     )
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,unused-argument
     @classmethod
     def sample_run_config(
         cls,

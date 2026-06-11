@@ -48,6 +48,7 @@ class RedactionShieldConfig(BaseModel):
         description="Whether pattern matching is case sensitive",
     )
 
+    # pylint: disable=unused-argument
     @classmethod
     def sample_run_config(
         cls,
