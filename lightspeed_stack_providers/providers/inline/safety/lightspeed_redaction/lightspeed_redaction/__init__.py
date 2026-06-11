@@ -25,6 +25,7 @@ async def get_provider_impl(
     Raises:
         AssertionError: If `config` is not a `RedactionShieldConfig`.
     """
+    # pylint: disable=import-outside-toplevel
     from .redaction import (
         RedactionShieldImpl,
     )
