@@ -458,3 +458,70 @@ async def test_filter_tools_preserves_previously_called_tools(
     assert filtered_tools[0]["type"] == "mcp"
     assert filtered_tools[0]["server_url"] == "http://test1.com"
     assert "previously_used_tool" in filtered_tools[0]["allowed_tools"]
+
+
+def test_extract_user_prompt_string_passthrough(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that a plain string input is returned unchanged."""
+    assert lightspeed_agents_impl._extract_user_prompt("hello world") == "hello world"
+
+
+def test_extract_user_prompt_list_of_dicts_joined_on_newline(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that a list of message dicts has content values joined with newlines."""
+    msgs = [{"content": "foo"}, {"content": "bar"}]
+    assert lightspeed_agents_impl._extract_user_prompt(msgs) == "foo\nbar"
+
+
+def test_extract_user_prompt_dict_missing_content_key_uses_empty_string(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that a message dict without a content key contributes an empty string."""
+    msgs = [{"content": "foo"}, {"role": "user"}]
+    assert lightspeed_agents_impl._extract_user_prompt(msgs) == "foo\n"
+
+
+def test_extract_user_prompt_list_of_non_dicts_uses_str(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that non-dict list items are converted with str()."""
+    assert lightspeed_agents_impl._extract_user_prompt(["a", "b"]) == "a\nb"
+
+
+def test_parse_llm_tool_names_extracts_valid_json_list(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that a valid JSON list embedded in the response text is extracted correctly."""
+    content = 'Here are the results: ["tool1", "tool2"]'
+    assert lightspeed_agents_impl._parse_llm_tool_names(content) == ["tool1", "tool2"]
+
+
+def test_parse_llm_tool_names_empty_json_list(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that an empty JSON list in the response returns an empty list."""
+    assert lightspeed_agents_impl._parse_llm_tool_names("No tools found: []") == []
+
+
+def test_parse_llm_tool_names_no_brackets_returns_empty(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that a response with no brackets returns an empty list."""
+    assert lightspeed_agents_impl._parse_llm_tool_names("no brackets here") == []
+
+
+def test_parse_llm_tool_names_invalid_json_returns_empty(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that a malformed JSON fragment between brackets returns an empty list."""
+    assert lightspeed_agents_impl._parse_llm_tool_names("[not valid json}") == []
+
+
+def test_parse_llm_tool_names_uses_last_bracket_pair(
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+) -> None:
+    """Test that when the response contains multiple bracket pairs, the last one is used."""
+    content = 'ignore [this] use ["tool1"]'
+    assert lightspeed_agents_impl._parse_llm_tool_names(content) == ["tool1"]
