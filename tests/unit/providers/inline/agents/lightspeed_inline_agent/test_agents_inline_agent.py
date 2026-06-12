@@ -44,12 +44,17 @@ def lightspeed_agents_impl_fixture(
 ) -> LightspeedAgentsImpl:
     """Fixture for creating a LightspeedAgentsImpl instance.
 
-    Create a LightspeedAgentsImpl test instance configured with in-memory persistence and a tools filter.
+    Create a LightspeedAgentsImpl test instance configured with in-memory
+    persistence and a tools filter.
 
-    The returned instance uses the provided async mocks for the inference and conversations APIs; remaining external dependencies are simple AsyncMocks and the policy is an empty list.
+    The returned instance uses the provided async mocks for the inference and
+    conversations APIs; remaining external dependencies are simple AsyncMocks
+    and the policy is an empty list.
 
     Returns:
-        LightspeedAgentsImpl: A test-ready instance with KVStore and Responses stores set to in-memory backends and ToolsFilter(enabled=True, min_tools=5).
+        LightspeedAgentsImpl: A test-ready instance with KVStore and Responses
+        stores set to in-memory backends and ToolsFilter(enabled=True,
+        min_tools=5).
     """
     persistence = AgentPersistenceConfig(
         agent_state=KVStoreReference(namespace="test", backend="in_memory"),
