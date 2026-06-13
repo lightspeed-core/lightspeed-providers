@@ -6,7 +6,6 @@ _select_context_chunks_in_window without requiring a running Solr instance.
 """
 
 from typing import Any
-
 from unittest.mock import AsyncMock
 
 import pytest
