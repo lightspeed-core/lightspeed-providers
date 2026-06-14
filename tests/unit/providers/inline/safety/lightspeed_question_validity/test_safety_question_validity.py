@@ -17,8 +17,8 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_vali
 )
 
 
-@pytest.fixture
-def mock_inference_api() -> AsyncMock:
+@pytest.fixture(name="mock_inference_api")
+def mock_inference_api_fixture() -> AsyncMock:
     """Fixture for mocking the Inference API.
 
     Provide a pytest fixture that supplies an AsyncMock
@@ -34,8 +34,10 @@ def mock_inference_api() -> AsyncMock:
     return AsyncMock()
 
 
-@pytest.fixture
-def question_validity_runner(mock_inference_api: AsyncMock) -> QuestionValidityRunner:
+@pytest.fixture(name="question_validity_runner")
+def question_validity_runner_fixture(
+    mock_inference_api: AsyncMock,
+) -> QuestionValidityRunner:
     """Fixture for creating a QuestionValidityRunner instance."""
     model_id = "test_model"
     model_prompt_template = Template(
@@ -139,16 +141,20 @@ async def test_run_rejected(
     mock_inference_api.openai_chat_completion.assert_called_once()
 
 
-@pytest.fixture
+@pytest.fixture(name="question_validity_shield_implementation")
 def question_validity_shield_impl(
     mock_inference_api: AsyncMock,
 ) -> QuestionValidityShieldImpl:
     """Fixture for creating a QuestionValidityShieldImpl instance."""
+    # pylint: disable=import-outside-toplevel
     from llama_stack_api import Api
 
+    # pylint: disable=line-too-long, import-outside-toplevel
     from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.config import (
         QuestionValidityShieldConfig,
     )
+
+    # pylint: disable=line-too-long, import-outside-toplevel, redefined-outer-name, reimported
     from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (
         QuestionValidityShieldImpl,
     )
@@ -160,9 +166,11 @@ def question_validity_shield_impl(
 
 @pytest.mark.asyncio
 async def test_run_shield_allowed(
-    question_validity_shield_impl: QuestionValidityShieldImpl, mocker: MockerFixture
+    question_validity_shield_implementation: QuestionValidityShieldImpl,
+    mocker: MockerFixture,
 ) -> None:
     """Test the run_shield method for an allowed question."""
+    # pylint: disable=line-too-long
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
     )
@@ -176,7 +184,7 @@ async def test_run_shield_allowed(
     ]
     request = RunShieldRequest(shield_id="test_shield", messages=messages)
 
-    response = await question_validity_shield_impl.run_shield(request)
+    response = await question_validity_shield_implementation.run_shield(request)
 
     assert response.violation is None
     mock_runner.return_value.run.assert_called_once()
@@ -184,9 +192,11 @@ async def test_run_shield_allowed(
 
 @pytest.mark.asyncio
 async def test_run_shield_rejected(
-    question_validity_shield_impl: QuestionValidityShieldImpl, mocker: MockerFixture
+    question_validity_shield_implementation: QuestionValidityShieldImpl,
+    mocker: MockerFixture,
 ) -> None:
     """Test the run_shield method for a rejected question."""
+    # pylint: disable=line-too-long
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
     )
@@ -203,7 +213,7 @@ async def test_run_shield_rejected(
     ]
     request = RunShieldRequest(shield_id="test_shield", messages=messages)
 
-    response = await question_validity_shield_impl.run_shield(request)
+    response = await question_validity_shield_implementation.run_shield(request)
 
     assert isinstance(response.violation, SafetyViolation)
     mock_runner.return_value.run.assert_called_once()
@@ -211,9 +221,11 @@ async def test_run_shield_rejected(
 
 @pytest.mark.asyncio
 async def test_run_moderation_allowed(
-    question_validity_shield_impl: QuestionValidityShieldImpl, mocker: MockerFixture
+    question_validity_shield_implementation: QuestionValidityShieldImpl,
+    mocker: MockerFixture,
 ) -> None:
     """Test the run_moderation method for an allowed question."""
+    # pylint: disable=line-too-long
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
     )
@@ -221,7 +233,7 @@ async def test_run_moderation_allowed(
         return_value=RunShieldResponse(violation=None)
     )
 
-    result = await question_validity_shield_impl.run_moderation(
+    result = await question_validity_shield_implementation.run_moderation(
         RunModerationRequest(
             input="How do I create a Kubernetes service?", model="test_model"
         )
@@ -232,9 +244,11 @@ async def test_run_moderation_allowed(
 
 @pytest.mark.asyncio
 async def test_run_moderation_rejected(
-    question_validity_shield_impl: QuestionValidityShieldImpl, mocker: MockerFixture
+    question_validity_shield_implementation: QuestionValidityShieldImpl,
+    mocker: MockerFixture,
 ) -> None:
     """Test the run_moderation method for a rejected question."""
+    # pylint: disable=line-too-long
     mock_runner = mocker.patch(
         "lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety.QuestionValidityRunner"
     )
@@ -247,7 +261,7 @@ async def test_run_moderation_rejected(
         )
     )
 
-    result = await question_validity_shield_impl.run_moderation(
+    result = await question_validity_shield_implementation.run_moderation(
         RunModerationRequest(input="What is the weather today?", model="test_model")
     )
 
