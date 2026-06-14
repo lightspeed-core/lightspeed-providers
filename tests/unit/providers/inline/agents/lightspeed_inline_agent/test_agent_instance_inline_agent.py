@@ -25,7 +25,7 @@ def mock_inference_api_fixture() -> AsyncMock:
     return AsyncMock()
 
 
-@pytest.fixture(name="mock_conversation_api")
+@pytest.fixture(name="mock_conversations_api")
 def mock_conversations_api_fixture() -> AsyncMockType:
     """Fixture for mocking the Conversations API.
 
