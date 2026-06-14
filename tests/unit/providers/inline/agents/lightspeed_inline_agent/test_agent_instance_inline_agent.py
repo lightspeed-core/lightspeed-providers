@@ -19,14 +19,14 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 )
 
 
-@pytest.fixture
-def mock_inference_api() -> AsyncMockType:
+@pytest.fixture(name="mock_inference_api")
+def mock_inference_api_fixture() -> AsyncMock:
     """Fixture for mocking the Inference API."""
     return AsyncMock()
 
 
-@pytest.fixture
-def mock_conversations_api() -> AsyncMockType:
+@pytest.fixture(name="mock_conversation_api")
+def mock_conversations_api_fixture() -> AsyncMockType:
     """Fixture for mocking the Conversations API.
 
     The mock's `list_messages` coroutine is configured to return an
@@ -40,14 +40,14 @@ def mock_conversations_api() -> AsyncMockType:
     return mock
 
 
-@pytest.fixture
-def mock_tool_runtime_api() -> AsyncMockType:
+@pytest.fixture(name="mock_tool_runtime_api")
+def mock_tool_runtime_api_fixture() -> AsyncMockType:
     """Fixture for mocking the Tool Runtime API."""
     return AsyncMock()
 
 
-@pytest.fixture
-def lightspeed_agents_impl(
+@pytest.fixture(name="lightspeed_agents_impl")
+def lightspeed_agents_impl_fixture(
     mock_inference_api: AsyncMockType,
     mock_conversations_api: AsyncMockType,
     mock_tool_runtime_api: AsyncMockType,
@@ -62,7 +62,8 @@ def lightspeed_agents_impl(
     the provided mock APIs and additional mocked dependencies.
 
     Returns:
-        LightspeedAgentsImpl: A LightspeedAgentsImpl configured for tests (in-memory persistence, tools filter enabled).
+        LightspeedAgentsImpl: A LightspeedAgentsImpl configured for tests
+        (in-memory persistence, tools filter enabled).
     """
     persistence = AgentPersistenceConfig(
         agent_state=KVStoreReference(namespace="test", backend="in_memory"),
@@ -98,7 +99,8 @@ def create_mock_chat_response(content: str) -> MockerFixture:
         content (str): Text to set as choices[0].message.content on the mock response.
 
     Returns:
-        mock_response (MockerFixture): A mock object whose `choices` attribute is a list with one choice whose `message.content` equals `content`.
+        mock_response (MockerFixture): A mock object whose `choices` attribute
+        is a list with one choice whose `message.content` equals `content`.
     """
     mock_message = MagicMock()
     mock_message.content = content
@@ -112,6 +114,7 @@ def create_mock_chat_response(content: str) -> MockerFixture:
     return mock_response
 
 
+# pylint: disable=protected-access
 @pytest.mark.asyncio
 async def test_filter_tools_for_response_filters_correctly(
     lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
@@ -266,7 +269,7 @@ async def test_create_openai_response_skips_filtering_when_disabled(
 async def test_filter_tools_for_response_skips_filtering_below_threshold(
     lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
 ) -> None:
-    """Test that _filter_tools_for_response skips filtering when expanded tools are below threshold."""
+    """Test that _filter_tools_for_response skips filtering when tools are below threshold."""
     assert lightspeed_agents_impl.config.tools_filter is not None
     lightspeed_agents_impl.config.tools_filter.min_tools = 10  # High threshold
 
@@ -350,7 +353,7 @@ async def test_get_previously_called_tools_extracts_mcp_calls(
 async def test_get_previously_called_tools_extracts_mcp_approval_requests(
     lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
 ) -> None:
-    """Test that _get_previously_called_tools extracts tool names from mcp_approval_request items."""
+    """Test if _get_previously_called_tools extracts tool names from mcp_approval_request items."""
     # Mock conversation items with mcp_approval_request type
     mock_item = MagicMock()
     mock_item.type = "mcp_approval_request"
