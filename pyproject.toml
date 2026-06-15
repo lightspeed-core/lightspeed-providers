@@ -58,6 +58,9 @@ test-solr = [
 source-roots = "."
 ignore = ["tests.py", "conftest.py"]
 
+[tool.pylint."MESSAGES CONTROL"]
+disable = ["R0801"]
+
 [tool.ruff]
 extend-exclude = ["lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/tests.py"]
 
