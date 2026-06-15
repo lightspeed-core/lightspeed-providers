@@ -3,6 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
+# pylint: disable=line-too-long
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_redaction.lightspeed_redaction.config import (
     PatternReplacement,
     RedactionShieldConfig,
@@ -52,7 +53,7 @@ def test_sample_run_config() -> None:
 
 
 def test_sample_run_config_with_custom_values() -> None:
-    """Test that the sample_run_config class method returns the expected dictionary with custom values."""
+    """Test that the sample_run_config method returns the expected dict with custom values."""
     custom_rules = [{"pattern": "test", "replacement": "tested"}]
     expected_config = {
         "rules": custom_rules,
