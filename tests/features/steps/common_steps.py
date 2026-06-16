@@ -8,6 +8,8 @@ from behave import given
 from behave.runner import Context
 from requests import Response
 
+# pylint: disable=not-callable
+
 
 class LlamaStackClient:
     """Client for interacting with the llama-stack API."""
