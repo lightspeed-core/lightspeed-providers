@@ -3,6 +3,8 @@
 from behave import given, then, when
 from behave.runner import Context
 
+# pylint: disable=not-callable
+
 
 @given("the question validity shield is configured")
 def step_given_question_validity_shield_configured(context: Context) -> None:
