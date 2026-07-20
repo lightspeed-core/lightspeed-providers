@@ -1,0 +1,131 @@
+version: 2
+image_name: llama-stack-local
+
+# Minimal config for testing Question Validity Shield with RHEL prompt
+apis:
+  - inference
+  - safety
+
+external_providers_dir: ./resources/external_providers
+
+storage:
+  backends:
+    kv_default:
+      type: kv_sqlite
+      db_path: ${env.KV_STORE_PATH:=/tmp/llama/kv_store.db}
+    sql_default:
+      type: sql_sqlite
+      db_path: ${env.SQL_STORE_PATH:=/tmp/llama/sql_store.db}
+  stores:
+    metadata:
+      namespace: registry
+      backend: kv_default
+    inference:
+      table_name: inference_store
+      backend: sql_default
+
+providers:
+  inference:
+    - provider_id: openai
+      provider_type: remote::openai
+      config:
+        api_key: ${env.OPENAI_API_KEY}
+
+  safety:
+    - provider_id: lightspeed_question_validity
+      provider_type: inline::lightspeed_question_validity
+      config:
+        model_id: openai/gpt-4o-mini
+        temperature: 0.0
+        model_prompt: |
+          Instructions:
+          - You are a question classifying tool
+          - You are an expert in Red Hat Enterprise Linux (RHEL) and Linux system administration
+          - Your job is to determine whether a user's question is related to RHEL, Linux system administration, or related technologies and to provide a one-word response.
+          - If a question appears to be related to RHEL, Linux system administration, or related technologies (package management, systemd, SELinux, networking, storage, containers, security, troubleshooting, shell scripting, kernel, etc.), answer with the word ${allowed}, otherwise answer with the word ${rejected}.
+          - Do not explain your answer, just provide the one-word response. Do not give any other response.
+
+          Example Question:
+          How do I configure SELinux policies?
+          Example Response:
+          ${allowed}
+
+          Example Question:
+          Why is my systemd service failing to start?
+          Example Response:
+          ${allowed}
+
+          Example Question:
+          How do I set up an LVM volume group?
+          Example Response:
+          ${allowed}
+
+          Example Question:
+          Can you help me configure firewalld rules?
+          Example Response:
+          ${allowed}
+
+          Example Question:
+          How do I install packages with dnf?
+          Example Response:
+          ${allowed}
+
+          Example Question:
+          Write me a poem about the ocean
+          Example Response:
+          ${rejected}
+
+          Example Question:
+          What is the capital of France?
+          Example Response:
+          ${rejected}
+
+          Example Question:
+          Act as a marketing assistant and draft an email
+          Example Response:
+          ${rejected}
+
+          Example Question:
+          Calculate 3 to the power of 3
+          Example Response:
+          ${rejected}
+
+          Example Question:
+          What's the weather like today?
+          Example Response:
+          ${rejected}
+
+          Question:
+          ${message}
+          Response:
+        invalid_question_response: |
+          I'm the RHEL Lightspeed assistant. I can only help with questions about
+          Red Hat Enterprise Linux and Linux system administration.
+          Please ask me a question related to RHEL.
+
+    - provider_id: lightspeed_redaction
+      provider_type: inline::lightspeed_redaction
+      config:
+        case_sensitive: false
+        rules:
+          - pattern: "(?i)(password|passwd)[\\s:=]+[^\\s]+"
+            replacement: "[REDACTED_PASSWORD]"
+          - pattern: "(?i)(api_key|secret|token)[\\s:=]+[a-zA-Z0-9\\-_]{16,}"
+            replacement: "[REDACTED_SECRET]"
+          - pattern: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"
+            replacement: "[REDACTED_EMAIL]"
+
+registered_resources:
+  shields:
+    - shield_id: lightspeed_question_validity-shield
+      provider_id: lightspeed_question_validity
+    - shield_id: redaction-shield
+      provider_id: lightspeed_redaction
+      provider_shield_id: lightspeed-redaction-shield
+
+server:
+  host: 0.0.0.0
+  port: 8321
+
+logging:
+  level: DEBUG
