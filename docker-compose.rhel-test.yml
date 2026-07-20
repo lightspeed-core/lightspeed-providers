@@ -5,12 +5,12 @@ services:
       dockerfile: Dockerfile
     container_name: llama-stack-rhel-test
     ports:
-      - "8321:8321"
+      - "127.0.0.1:8321:8321"
     volumes:
       - ./run-rhel-test.yaml:/app/run.yaml
       - ./resources/external_providers:/app/providers.d
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:?OPENAI_API_KEY must be set}
       - EXTERNAL_PROVIDERS_DIR=/app/providers.d
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8321/v1/health"]

@@ -6,7 +6,7 @@ apis:
   - inference
   - safety
 
-external_providers_dir: ./resources/external_providers
+external_providers_dir: ${env.EXTERNAL_PROVIDERS_DIR:=./resources/external_providers}
 
 storage:
   backends:
@@ -128,4 +128,4 @@ server:
   port: 8321
 
 logging:
-  level: DEBUG
+  level: INFO
