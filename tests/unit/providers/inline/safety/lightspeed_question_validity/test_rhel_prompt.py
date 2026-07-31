@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from llama_stack_api.inference import OpenAIUserMessageParam
-from llama_stack_api.safety import RunShieldResponse, SafetyViolation, ViolationLevel
+from llama_stack_api.safety import SafetyViolation, ViolationLevel
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (
     SUBJECT_ALLOWED,
@@ -292,7 +292,7 @@ class TestRhelOnTopicQuestions:
         call_args = mock_api.openai_chat_completion.call_args
         sent_content = call_args[0][0].messages[0].content
         assert question in sent_content, (
-            f"Question text must be included in the LLM call"
+            "Question text must be included in the LLM call"
         )
 
 
@@ -345,7 +345,7 @@ class TestRhelOffTopicQuestions:
         call_args = mock_api.openai_chat_completion.call_args
         sent_content = call_args[0][0].messages[0].content
         assert question in sent_content, (
-            f"Question text must be included in the LLM call"
+            "Question text must be included in the LLM call"
         )
 
 
@@ -399,5 +399,5 @@ class TestRhelPentestAdversarialExamples:
         call_args = mock_api.openai_chat_completion.call_args
         sent_content = call_args[0][0].messages[0].content
         assert question in sent_content, (
-            f"Question text must be included in the LLM call"
+            "Question text must be included in the LLM call"
         )
