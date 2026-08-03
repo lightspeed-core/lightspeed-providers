@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightspeed_stack_providers"
-version = "0.5.0"
+version = "0.5.3"
 description = "Lightspeed Stack providers for llama-stack"
 readme = "README.md"
 requires-python = ">=3.12"
