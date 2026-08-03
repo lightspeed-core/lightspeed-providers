@@ -285,15 +285,13 @@ class TestRhelOnTopicQuestions:
         message = OpenAIUserMessageParam(role="user", content=question)
         response = await runner.run(message)
 
-        assert response.violation is None, (
-            f"Question should be allowed: '{question}'"
-        )
+        assert response.violation is None, f"Question should be allowed: '{question}'"
         mock_api.openai_chat_completion.assert_called_once()
         call_args = mock_api.openai_chat_completion.call_args
         sent_content = call_args[0][0].messages[0].content
-        assert question in sent_content, (
-            "Question text must be included in the LLM call"
-        )
+        assert (
+            question in sent_content
+        ), "Question text must be included in the LLM call"
 
 
 class TestRhelOffTopicQuestions:
@@ -344,9 +342,9 @@ class TestRhelOffTopicQuestions:
         assert response.violation.user_message == RHEL_INVALID_QUESTION_RESPONSE
         call_args = mock_api.openai_chat_completion.call_args
         sent_content = call_args[0][0].messages[0].content
-        assert question in sent_content, (
-            "Question text must be included in the LLM call"
-        )
+        assert (
+            question in sent_content
+        ), "Question text must be included in the LLM call"
 
 
 class TestRhelPentestAdversarialExamples:
@@ -398,6 +396,6 @@ class TestRhelPentestAdversarialExamples:
         ), f"Adversarial question should be rejected: '{question}'"
         call_args = mock_api.openai_chat_completion.call_args
         sent_content = call_args[0][0].messages[0].content
-        assert question in sent_content, (
-            "Question text must be included in the LLM call"
-        )
+        assert (
+            question in sent_content
+        ), "Question text must be included in the LLM call"
