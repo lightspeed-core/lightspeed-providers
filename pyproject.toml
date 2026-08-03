@@ -1,13 +1,28 @@
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "lightspeed_stack_providers"
 version = "0.5.0"
 description = "Lightspeed Stack providers for llama-stack"
-readme = "README.md"
+authors = []
+maintainers = [
+    {email = "tisnik@centrum.cz", name = "Pavel Tišnovský"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: Apache Software License",
+]
+keywords = [
+    "LLM",
+    "Guardrails",
+    "RAG",
+    "OKP"
+]
 requires-python = ">=3.12"
+readme = "README.md"
+license = {file = "LICENSE"}
 dependencies = [
     "llama-stack==0.6.0",
     "llama-stack-api==0.6.0",
@@ -57,6 +72,10 @@ test-solr = [
 [tool.pylint.main]
 source-roots = "."
 ignore = ["tests.py", "conftest.py"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
 [tool.pylint."MESSAGES CONTROL"]
 disable = ["R0801"]
