@@ -208,6 +208,7 @@ class TestRhelShieldResponses:
         """Rejection message should tell the user what the assistant can help with."""
         response = rhel_runner.get_shield_response(SUBJECT_REJECTED)
         assert response.violation is not None
+        assert response.violation.user_message is not None
         assert "RHEL" in response.violation.user_message
         assert "Linux system administration" in response.violation.user_message
 
