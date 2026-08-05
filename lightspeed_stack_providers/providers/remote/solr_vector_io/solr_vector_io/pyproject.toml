@@ -1,7 +1,7 @@
 [project]
 name = "solr-vector-io"
 version = "0.1.0"
-description = "Read-only Solr vector_io provider for llama-stack"
+description = "Read-only Solr vector_io provider for ogx (Llama Stack)"
 requires-python = ">=3.12"
 
 [tool.pytest.ini_options]

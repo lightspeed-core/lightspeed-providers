@@ -8,7 +8,7 @@ instance.
 from typing import Any
 
 import pytest
-from llama_stack_api.vector_stores import VectorStore as VectorDB
+from ogx_api.vector_stores import VectorStore as VectorDB
 
 # pylint: disable=line-too-long
 from lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.src.solr_vector_io.config import (

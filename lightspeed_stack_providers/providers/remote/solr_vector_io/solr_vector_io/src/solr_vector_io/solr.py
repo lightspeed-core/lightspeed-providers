@@ -5,30 +5,30 @@
 from typing import Any, Optional
 
 import httpx
-from llama_stack.core.storage.kvstore import kvstore_impl
-from llama_stack.log import get_logger
-from llama_stack.providers.utils.memory.openai_vector_store_mixin import (
+from numpy.typing import NDArray
+from ogx.core.storage.kvstore import kvstore_impl
+from ogx.log import get_logger
+from ogx.providers.utils.memory.openai_vector_store_mixin import (
     OpenAIVectorStoreMixin,
 )
-from llama_stack.providers.utils.memory.vector_store import (
+from ogx.providers.utils.memory.vector_store import (
     ChunkForDeletion,
     EmbeddingIndex,
     VectorStoreWithIndex,
 )
-from llama_stack.providers.utils.vector_io.filters import ComparisonFilter, Filter
-from llama_stack_api.common.errors import VectorStoreNotFoundError
-from llama_stack_api.datatypes import VectorStoresProtocolPrivate
-from llama_stack_api.files import Files
-from llama_stack_api.inference import Inference
-from llama_stack_api.vector_io import (
+from ogx.providers.utils.vector_io.filters import ComparisonFilter, Filter
+from ogx_api.common.errors import VectorStoreNotFoundError
+from ogx_api.datatypes import VectorStoresProtocolPrivate
+from ogx_api.files import Files
+from ogx_api.inference import Inference
+from ogx_api.vector_io import (
     Chunk,
     EmbeddedChunk,
     QueryChunksRequest,
     QueryChunksResponse,
     VectorIO,
 )
-from llama_stack_api.vector_stores import VectorStore
-from numpy.typing import NDArray
+from ogx_api.vector_stores import VectorStore
 
 from .config import ChunkWindowConfig, SolrVectorIOConfig
 from .filter_helpers import build_solr_filter_query
