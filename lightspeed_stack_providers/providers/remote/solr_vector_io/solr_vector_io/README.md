@@ -1,6 +1,6 @@
 # Solr Vector IO Provider
 
-A read-only vector_io provider implementation for llama-stack that integrates with Apache Solr's DenseVectorField and KNN search capabilities.
+A read-only vector_io provider implementation for ogx (formerly Llama Stack) that integrates with Apache Solr's DenseVectorField and KNN search capabilities.
 
 ## Features
 
@@ -43,7 +43,7 @@ The provider requires the following configuration:
 
 ## Usage
 
-This provider is designed to be used with llama-stack. The Solr collection should already exist and contain documents with:
+This provider is designed to be used with ogx. The Solr collection should already exist and contain documents with:
 
 1. A DenseVectorField for vector embeddings
 2. A content/text field for the chunk text
@@ -217,7 +217,7 @@ The provider supports dynamic filtering of search results by metadata fields usi
 **Simple equality filter:**
 
 ```python
-from llama_stack_api import ComparisonFilter
+from ogx_api import ComparisonFilter
 
 response = await adapter.query_chunks(
     vector_store_id="my-store",
@@ -255,7 +255,7 @@ response = await adapter.query_chunks(
 **Compound filters (AND/OR):**
 
 ```python
-from llama_stack_api import CompoundFilter, ComparisonFilter
+from ogx_api import CompoundFilter, ComparisonFilter
 
 response = await adapter.query_chunks(
     vector_store_id="my-store",

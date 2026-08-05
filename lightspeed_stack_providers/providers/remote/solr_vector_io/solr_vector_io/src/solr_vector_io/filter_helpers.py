@@ -3,7 +3,7 @@
 import re
 from typing import Any, Optional
 
-from llama_stack.providers.utils.vector_io.filters import (
+from ogx.providers.utils.vector_io.filters import (
     ComparisonFilter,
     CompoundFilter,
     Filter,
@@ -158,7 +158,7 @@ def _convert_compound_filter(filter_obj: CompoundFilter) -> str:
 
 def filter_to_solr_fq(filter_obj: Filter) -> str:
     """
-    Convert llama-stack Filter to Solr filter query (fq) syntax.
+    Convert ogx Filter to Solr filter query (fq) syntax.
 
     Translates ComparisonFilter and CompoundFilter objects to Solr's
     native filter query language for metadata-based filtering.

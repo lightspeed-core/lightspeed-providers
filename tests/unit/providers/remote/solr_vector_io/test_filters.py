@@ -6,7 +6,7 @@ and CompoundFilter types.
 """
 
 import pytest
-from llama_stack_api import ComparisonFilter, CompoundFilter
+from ogx_api import ComparisonFilter, CompoundFilter
 
 # pylint: disable=line-too-long
 from lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.src.solr_vector_io.filter_helpers import (

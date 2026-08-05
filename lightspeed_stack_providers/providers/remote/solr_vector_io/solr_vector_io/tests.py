@@ -20,9 +20,9 @@ Skip slow tests (real embeddings):
 
 import numpy as np
 import pytest
-from llama_stack.core.storage.kvstore.config import SqliteKVStoreConfig
-from llama_stack_api.vector_io import Chunk
-from llama_stack_api.vector_stores import VectorStore as VectorDB
+from ogx.core.storage.kvstore.config import SqliteKVStoreConfig
+from ogx_api.vector_io import Chunk
+from ogx_api.vector_stores import VectorStore as VectorDB
 from src.solr_vector_io import (
     ChunkWindowConfig,
     SolrVectorIOAdapter,
