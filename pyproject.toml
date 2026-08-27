@@ -1,6 +1,6 @@
 [project]
 name = "lightspeed_stack_providers"
-version = "0.5.0"
+version = "0.6.2"
 description = "Lightspeed Stack providers for llama-stack"
 authors = []
 maintainers = [
