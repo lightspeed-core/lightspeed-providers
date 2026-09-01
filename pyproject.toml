@@ -1,6 +1,6 @@
 [project]
 name = "lightspeed_stack_providers"
-version = "0.6.2"
+version = "0.6.3"
 description = "Lightspeed Stack providers for llama-stack"
 authors = []
 maintainers = [
@@ -27,8 +27,6 @@ dependencies = [
     "llama-stack==0.6.0",
     "llama-stack-api==0.6.0",
     "llama-stack-client==0.6.0",
-    "ogx==1.0.2",
-    "ogx-api==1.0.2",
     "httpx",
     "pydantic>=2.10.6",
     "litellm>=1.75.5.post1",

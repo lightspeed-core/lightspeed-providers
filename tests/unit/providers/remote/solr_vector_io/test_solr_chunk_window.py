@@ -9,8 +9,8 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
-from ogx_api.vector_io import EmbeddedChunk
-from ogx_api.vector_stores import VectorStore as VectorDB
+from llama_stack_api.vector_io import EmbeddedChunk
+from llama_stack_api.vector_stores import VectorStore as VectorDB
 from pytest_mock import MockerFixture
 
 # pylint: disable=line-too-long

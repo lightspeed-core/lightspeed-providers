@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from ogx_api.datatypes import Api
+from llama_stack_api.datatypes import Api
 
 from .config import ChunkWindowConfig, SolrVectorIOConfig
 from .solr import SolrVectorIOAdapter
