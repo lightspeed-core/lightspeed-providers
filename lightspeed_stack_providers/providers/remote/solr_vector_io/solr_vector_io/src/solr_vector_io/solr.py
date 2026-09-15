@@ -1473,10 +1473,20 @@ class SolrVectorIOAdapter(
             expand matches into larger contextual windows.
         """
         log.info(f"Query chunks request for vector_store_id={request.vector_store_id}")
-        index = await self._get_and_cache_vector_store_index(request.vector_store_id)
-        result = await index.query_chunks(request)
-        log.info(f"Query returned {len(result.chunks)} chunks")
-        return result
+        try:
+            index = await self._get_and_cache_vector_store_index(
+                request.vector_store_id
+            )
+            result = await index.query_chunks(request)
+            log.info(f"Query returned {len(result.chunks)} chunks")
+            return result
+        except httpx.TransportError as e:
+            log.warning(
+                "OKP/Solr unreachable for %s, returning empty results: %s",
+                request.vector_store_id,
+                e,
+            )
+            return QueryChunksResponse(chunks=[], scores=[])
 
     async def delete_chunks(
         self, store_id: str, chunks_for_deletion: list[ChunkForDeletion]
