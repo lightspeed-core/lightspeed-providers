@@ -23,7 +23,9 @@ from ogx_api.files import Files
 from ogx_api.inference import Inference
 from ogx_api.vector_io import (
     Chunk,
+    DeleteChunksRequest,
     EmbeddedChunk,
+    InsertChunksRequest,
     QueryChunksRequest,
     QueryChunksResponse,
     VectorIO,
@@ -153,19 +155,21 @@ class SolrIndex(EmbeddingIndex):
                     f"Error connecting to Solr collection {self.collection_name}: {e}"
                 ) from e
 
-    async def add_chunks(self, chunks: list[Chunk], embeddings: NDArray[Any]) -> None:
+    async def add_chunks(self, embedded_chunks: list[EmbeddedChunk]) -> None:
         """Not implemented - this is a read-only provider.
 
         Attempting to add chunks to this read-only SolrIndex is not supported.
 
         Parameters:
-            chunks (list[Chunk]): Chunks provided for insertion (ignored).
-            embeddings (NDArray): Corresponding embeddings (ignored).
+            embedded_chunks (list[EmbeddedChunk]): Chunks provided for insertion
+                (ignored).
 
         Raises:
             NotImplementedError: Always raised because SolrIndex is read-only.
         """
-        log.warning(f"Attempted to add {len(chunks)} chunks to read-only SolrIndex")
+        log.warning(
+            f"Attempted to add {len(embedded_chunks)} chunks to read-only SolrIndex"
+        )
         raise NotImplementedError("SolrVectorIO is read-only.")
 
     async def delete_chunks(self, chunks_for_deletion: list[ChunkForDeletion]) -> None:
@@ -1420,29 +1424,22 @@ class SolrVectorIOAdapter(
 
         log.info(f"Successfully unregistered vector store: {vector_store_id}")
 
-    async def insert_chunks(
-        self,
-        vector_store_id: str,
-        chunks: list[EmbeddedChunk],
-        ttl_seconds: Optional[int] = None,
-    ) -> None:
+    async def insert_chunks(self, request: InsertChunksRequest) -> None:
         """Not implemented - this is a read-only provider.
 
         Rejects insertion attempts because this VectorIO implementation is read-only.
 
         Parameters:
-            - vector_store_id (str): Identifier of the target vector store.
-            - chunks (list[EmbeddedChunk]): Chunks proposed for insertion.
-            - ttl_seconds (Optional[int]): Optional time-to-live in seconds for
-              inserted chunks (ignored).
+            request (InsertChunksRequest): Insert request containing the target
+                vector store ID and chunks to insert.
 
         Raises:
             NotImplementedError: Always raised to indicate that write
             operations are not supported.
         """
         log.warning(
-            f"Attempted to insert {len(chunks)} chunks into read-only provider "
-            f"(vector_store_id={vector_store_id})"
+            f"Attempted to insert {len(request.chunks)} chunks into read-only "
+            f"provider (vector_store_id={request.vector_store_id})"
         )
         raise NotImplementedError("SolrVectorIO is read-only.")
 
@@ -1484,13 +1481,12 @@ class SolrVectorIOAdapter(
             )
             return QueryChunksResponse(chunks=[], scores=[])
 
-    async def delete_chunks(
-        self, store_id: str, chunks_for_deletion: list[ChunkForDeletion]
-    ) -> None:
+    async def delete_chunks(self, request: DeleteChunksRequest) -> None:
         """Not implemented - this is a read-only provider."""
-        log.warning(f"Attempted to delete {
-                len(chunks_for_deletion)
-            } chunks from read-only provider " f"(store_id={store_id})")
+        log.warning(
+            f"Attempted to delete {len(request.chunks)} chunks from read-only "
+            f"provider (vector_store_id={request.vector_store_id})"
+        )
         raise NotImplementedError("SolrVectorIO is read-only.")
 
     async def _get_and_cache_vector_store_index(
