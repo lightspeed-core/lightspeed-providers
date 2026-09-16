@@ -209,16 +209,12 @@ class SolrIndex(EmbeddingIndex):
         log.debug(f"Vector search filters: {filters}")
 
         async with self._create_http_client() as client:
-            # Solr KNN query using the dense vector field
-            # Use knn-search endpoint with JSON body
-            # Solr expects format: [f1,f2,f3]
-            # Build Solr vector literal
-            vector_str = ",".join(str(v) for v in embedding.tolist())
+            # The SearchHandler executes the KNN expression supplied in q.
+            # Solr expects the vector literal in [f1,f2,f3] format.
+            vector_str = "[" + ",".join(str(v) for v in embedding.tolist()) + "]"
 
             params = {
-                "q": "*:*",  # or query_string if hybrid
-                "vector": vector_str,
-                "topK": k,
+                "q": f"{{!knn f={self.vector_field} topK={k}}}{vector_str}",
                 "rows": k,
                 "fl": "*,score",
                 "wt": "json",
