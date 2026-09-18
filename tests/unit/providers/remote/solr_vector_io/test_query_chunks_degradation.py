@@ -60,7 +60,7 @@ def query_request_fixture() -> QueryChunksRequest:
     return QueryChunksRequest(
         vector_store_id=VECTOR_STORE_ID,
         query="test query",
-        params={"k": 5},
+        params={"max_chunks": 5},
     )
 
 
@@ -97,4 +97,26 @@ async def test_query_chunks_returns_empty_on_transport_error(
 
     result = await adapter.query_chunks(query_request)
 
+    assert result == EMPTY_RESPONSE
+
+
+@pytest.mark.asyncio
+async def test_query_chunks_delegates_to_vector_store_with_index(
+    adapter: SolrVectorIOAdapter,
+    query_request: QueryChunksRequest,
+    mocker: MockerFixture,
+) -> None:
+    """query_chunks should delegate to VectorStoreWithIndex.query_chunks."""
+    mock_index = mocker.MagicMock()
+    mock_index.query_chunks = mocker.AsyncMock(return_value=EMPTY_RESPONSE)
+    mock_get = mocker.patch.object(
+        adapter,
+        "_get_and_cache_vector_store_index",
+        mocker.AsyncMock(return_value=mock_index),
+    )
+
+    result = await adapter.query_chunks(query_request)
+
+    mock_get.assert_awaited_once_with(VECTOR_STORE_ID)
+    mock_index.query_chunks.assert_awaited_once_with(query_request)
     assert result == EMPTY_RESPONSE

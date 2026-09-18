@@ -165,7 +165,7 @@ response = await adapter.query_chunks(
     vector_db_id="my-store",
     query="How to fix security issues?",
     params={
-        "k": 5,
+        "max_chunks": 5,
         "score_threshold": 0.0
     }
 )
@@ -193,6 +193,13 @@ params = {
     }
 }
 ```
+
+## Query parameters
+
+Chunk count in `QueryChunksRequest.params` must use `max_chunks` (OGX 1.2.5).
+OGX's `VectorStoreWithIndex` reads `params["max_chunks"]` and defaults to `3`
+when omitted; `params["k"]` is ignored. The name `k` is reserved for internal
+`SolrIndex` method arguments and Solr HTTP fields (`rows`, `topK`) only.
 
 ## Dynamic Metadata Filtering
 
@@ -223,7 +230,7 @@ response = await adapter.query_chunks(
     vector_store_id="my-store",
     query="How to install ansible?",
     params={
-        "k": 5,
+        "max_chunks": 5,
         "filters": ComparisonFilter(
             type="eq",
             key="product",
@@ -241,7 +248,7 @@ response = await adapter.query_chunks(
     vector_store_id="my-store",
     query="Security best practices",
     params={
-        "k": 5,
+        "max_chunks": 5,
         "filters": ComparisonFilter(
             type="in",
             key="product",
@@ -261,7 +268,7 @@ response = await adapter.query_chunks(
     vector_store_id="my-store",
     query="Advanced configuration",
     params={
-        "k": 5,
+        "max_chunks": 5,
         "filters": CompoundFilter(
             type="and",
             filters=[
@@ -281,7 +288,7 @@ response = await adapter.query_chunks(
     vector_store_id="my-store",
     query="Troubleshooting guide",
     params={
-        "k": 5,
+        "max_chunks": 5,
         "filters": CompoundFilter(
             type="and",
             filters=[
