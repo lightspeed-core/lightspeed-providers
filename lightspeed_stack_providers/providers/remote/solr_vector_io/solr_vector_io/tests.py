@@ -18,10 +18,22 @@ Skip slow tests (real embeddings):
     uv run pytest tests.py -v -m "not slow"
 """
 
+from typing import Any, cast
+from unittest.mock import AsyncMock
+
 import numpy as np
 import pytest
-from ogx.core.storage.kvstore.config import SqliteKVStoreConfig
-from ogx_api.vector_io import Chunk
+import requests
+from ogx.core.storage.datatypes import KVStoreReference, SqliteKVStoreConfig
+from ogx.core.storage.kvstore.kvstore import register_kvstore_backends
+from ogx_api.inference import Inference
+from ogx_api.vector_io import (
+    ChunkForDeletion,
+    ChunkMetadata,
+    DeleteChunksRequest,
+    EmbeddedChunk,
+    InsertChunksRequest,
+)
 from ogx_api.vector_stores import VectorStore as VectorDB
 from src.solr_vector_io import (
     ChunkWindowConfig,
@@ -34,11 +46,25 @@ from src.solr_vector_io import (
 # ============================================================================
 
 SOLR_URL = "http://localhost4:8080/solr"
-COLLECTION_NAME = "portal"
+COLLECTION_NAME = "portal-rag"
 VECTOR_FIELD = "chunk_vector"
 CONTENT_FIELD = "chunk"
 EMBEDDING_DIM = 384
 EMBEDDING_MODEL = "ibm-granite/granite-embedding-30m-english"
+
+
+@pytest.fixture(autouse=True)
+def require_custom_search_handler(request: pytest.FixtureRequest) -> None:
+    """Skip query tests when Solr lacks the provider-specific search handler."""
+    if request.node.get_closest_marker("requires_custom_search_handler") is None:
+        return
+
+    response = requests.get(
+        f"{SOLR_URL}/{COLLECTION_NAME}/semantic-search",
+        timeout=5,
+    )
+    if response.status_code == 404:
+        pytest.skip("Solr semantic-search handler is not available")
 
 
 # ============================================================================
@@ -47,7 +73,7 @@ EMBEDDING_MODEL = "ibm-granite/granite-embedding-30m-english"
 
 
 @pytest.fixture
-def config_basic():
+def config_basic() -> Any:
     """Provide basic configuration without chunk window schema.
 
     Create a SolrVectorIOConfig using the module's test constants with no
@@ -63,13 +89,14 @@ def config_basic():
         collection_name=COLLECTION_NAME,
         vector_field=VECTOR_FIELD,
         content_field=CONTENT_FIELD,
+        embedding_model=EMBEDDING_MODEL,
         embedding_dimension=EMBEDDING_DIM,
         persistence=None,
     )
 
 
 @pytest.fixture
-def config_with_chunk_window():
+def config_with_chunk_window() -> Any:
     """Configure the provider with chunk window expansion enabled.
 
     Builds a SolrVectorIOConfig with chunk-window expansion enabled.
@@ -84,6 +111,7 @@ def config_with_chunk_window():
         collection_name=COLLECTION_NAME,
         vector_field=VECTOR_FIELD,
         content_field=CONTENT_FIELD,
+        embedding_model=EMBEDDING_MODEL,
         embedding_dimension=EMBEDDING_DIM,
         persistence=None,
         chunk_window_config=ChunkWindowConfig(
@@ -95,14 +123,14 @@ def config_with_chunk_window():
             parent_total_tokens_field="total_tokens",
             parent_content_id_field="doc_id",
             parent_content_title_field="title",
-            parent_content_url_field="reference_url",
+            chunk_online_source_url_field="reference_url",
             chunk_filter_query="is_chunk:true",
         ),
     )
 
 
 @pytest.fixture
-async def adapter_basic(config_basic):
+async def adapter_basic(config_basic: Any) -> Any:
     """Adapter instance with basic configuration.
 
     Provide an initialized SolrVectorIOAdapter configured without chunk-window or persistence.
@@ -111,14 +139,16 @@ async def adapter_basic(config_basic):
         SolrVectorIOAdapter: an adapter initialized and ready for use; the
         adapter is shut down after the fixture consumer finishes.
     """
-    adapter = SolrVectorIOAdapter(config=config_basic, inference_api=None)
+    adapter = SolrVectorIOAdapter(
+        config=config_basic, inference_api=cast(Inference, AsyncMock())
+    )
     await adapter.initialize()
     yield adapter
     await adapter.shutdown()
 
 
 @pytest.fixture
-async def adapter_with_chunk_window(config_with_chunk_window):
+async def adapter_with_chunk_window(config_with_chunk_window: Any) -> Any:
     """Adapter instance with chunk window configuration.
 
     Async pytest fixture that initializes a SolrVectorIOAdapter configured for
@@ -133,14 +163,16 @@ async def adapter_with_chunk_window(config_with_chunk_window):
         SolrVectorIOAdapter: An initialized adapter instance; the adapter is
         shut down after the fixture completes.
     """
-    adapter = SolrVectorIOAdapter(config=config_with_chunk_window, inference_api=None)
+    adapter = SolrVectorIOAdapter(
+        config=config_with_chunk_window, inference_api=cast(Inference, AsyncMock())
+    )
     await adapter.initialize()
     yield adapter
     await adapter.shutdown()
 
 
 @pytest.fixture
-async def vector_store_basic(adapter_basic):
+async def vector_store_basic(adapter_basic: Any) -> Any:
     """Register vector store with basic config.
 
     Register and yield a basic VectorDB named "test-basic-store" for use in tests.
@@ -159,13 +191,13 @@ async def vector_store_basic(adapter_basic):
         embedding_model=EMBEDDING_MODEL,
         provider_id="solr",
     )
-    await adapter_basic.register_vector_db(vector_store)
+    await adapter_basic.register_vector_store(vector_store)
     yield vector_store
-    await adapter_basic.unregister_vector_db("test-basic-store")
+    await adapter_basic.unregister_vector_store("test-basic-store")
 
 
 @pytest.fixture
-async def vector_store_chunk_window(adapter_with_chunk_window):
+async def vector_store_chunk_window(adapter_with_chunk_window: Any) -> Any:
     """Register vector store with chunk window config.
 
     Pytest fixture that registers a VectorDB configured for chunk-window tests and yields it.
@@ -182,13 +214,13 @@ async def vector_store_chunk_window(adapter_with_chunk_window):
         embedding_model=EMBEDDING_MODEL,
         provider_id="solr",
     )
-    await adapter_with_chunk_window.register_vector_db(vector_store)
+    await adapter_with_chunk_window.register_vector_store(vector_store)
     yield vector_store
-    await adapter_with_chunk_window.unregister_vector_db("test-chunk-window-store")
+    await adapter_with_chunk_window.unregister_vector_store("test-chunk-window-store")
 
 
 @pytest.fixture
-def random_embedding():
+def random_embedding() -> Any:
     """Generate random 384-dimensional embedding.
 
     Create a random embedding vector of length EMBEDDING_DIM for testing.
@@ -201,36 +233,35 @@ def random_embedding():
 
 
 @pytest.fixture
-def config_with_persistence(tmp_path):
-    """Configure with persistence enabled using SQLite KV store.
-
-    Builds a SolrVectorIOConfig with SQLite-backed persistence enabled.
-
-    Includes a SqliteKVStoreConfig using the namespace "test_vector_io" so the adapter
-    initializes with persistent KV storage for tests.
+def config_with_persistence(tmp_path: Any) -> Any:
+    """Configure SQLite-backed persistence for an isolated test namespace.
 
     Parameters:
-        tmp_path (pathlib.Path): pytest tmp_path fixture; unused by this factory but
-            included to scope a temporary filesystem for tests.
+        tmp_path: Temporary directory supplied by pytest for the SQLite database.
 
     Returns:
-        SolrVectorIOConfig: Configuration pointing at the test Solr collection with
-        persistence set to a SqliteKVStoreConfig(namespace="test_vector_io").
+        SolrVectorIOConfig configured with a registered SQLite KV backend.
     """
+    register_kvstore_backends(
+        {
+            "sql_default": SqliteKVStoreConfig(
+                db_path=str(tmp_path / "solr-vector-store.db")
+            )
+        }
+    )
     return SolrVectorIOConfig(
         solr_url=SOLR_URL,
         collection_name=COLLECTION_NAME,
         vector_field=VECTOR_FIELD,
         content_field=CONTENT_FIELD,
+        embedding_model=EMBEDDING_MODEL,
         embedding_dimension=EMBEDDING_DIM,
-        persistence=SqliteKVStoreConfig(
-            namespace="test_vector_io",
-        ),
+        persistence=KVStoreReference(namespace="test_vector_io", backend="sql_default"),
     )
 
 
 @pytest.fixture
-async def adapter_with_persistence(config_with_persistence):
+async def adapter_with_persistence(config_with_persistence: Any) -> Any:
     """Adapter instance with persistence enabled.
 
     Provide an initialized SolrVectorIOAdapter configured with persistence enabled.
@@ -243,7 +274,9 @@ async def adapter_with_persistence(config_with_persistence):
         An initialized SolrVectorIOAdapter instance with persistence active;
         the adapter is shut down after use.
     """
-    adapter = SolrVectorIOAdapter(config=config_with_persistence, inference_api=None)
+    adapter = SolrVectorIOAdapter(
+        config=config_with_persistence, inference_api=cast(Inference, AsyncMock())
+    )
     await adapter.initialize()
     yield adapter
     await adapter.shutdown()
@@ -259,15 +292,17 @@ class TestBasicFunctionality:
     """Test basic connection and configuration."""
 
     @pytest.mark.asyncio
-    async def test_adapter_initialization(self, config_basic):
+    async def test_adapter_initialization(self, config_basic: Any) -> None:
         """Test that adapter initializes successfully."""
-        adapter = SolrVectorIOAdapter(config=config_basic, inference_api=None)
+        adapter = SolrVectorIOAdapter(
+            config=config_basic, inference_api=cast(Inference, AsyncMock())
+        )
         await adapter.initialize()
         assert adapter is not None
         await adapter.shutdown()
 
     @pytest.mark.asyncio
-    async def test_vector_store_registration(self, adapter_basic):
+    async def test_vector_store_registration(self, adapter_basic: Any) -> None:
         """Test vector store registration and unregistration.
 
         Verifies that registering a VectorDB adds it to the adapter's cache and
@@ -284,30 +319,55 @@ class TestBasicFunctionality:
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_basic.register_vector_db(vector_store)
+        await adapter_basic.register_vector_store(vector_store)
         assert "test-registration" in adapter_basic.cache
 
-        await adapter_basic.unregister_vector_db("test-registration")
+        await adapter_basic.unregister_vector_store("test-registration")
         assert "test-registration" not in adapter_basic.cache
 
     @pytest.mark.asyncio
-    async def test_read_only_insert_fails(self, adapter_basic, vector_store_basic):
+    async def test_read_only_insert_fails(
+        self, adapter_basic: Any, vector_store_basic: Any
+    ) -> None:
         """Test that insert operations raise NotImplementedError."""
         with pytest.raises(NotImplementedError, match="read-only"):
             await adapter_basic.insert_chunks(
-                vector_db_id="test-basic-store",
-                chunks=[
-                    Chunk(content="test", metadata={}, embedding=[0.1] * EMBEDDING_DIM)
-                ],
+                InsertChunksRequest(
+                    vector_store_id="test-basic-store",
+                    chunks=[
+                        EmbeddedChunk(
+                            chunk_id="test",
+                            content="test",
+                            metadata={},
+                            chunk_metadata=ChunkMetadata(chunk_id="test"),
+                            embedding=[0.1] * EMBEDDING_DIM,
+                            embedding_model=EMBEDDING_MODEL,
+                            embedding_dimension=EMBEDDING_DIM,
+                        )
+                    ],
+                )
             )
 
     @pytest.mark.asyncio
-    async def test_read_only_delete_fails(self, adapter_basic, vector_store_basic):
+    async def test_read_only_delete_fails(
+        self, adapter_basic: Any, vector_store_basic: Any
+    ) -> None:
         """Test that delete operations raise NotImplementedError."""
         with pytest.raises(NotImplementedError, match="read-only"):
             await adapter_basic.delete_chunks(
-                vector_db_id="test-basic-store",
-                chunk_ids=["test-chunk-1", "test-chunk-2"],
+                DeleteChunksRequest(
+                    vector_store_id="test-basic-store",
+                    chunks=[
+                        ChunkForDeletion(
+                            document_id="test-document",
+                            chunk_id="test-chunk-1",
+                        ),
+                        ChunkForDeletion(
+                            document_id="test-document",
+                            chunk_id="test-chunk-2",
+                        ),
+                    ],
+                )
             )
 
 
@@ -322,11 +382,11 @@ class TestPersistence:
 
     @pytest.mark.asyncio
     async def test_adapter_initialization_with_persistence(
-        self, config_with_persistence
-    ):
+        self, config_with_persistence: Any
+    ) -> None:
         """Test that adapter initializes successfully with persistence enabled."""
         adapter = SolrVectorIOAdapter(
-            config=config_with_persistence, inference_api=None
+            config=config_with_persistence, inference_api=cast(Inference, AsyncMock())
         )
         await adapter.initialize()
 
@@ -340,7 +400,9 @@ class TestPersistence:
         await adapter.shutdown()
 
     @pytest.mark.asyncio
-    async def test_vector_store_persistence(self, adapter_with_persistence):
+    async def test_vector_store_persistence(
+        self, adapter_with_persistence: Any
+    ) -> None:
         """Test that vector stores are persisted to KV store."""
         from src.solr_vector_io.solr import VECTOR_DBS_PREFIX
 
@@ -351,7 +413,7 @@ class TestPersistence:
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_with_persistence.register_vector_db(vector_store)
+        await adapter_with_persistence.register_vector_store(vector_store)
 
         # Verify it's in the cache
         assert "test-persisted-store" in adapter_with_persistence.cache
@@ -362,14 +424,16 @@ class TestPersistence:
         assert persisted_data is not None
 
         # Clean up
-        await adapter_with_persistence.unregister_vector_db("test-persisted-store")
+        await adapter_with_persistence.unregister_vector_store("test-persisted-store")
 
     @pytest.mark.asyncio
-    async def test_vector_store_reload_from_persistence(self, config_with_persistence):
+    async def test_vector_store_reload_from_persistence(
+        self, config_with_persistence: Any
+    ) -> None:
         """Test that vector stores are loaded from persistence on adapter initialization."""
         # First adapter: register a vector store
         adapter1 = SolrVectorIOAdapter(
-            config=config_with_persistence, inference_api=None
+            config=config_with_persistence, inference_api=cast(Inference, AsyncMock())
         )
         await adapter1.initialize()
 
@@ -379,7 +443,7 @@ class TestPersistence:
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter1.register_vector_db(vector_store)
+        await adapter1.register_vector_store(vector_store)
 
         # Verify it's registered
         assert "test-reload-store" in adapter1.cache
@@ -389,7 +453,7 @@ class TestPersistence:
 
         # Second adapter: should load the persisted vector store
         adapter2 = SolrVectorIOAdapter(
-            config=config_with_persistence, inference_api=None
+            config=config_with_persistence, inference_api=cast(Inference, AsyncMock())
         )
         await adapter2.initialize()
 
@@ -397,13 +461,14 @@ class TestPersistence:
         assert "test-reload-store" in adapter2.cache
 
         # Clean up
-        await adapter2.unregister_vector_db("test-reload-store")
+        await adapter2.unregister_vector_store("test-reload-store")
         await adapter2.shutdown()
 
     @pytest.mark.asyncio
+    @pytest.mark.requires_custom_search_handler
     async def test_persistence_with_search(
-        self, adapter_with_persistence, random_embedding
-    ):
+        self, adapter_with_persistence: Any, random_embedding: Any
+    ) -> None:
         """Test that search works with persistence enabled."""
         # Register a vector store
         vector_store = VectorDB(
@@ -412,10 +477,10 @@ class TestPersistence:
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_with_persistence.register_vector_db(vector_store)
+        await adapter_with_persistence.register_vector_store(vector_store)
 
         # Get the index and perform a search
-        index = await adapter_with_persistence._get_and_cache_vector_db_index(
+        index = await adapter_with_persistence._get_and_cache_vector_store_index(
             "test-search-persisted"
         )
 
@@ -430,7 +495,7 @@ class TestPersistence:
         assert len(response.scores) == len(response.chunks)
 
         # Clean up
-        await adapter_with_persistence.unregister_vector_db("test-search-persisted")
+        await adapter_with_persistence.unregister_vector_store("test-search-persisted")
 
 
 # ============================================================================
@@ -444,7 +509,9 @@ class TestOpenAIAPI:
 
     @pytest.mark.asyncio
     @pytest.mark.persistence
-    async def test_openai_api_list_vector_stores(self, adapter_with_persistence):
+    async def test_openai_api_list_vector_stores(
+        self, adapter_with_persistence: Any
+    ) -> None:
         """Test that OpenAI API list_vector_stores works with persistence.
 
         Verify the OpenAI-compatible list_vector_stores API returns a list and
@@ -469,7 +536,7 @@ class TestOpenAIAPI:
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_with_persistence.register_vector_db(vector_store)
+        await adapter_with_persistence.register_vector_store(vector_store)
 
         # List should still work (though this provider is read-only for Solr data)
         response = await adapter_with_persistence.openai_list_vector_stores()
@@ -477,13 +544,15 @@ class TestOpenAIAPI:
         assert isinstance(response.data, list)
 
         # Clean up
-        await adapter_with_persistence.unregister_vector_db("test-openai-store")
+        await adapter_with_persistence.unregister_vector_store("test-openai-store")
 
     @pytest.mark.asyncio
-    async def test_openai_api_without_persistence(self, config_basic):
+    async def test_openai_api_without_persistence(self, config_basic: Any) -> None:
         """Test that OpenAI API methods work even without persistence (but with empty state)."""
         # Create adapter without persistence
-        adapter = SolrVectorIOAdapter(config=config_basic, inference_api=None)
+        adapter = SolrVectorIOAdapter(
+            config=config_basic, inference_api=cast(Inference, AsyncMock())
+        )
         await adapter.initialize()
 
         # OpenAI attributes ARE initialized (in the mixin's __init__) but empty
@@ -505,15 +574,19 @@ class TestOpenAIAPI:
 
 
 @pytest.mark.search
+@pytest.mark.requires_custom_search_handler
 class TestVectorSearch:
     """Test vector similarity search functionality."""
 
     @pytest.mark.asyncio
     async def test_vector_search_basic(
-        self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
-    ):
+        self,
+        adapter_with_chunk_window: Any,
+        vector_store_chunk_window: Any,
+        random_embedding: Any,
+    ) -> None:
         """Test basic vector search returns results."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -532,8 +605,11 @@ class TestVectorSearch:
 
     @pytest.mark.asyncio
     async def test_vector_search_with_threshold(
-        self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
-    ):
+        self,
+        adapter_with_chunk_window: Any,
+        vector_store_chunk_window: Any,
+        random_embedding: Any,
+    ) -> None:
         """Test vector search with score threshold filtering.
 
         Verify vector search respects a score_threshold by filtering results.
@@ -544,7 +620,7 @@ class TestVectorSearch:
         filtered result set is no larger than the full set and every returned
         score is greater than or equal to the median.
         """
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -575,15 +651,16 @@ class TestVectorSearch:
 
 
 @pytest.mark.search
+@pytest.mark.requires_custom_search_handler
 class TestKeywordSearch:
     """Test keyword-based search functionality."""
 
     @pytest.mark.asyncio
     async def test_keyword_search_specific(
-        self, adapter_with_chunk_window, vector_store_chunk_window
-    ):
+        self, adapter_with_chunk_window: Any, vector_store_chunk_window: Any
+    ) -> None:
         """Test keyword search with specific query."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -598,10 +675,10 @@ class TestKeywordSearch:
 
     @pytest.mark.asyncio
     async def test_keyword_search_wildcard(
-        self, adapter_with_chunk_window, vector_store_chunk_window
-    ):
+        self, adapter_with_chunk_window: Any, vector_store_chunk_window: Any
+    ) -> None:
         """Test keyword search with wildcard."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -619,13 +696,17 @@ class TestKeywordSearch:
 
 
 @pytest.mark.search
+@pytest.mark.requires_custom_search_handler
 class TestHybridSearch:
     """Test hybrid search (vector + keyword) functionality."""
 
     @pytest.mark.asyncio
     async def test_hybrid_search_basic(
-        self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
-    ):
+        self,
+        adapter_with_chunk_window: Any,
+        vector_store_chunk_window: Any,
+        random_embedding: Any,
+    ) -> None:
         """Test basic hybrid search.
 
         Verifies that a hybrid query combining vector and keyword signals
@@ -636,7 +717,7 @@ class TestHybridSearch:
         and that the length of the scores list matches the number of returned
         chunks.
         """
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -645,6 +726,7 @@ class TestHybridSearch:
             query_string="Linux software",
             k=5,
             score_threshold=0.0,
+            reranker_type="solr",
             reranker_params={"vector_boost": 1.0, "keyword_boost": 1.0},
         )
 
@@ -653,10 +735,13 @@ class TestHybridSearch:
 
     @pytest.mark.asyncio
     async def test_hybrid_search_boost_weights(
-        self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
-    ):
+        self,
+        adapter_with_chunk_window: Any,
+        vector_store_chunk_window: Any,
+        random_embedding: Any,
+    ) -> None:
         """Test hybrid search with different boost weights."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -666,6 +751,7 @@ class TestHybridSearch:
             query_string="security",
             k=3,
             score_threshold=0.0,
+            reranker_type="solr",
             reranker_params={"vector_boost": 2.0, "keyword_boost": 0.5},
         )
 
@@ -675,6 +761,7 @@ class TestHybridSearch:
             query_string="security",
             k=3,
             score_threshold=0.0,
+            reranker_type="solr",
             reranker_params={"vector_boost": 0.5, "keyword_boost": 2.0},
         )
 
@@ -688,13 +775,14 @@ class TestHybridSearch:
 
 
 @pytest.mark.chunk_window
+@pytest.mark.requires_custom_search_handler
 class TestChunkWindowExpansion:
     """Test chunk window expansion functionality."""
 
     @pytest.mark.asyncio
     async def test_chunk_window_disabled_without_config(
-        self, adapter_basic, random_embedding
-    ):
+        self, adapter_basic: Any, random_embedding: Any
+    ) -> None:
         """Test that chunk window expansion does NOT happen without chunk_window_config."""
         vector_store = VectorDB(
             identifier="test-no-config",
@@ -702,9 +790,9 @@ class TestChunkWindowExpansion:
             embedding_model=EMBEDDING_MODEL,
             provider_id="solr",
         )
-        await adapter_basic.register_vector_db(vector_store)
+        await adapter_basic.register_vector_store(vector_store)
 
-        index = await adapter_basic._get_and_cache_vector_db_index("test-no-config")
+        index = await adapter_basic._get_and_cache_vector_store_index("test-no-config")
 
         response = await index.index.query_vector(
             embedding=random_embedding,
@@ -718,14 +806,17 @@ class TestChunkWindowExpansion:
                 "chunk_window_expanded"
             ), "Chunk window expansion should NOT happen without chunk_window_config"
 
-        await adapter_basic.unregister_vector_db("test-no-config")
+        await adapter_basic.unregister_vector_store("test-no-config")
 
     @pytest.mark.asyncio
     async def test_chunk_window_expansion_enabled(
-        self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
-    ):
+        self,
+        adapter_with_chunk_window: Any,
+        vector_store_chunk_window: Any,
+        random_embedding: Any,
+    ) -> None:
         """Test chunk window expansion when enabled."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -749,10 +840,13 @@ class TestChunkWindowExpansion:
 
     @pytest.mark.asyncio
     async def test_chunk_window_all_search_modes(
-        self, adapter_with_chunk_window, vector_store_chunk_window, random_embedding
-    ):
+        self,
+        adapter_with_chunk_window: Any,
+        vector_store_chunk_window: Any,
+        random_embedding: Any,
+    ) -> None:
         """Test chunk window expansion works with all search modes."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -778,6 +872,7 @@ class TestChunkWindowExpansion:
             query_string="Linux",
             k=3,
             score_threshold=0.0,
+            reranker_type="solr",
             reranker_params={"vector_boost": 1.0, "keyword_boost": 1.0},
         )
         assert len(hybrid_response.chunks) >= 0
@@ -794,7 +889,7 @@ class TestRealEmbeddings:
     """Test with real embeddings from granite model."""
 
     @pytest.fixture(scope="class")
-    def embedding_model(self):
+    def embedding_model(self) -> Any:
         """Load granite embedding model (cached at class scope).
 
         Load and return the Hugging Face tokenizer and model for generating embeddings.
@@ -807,18 +902,21 @@ class TestRealEmbeddings:
             mode.
         """
         try:
-            from transformers import AutoModel, AutoTokenizer
+            from transformers import (  # type: ignore[import-not-found]
+                AutoModel,
+                AutoTokenizer,
+            )
 
             model_name = EMBEDDING_MODEL
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            model = AutoModel.from_pretrained(model_name)
+            tokenizer = AutoTokenizer.from_pretrained(model_name)  # nosec B615
+            model = AutoModel.from_pretrained(model_name)  # nosec B615
             model.eval()
             return tokenizer, model
         except ImportError:
             pytest.skip("transformers library not installed")
 
     @pytest.fixture
-    def get_embedding(self, embedding_model):
+    def get_embedding(self, embedding_model: Any) -> Any:
         """Generate embeddings from text.
 
         Create a callable that converts input text to a dense embedding vector.
@@ -834,11 +932,11 @@ class TestRealEmbeddings:
             the text (with padding, truncation, and max_length=512) and
             averaging the model's token-level hidden states.
         """
-        import torch
+        import torch  # type: ignore[import-not-found]
 
         tokenizer, model = embedding_model
 
-        def _get_embedding(text):
+        def _get_embedding(text: Any) -> Any:
             """
             Compute a fixed-size embedding vector for the given text.
 
@@ -864,10 +962,13 @@ class TestRealEmbeddings:
 
     @pytest.mark.asyncio
     async def test_real_embedding_vector_search(
-        self, adapter_with_chunk_window, vector_store_chunk_window, get_embedding
-    ):
+        self,
+        adapter_with_chunk_window: Any,
+        vector_store_chunk_window: Any,
+        get_embedding: Any,
+    ) -> None:
         """Test vector search with real embeddings."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -886,10 +987,13 @@ class TestRealEmbeddings:
 
     @pytest.mark.asyncio
     async def test_real_embedding_hybrid_search(
-        self, adapter_with_chunk_window, vector_store_chunk_window, get_embedding
-    ):
+        self,
+        adapter_with_chunk_window: Any,
+        vector_store_chunk_window: Any,
+        get_embedding: Any,
+    ) -> None:
         """Test hybrid search with real embeddings."""
-        index = await adapter_with_chunk_window._get_and_cache_vector_db_index(
+        index = await adapter_with_chunk_window._get_and_cache_vector_store_index(
             "test-chunk-window-store"
         )
 
@@ -901,6 +1005,7 @@ class TestRealEmbeddings:
             query_string="Red Hat Linux",
             k=5,
             score_threshold=0.0,
+            reranker_type="solr",
             reranker_params={"vector_boost": 1.5, "keyword_boost": 1.0},
         )
 

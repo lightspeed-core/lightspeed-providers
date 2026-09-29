@@ -15,6 +15,7 @@ markers = [
     "embeddings: Tests using real embedding models",
     "slow: Slow tests that should be skipped by default",
     "openai: Tests that pertain to the OpenAI API",
+    "requires_custom_search_handler: Tests requiring Solr's semantic-search handler",
 ]
 filterwarnings = [
     "ignore::pytest.PytestAssertRewriteWarning",

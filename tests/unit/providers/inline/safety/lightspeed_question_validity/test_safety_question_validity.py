@@ -1,6 +1,7 @@
 """Tests for the validity shield provider behaviour."""
 
 from string import Template
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -177,7 +178,7 @@ async def test_run_shield_allowed(
     mock_runner.return_value.run = mocker.AsyncMock(
         return_value=RunShieldResponse(violation=None)
     )
-    messages = [
+    messages: list[Any] = [
         OpenAIUserMessageParam(
             role="user", content="How do I create a Kubernetes service?"
         )
@@ -208,7 +209,7 @@ async def test_run_shield_rejected(
             )
         )
     )
-    messages = [
+    messages: list[Any] = [
         OpenAIUserMessageParam(role="user", content="What is the weather today?")
     ]
     request = RunShieldRequest(shield_id="test_shield", messages=messages)
