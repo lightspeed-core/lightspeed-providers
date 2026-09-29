@@ -122,7 +122,7 @@ class SolrVectorIOConfig(BaseModel):
     id_field: str = Field(  # type: ignore
         default="id",
         description=(
-            "Unique identifier field. For chunk docs this might be 'resourceName' or 'id'.",
+            "Unique identifier field. For chunk docs this might be 'resourceName' or 'id'."
         ),
     )
 

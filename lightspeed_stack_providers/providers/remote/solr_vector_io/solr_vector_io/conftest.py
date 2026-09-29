@@ -13,8 +13,8 @@ def check_solr_running() -> Generator:
 
     Aborts all tests if Solr is not accessible.
     """
-    # Import SOLR_URL from test file to avoid duplication
-    from tests import COLLECTION_NAME, SOLR_URL
+    # Import test configuration from the local test module to avoid duplication.
+    from .tests import COLLECTION_NAME, SOLR_URL
 
     solr_test_url = SOLR_URL + "/" + COLLECTION_NAME + "/select"
     print(solr_test_url)

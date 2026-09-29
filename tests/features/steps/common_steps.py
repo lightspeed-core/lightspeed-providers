@@ -8,8 +8,6 @@ from behave import given
 from behave.runner import Context
 from requests import Response
 
-# pylint: disable=not-callable
-
 
 class LlamaStackClient:
     """Client for interacting with the llama-stack API."""
@@ -47,7 +45,8 @@ class LlamaStackClient:
         }
 
         self.last_response = self.session.post(
-            f"{self.base_url}/v1/safety/run-shield", json=payload  # type: ignore[arg-type]
+            f"{self.base_url}/v1/safety/run-shield",
+            json=payload,  # type: ignore[arg-type]
         )
         if self.last_response.status_code == 200:
             self.last_response_data = self.last_response.json()
@@ -55,6 +54,7 @@ class LlamaStackClient:
 
 
 # Background steps
+# pylint: disable-next=not-callable
 @given(
     'the llama-stack is running on "{base_url}"'
 )  # pyright: ignore[attributeAccessIssue]

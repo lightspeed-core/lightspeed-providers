@@ -6,7 +6,12 @@ import numpy as np
 import pytest
 from ogx_api.vector_stores import VectorStore as VectorDB
 
-# pylint: disable=line-too-long
+# pylint: disable-next=line-too-long
+from lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.src.solr_vector_io.config import (
+    SolrVectorIOConfig,
+)
+
+# pylint: disable-next=line-too-long
 from lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.src.solr_vector_io.solr import (
     SolrIndex,
 )
@@ -57,13 +62,15 @@ def solr_index_fixture() -> SolrIndex:
     )
     return SolrIndex(
         vector_store=vector_store,
-        solr_url="http://localhost:8983/solr",
-        collection_name="portal-rag",
-        vector_field="chunk_vector",
-        content_field="chunk",
-        id_field="id",
-        dimension=3,
-        embedding_model=embedding_model,
+        config=SolrVectorIOConfig(
+            solr_url="http://localhost:8983/solr",
+            collection_name="portal-rag",
+            vector_field="chunk_vector",
+            content_field="chunk",
+            id_field="id",
+            embedding_dimension=3,
+            embedding_model=embedding_model,
+        ),
     )
 
 
