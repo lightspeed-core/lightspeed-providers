@@ -1,5 +1,6 @@
 """Unit tests for Lightspeed inline agent provider implementation."""
 
+from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -170,7 +171,7 @@ async def test_extract_tool_definitions_file_search(
     """Test _extract_tool_definitions for file_search tools."""
     tools = [{"type": "file_search", "vector_store_ids": ["vs_123"]}]
     # pylint: disable=protected-access
-    defs, _ = await lightspeed_agents_impl._extract_tool_definitions(tools)
+    defs, _ = await lightspeed_agents_impl._extract_tool_definitions(cast(Any, tools))
     assert len(defs) == 1
     assert defs[0]["tool_name"] == "file_search"
     assert "knowledge base" in defs[0]["description"].lower()
@@ -185,7 +186,7 @@ async def test_extract_tool_definitions_function(
         {"type": "function", "name": "get_weather", "description": "Get the weather"}
     ]
     # pylint: disable=protected-access
-    defs, _ = await lightspeed_agents_impl._extract_tool_definitions(tools)
+    defs, _ = await lightspeed_agents_impl._extract_tool_definitions(cast(Any, tools))
     assert len(defs) == 1
     assert defs[0]["tool_name"] == "get_weather"
     assert defs[0]["description"] == "Get the weather"
