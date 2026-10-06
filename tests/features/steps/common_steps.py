@@ -8,8 +8,6 @@ from behave import given
 from behave.runner import Context
 from requests import Response
 
-# pylint: disable=not-callable
-
 
 class LlamaStackClient:
     """Client for interacting with the llama-stack API."""
@@ -55,6 +53,7 @@ class LlamaStackClient:
 
 
 # Background steps
+# pylint: disable-next=not-callable
 @given(
     'the llama-stack is running on "{base_url}"'
 )  # pyright: ignore[attributeAccessIssue]
