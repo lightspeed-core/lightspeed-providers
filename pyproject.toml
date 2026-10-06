@@ -41,7 +41,7 @@ dependencies = [
     "filelock>=3.20.3",
     "pypdf>=6.9.2",
     "chardet>=7.4.1",
-    "tornado==6.5.8",
+    "tornado==6.5.9",
 ]
 
 [tool.setuptools]
