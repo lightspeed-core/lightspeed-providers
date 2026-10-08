@@ -89,7 +89,7 @@ def lightspeed_agents_impl_fixture(
     )
 
 
-def create_mock_chat_response(content: str) -> MockerFixture:
+def create_mock_chat_response(content: str) -> MagicMock:
     """Create a mock OpenAI chat completion response.
 
     Builds a MagicMock shaped like an OpenAI chat completion
@@ -99,7 +99,7 @@ def create_mock_chat_response(content: str) -> MockerFixture:
         content (str): Text to set as choices[0].message.content on the mock response.
 
     Returns:
-        mock_response (MockerFixture): A mock object whose `choices` attribute
+        MagicMock: A mock object whose `choices` attribute
         is a list with one choice whose `message.content` equals `content`.
     """
     mock_message = MagicMock()
@@ -133,7 +133,9 @@ async def test_filter_tools_for_response_filters_correctly(
     tool2_mock = MagicMock(description="Tool 2")
     tool2_mock.name = "tool2"
     tool2_mock.metadata = {"endpoint": "http://test2.com"}
-    lightspeed_agents_impl.tool_runtime_api.list_runtime_tools.side_effect = [
+    cast(
+        AsyncMock, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
+    ).side_effect = [
         MagicMock(data=[tool1_mock]),
         MagicMock(data=[tool2_mock]),
     ]
@@ -153,9 +155,9 @@ async def test_filter_tools_for_response_filters_correctly(
     ]
 
     # Call the filtering method
-    filtered_tools = await lightspeed_agents_impl._filter_tools_for_response(
+    filtered_tools: Any = await lightspeed_agents_impl._filter_tools_for_response(
         input="test message",
-        tools=tools,
+        tools=cast(Any, tools),
         model="test_model",
         conversation=None,
     )
@@ -189,7 +191,9 @@ async def test_filter_tools_for_response_includes_always_included_tools(
     tool2_mock = MagicMock(description="Tool 2")
     tool2_mock.name = "tool2"
     tool2_mock.metadata = {"endpoint": "http://test2.com"}
-    lightspeed_agents_impl.tool_runtime_api.list_runtime_tools.side_effect = [
+    cast(
+        AsyncMock, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
+    ).side_effect = [
         MagicMock(data=[tool1_mock]),
         MagicMock(data=[tool2_mock]),
     ]
@@ -209,9 +213,9 @@ async def test_filter_tools_for_response_includes_always_included_tools(
     ]
 
     # Call the filtering method
-    filtered_tools = await lightspeed_agents_impl._filter_tools_for_response(
+    filtered_tools: Any = await lightspeed_agents_impl._filter_tools_for_response(
         input="test message",
-        tools=tools,
+        tools=cast(Any, tools),
         model="test_model",
         conversation=None,
     )
@@ -279,7 +283,9 @@ async def test_filter_tools_for_response_skips_filtering_below_threshold(
     tool1_mock.name = "tool1"
     tool2_mock = MagicMock(description="Tool 2")
     tool2_mock.name = "tool2"
-    lightspeed_agents_impl.tool_runtime_api.list_runtime_tools.side_effect = [
+    cast(
+        AsyncMock, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
+    ).side_effect = [
         MagicMock(data=[tool1_mock]),
         MagicMock(data=[tool2_mock]),
     ]
@@ -292,7 +298,7 @@ async def test_filter_tools_for_response_skips_filtering_below_threshold(
     # Call _filter_tools_for_response directly
     filtered_tools = await lightspeed_agents_impl._filter_tools_for_response(
         input="test",
-        tools=tools,
+        tools=cast(Any, tools),
         model="test_model",
         conversation=None,
     )
@@ -429,7 +435,9 @@ async def test_filter_tools_preserves_previously_called_tools(
     tool2_mock = MagicMock(description="Other tool")
     tool2_mock.name = "other_tool"
     tool2_mock.metadata = {"endpoint": "http://test2.com"}
-    lightspeed_agents_impl.tool_runtime_api.list_runtime_tools.side_effect = [
+    cast(
+        AsyncMock, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
+    ).side_effect = [
         MagicMock(data=[tool1_mock]),
         MagicMock(data=[tool2_mock]),
     ]
@@ -449,9 +457,9 @@ async def test_filter_tools_preserves_previously_called_tools(
     ]
 
     # Call the filtering method with conversation
-    filtered_tools = await lightspeed_agents_impl._filter_tools_for_response(
+    filtered_tools: Any = await lightspeed_agents_impl._filter_tools_for_response(
         input="test message",
-        tools=tools,
+        tools=cast(Any, tools),
         model="test_model",
         conversation="conv_123",
     )
@@ -498,7 +506,10 @@ def test_parse_llm_tool_names_extracts_valid_json_list(
 ) -> None:
     """Test that a valid JSON list embedded in the response text is extracted correctly."""
     content = 'Here are the results: ["tool1", "tool2"]'
-    assert lightspeed_agents_impl._parse_llm_tool_names(content) == ["tool1", "tool2"]
+    assert lightspeed_agents_impl._parse_llm_tool_names(content) == [
+        "tool1",
+        "tool2",
+    ]
 
 
 def test_parse_llm_tool_names_empty_json_list(
