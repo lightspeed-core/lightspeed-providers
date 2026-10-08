@@ -1,5 +1,6 @@
 """Unit tests for using Lightspeed inline agent provider implementation."""
 
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -114,7 +115,6 @@ def create_mock_chat_response(content: str) -> MagicMock:
     return mock_response
 
 
-# pylint: disable=protected-access
 @pytest.mark.asyncio
 async def test_filter_tools_for_response_filters_correctly(
     lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
@@ -155,6 +155,7 @@ async def test_filter_tools_for_response_filters_correctly(
     ]
 
     # Call the filtering method
+    # pylint: disable=protected-access
     filtered_tools: Any = await lightspeed_agents_impl._filter_tools_for_response(
         input="test message",
         tools=cast(Any, tools),
@@ -213,6 +214,7 @@ async def test_filter_tools_for_response_includes_always_included_tools(
     ]
 
     # Call the filtering method
+    # pylint: disable=protected-access
     filtered_tools: Any = await lightspeed_agents_impl._filter_tools_for_response(
         input="test message",
         tools=cast(Any, tools),
@@ -257,11 +259,12 @@ async def test_create_openai_response_skips_filtering_when_disabled(
     ]
 
     # Call create_openai_response
+    # pylint: disable=protected-access
     await lightspeed_agents_impl.create_openai_response(
         CreateResponseRequest(
             input="test",
             model="test_model",
-            tools=tools,
+            tools=cast(Any, tools),
         )
     )
 
@@ -296,6 +299,7 @@ async def test_filter_tools_for_response_skips_filtering_below_threshold(
     ]  # Only 2 expanded tools, below threshold of 10
 
     # Call _filter_tools_for_response directly
+    # pylint: disable=protected-access
     filtered_tools = await lightspeed_agents_impl._filter_tools_for_response(
         input="test",
         tools=cast(Any, tools),
@@ -326,6 +330,7 @@ async def test_get_previously_called_tools_extracts_function_calls(
     mock_conversations_api.list_items.return_value = [mock_item1, mock_item2]
 
     # Call the method
+    # pylint: disable=protected-access
     tool_names = await lightspeed_agents_impl._get_previously_called_tools("conv_123")
 
     # Should extract both tool names
@@ -349,6 +354,7 @@ async def test_get_previously_called_tools_extracts_mcp_calls(
     mock_conversations_api.list_items.return_value = [mock_item1, mock_item2]
 
     # Call the method
+    # pylint: disable=protected-access
     tool_names = await lightspeed_agents_impl._get_previously_called_tools("conv_123")
 
     # Should extract both MCP tool names
@@ -368,6 +374,7 @@ async def test_get_previously_called_tools_extracts_mcp_approval_requests(
     mock_conversations_api.list_items.return_value = [mock_item]
 
     # Call the method
+    # pylint: disable=protected-access
     tool_names = await lightspeed_agents_impl._get_previously_called_tools("conv_123")
 
     # Should extract the tool name
@@ -404,6 +411,7 @@ async def test_get_previously_called_tools_handles_mixed_types(
     ]
 
     # Call the method
+    # pylint: disable=protected-access
     tool_names = await lightspeed_agents_impl._get_previously_called_tools("conv_123")
 
     # Should extract all tool names, ignoring non-tool items
@@ -457,6 +465,7 @@ async def test_filter_tools_preserves_previously_called_tools(
     ]
 
     # Call the filtering method with conversation
+    # pylint: disable=protected-access
     filtered_tools: Any = await lightspeed_agents_impl._filter_tools_for_response(
         input="test message",
         tools=cast(Any, tools),
@@ -475,6 +484,7 @@ def test_extract_user_prompt_string_passthrough(
     lightspeed_agents_impl: LightspeedAgentsImpl,
 ) -> None:
     """Test that a plain string input is returned unchanged."""
+    # pylint: disable=protected-access
     assert lightspeed_agents_impl._extract_user_prompt("hello world") == "hello world"
 
 
@@ -483,7 +493,8 @@ def test_extract_user_prompt_list_of_dicts_joined_on_newline(
 ) -> None:
     """Test that a list of message dicts has content values joined with newlines."""
     msgs = [{"content": "foo"}, {"content": "bar"}]
-    assert lightspeed_agents_impl._extract_user_prompt(msgs) == "foo\nbar"
+    # pylint: disable=protected-access
+    assert lightspeed_agents_impl._extract_user_prompt(cast(Any, msgs)) == "foo\nbar"
 
 
 def test_extract_user_prompt_dict_missing_content_key_uses_empty_string(
@@ -491,14 +502,16 @@ def test_extract_user_prompt_dict_missing_content_key_uses_empty_string(
 ) -> None:
     """Test that a message dict without a content key contributes an empty string."""
     msgs = [{"content": "foo"}, {"role": "user"}]
-    assert lightspeed_agents_impl._extract_user_prompt(msgs) == "foo\n"
+    # pylint: disable=protected-access
+    assert lightspeed_agents_impl._extract_user_prompt(cast(Any, msgs)) == "foo\n"
 
 
 def test_extract_user_prompt_list_of_non_dicts_uses_str(
     lightspeed_agents_impl: LightspeedAgentsImpl,
 ) -> None:
     """Test that non-dict list items are converted with str()."""
-    assert lightspeed_agents_impl._extract_user_prompt(["a", "b"]) == "a\nb"
+    # pylint: disable=protected-access
+    assert lightspeed_agents_impl._extract_user_prompt(cast(Any, ["a", "b"])) == "a\nb"
 
 
 def test_parse_llm_tool_names_extracts_valid_json_list(
@@ -506,6 +519,7 @@ def test_parse_llm_tool_names_extracts_valid_json_list(
 ) -> None:
     """Test that a valid JSON list embedded in the response text is extracted correctly."""
     content = 'Here are the results: ["tool1", "tool2"]'
+    # pylint: disable=protected-access
     assert lightspeed_agents_impl._parse_llm_tool_names(content) == [
         "tool1",
         "tool2",
@@ -516,6 +530,7 @@ def test_parse_llm_tool_names_empty_json_list(
     lightspeed_agents_impl: LightspeedAgentsImpl,
 ) -> None:
     """Test that an empty JSON list in the response returns an empty list."""
+    # pylint: disable=protected-access
     assert lightspeed_agents_impl._parse_llm_tool_names("No tools found: []") == []
 
 
@@ -523,6 +538,7 @@ def test_parse_llm_tool_names_no_brackets_returns_empty(
     lightspeed_agents_impl: LightspeedAgentsImpl,
 ) -> None:
     """Test that a response with no brackets returns an empty list."""
+    # pylint: disable=protected-access
     assert lightspeed_agents_impl._parse_llm_tool_names("no brackets here") == []
 
 
@@ -530,6 +546,7 @@ def test_parse_llm_tool_names_invalid_json_returns_empty(
     lightspeed_agents_impl: LightspeedAgentsImpl,
 ) -> None:
     """Test that a malformed JSON fragment between brackets returns an empty list."""
+    # pylint: disable=protected-access
     assert lightspeed_agents_impl._parse_llm_tool_names("[not valid json}") == []
 
 
@@ -538,4 +555,5 @@ def test_parse_llm_tool_names_uses_last_bracket_pair(
 ) -> None:
     """Test that when the response contains multiple bracket pairs, the last one is used."""
     content = 'ignore [this] use ["tool1"]'
+    # pylint: disable=protected-access
     assert lightspeed_agents_impl._parse_llm_tool_names(content) == ["tool1"]
