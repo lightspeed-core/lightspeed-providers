@@ -10,12 +10,13 @@ from typing import Any
 import pytest
 from ogx_api.vector_stores import VectorStore as VectorDB
 
-# pylint: disable=line-too-long
+# pylint: disable-next=line-too-long
 from lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.src.solr_vector_io.config import (
     ChunkWindowConfig,
+    SolrVectorIOConfig,
 )
 
-# pylint: disable=line-too-long
+# pylint: disable-next=line-too-long
 from lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.src.solr_vector_io.solr import (
     OKP_SOURCE,
     SolrIndex,
@@ -71,14 +72,16 @@ def solr_index_fixture(chunk_window_config: ChunkWindowConfig) -> SolrIndex:
     )
     return SolrIndex(
         vector_store=vector_store,
-        solr_url="http://localhost:8983/solr",
-        collection_name="test",
-        vector_field="chunk_vector",
-        content_field="chunk",
-        id_field="id",
-        dimension=EMBEDDING_DIM,
-        embedding_model=EMBEDDING_MODEL,
-        chunk_window_config=chunk_window_config,
+        config=SolrVectorIOConfig(
+            solr_url="http://localhost:8983/solr",
+            collection_name="test",
+            vector_field="chunk_vector",
+            content_field="chunk",
+            id_field="id",
+            embedding_dimension=EMBEDDING_DIM,
+            embedding_model=EMBEDDING_MODEL,
+            chunk_window_config=chunk_window_config,
+        ),
     )
 
 
