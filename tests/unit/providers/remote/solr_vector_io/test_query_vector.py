@@ -53,7 +53,7 @@ class FakeHttpClient:
 @pytest.fixture(name="solr_index")
 def solr_index_fixture() -> SolrIndex:
     """Create a Solr index without connecting to a server."""
-    embedding_model = "ibm-granite/granite-embedding-30m-english"
+    embedding_model = "ibm-granite/granite-embedding-small-english-r2"
     vector_store = VectorDB(
         identifier="test-store",
         embedding_dimension=3,

@@ -166,7 +166,7 @@ registered_resources:
       provider_id: byok_openshift-docs
       vector_store_id: vs_123
     - embedding_dimension: 384
-      embedding_model: sentence-transformers/ibm-granite/granite-embedding-30m-english
+      embedding_model: sentence-transformers/ibm-granite/granite-embedding-small-english-r2
       provider_id: okp_solr
       vector_store_id: portal-rag
 
