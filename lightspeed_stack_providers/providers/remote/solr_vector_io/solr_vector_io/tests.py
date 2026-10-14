@@ -38,7 +38,7 @@ COLLECTION_NAME = "portal"
 VECTOR_FIELD = "chunk_vector"
 CONTENT_FIELD = "chunk"
 EMBEDDING_DIM = 384
-EMBEDDING_MODEL = "ibm-granite/granite-embedding-30m-english"
+EMBEDDING_MODEL = "ibm-granite/granite-embedding-small-english-r2"
 
 
 # ============================================================================

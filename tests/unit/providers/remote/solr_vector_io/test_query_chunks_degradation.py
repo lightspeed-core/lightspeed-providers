@@ -19,7 +19,7 @@ from lightspeed_stack_providers.providers.remote.solr_vector_io.solr_vector_io.s
 )
 
 EMBEDDING_DIM = 384
-EMBEDDING_MODEL = "ibm-granite/granite-embedding-30m-english"
+EMBEDDING_MODEL = "ibm-granite/granite-embedding-small-english-r2"
 VECTOR_STORE_ID = "test-store"
 EMPTY_RESPONSE = QueryChunksResponse(chunks=[], scores=[])
 
