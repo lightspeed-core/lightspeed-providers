@@ -15,7 +15,9 @@ from llama_stack_api import (
     RunShieldResponse,
     Safety,
     SafetyViolation,
+    Shield,
     ShieldsProtocolPrivate,
+    ShieldStore,
     ViolationLevel,
 )
 from llama_stack_api.inference import (
@@ -53,6 +55,8 @@ DEFAULT_RESPONSE = ""
 class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
     """Question validity safety provider implementation."""
 
+    shield_store: ShieldStore
+
     def __init__(
         self, config: QuestionValidityShieldConfig, deps: dict[Any, Any]
     ) -> None:
@@ -84,6 +88,28 @@ class QuestionValidityShieldImpl(Safety, ShieldsProtocolPrivate):
 
         This implementation performs no actions (no-op).
         """
+
+    async def register_shield(self, shield: Shield) -> None:
+        """Register a shield with this provider.
+
+        The question-validity provider does not maintain an internal shield
+        registry, so registration is a no-op.
+
+        Parameters:
+            shield: Shield to register.
+        """
+        _ = shield
+
+    async def unregister_shield(self, identifier: str) -> None:
+        """Unregister a shield from this provider.
+
+        The question-validity provider does not maintain an internal shield
+        registry, so unregistration is a no-op.
+
+        Parameters:
+            identifier: Identifier of the shield to unregister.
+        """
+        _ = identifier
 
     async def run_moderation(self, request: RunModerationRequest) -> ModerationObject:
         """Run moderation on input text to check if it's a valid question.

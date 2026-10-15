@@ -1,7 +1,8 @@
 """Inline agent Lightspeed provider implementation."""
 
 import json
-from typing import Any, Optional
+from collections.abc import AsyncIterator
+from typing import Any, Optional, cast
 
 from llama_stack.core.datatypes import AccessRule
 from llama_stack.log import get_logger
@@ -30,10 +31,12 @@ from llama_stack_api.inference import (
 from llama_stack_api.openai_responses import (
     OpenAIResponseInput,
     OpenAIResponseInputTool,
+    OpenAIResponseInputToolMCP,
     OpenAIResponseObject,
+    OpenAIResponseObjectStream,
 )
 
-from .config import LightspeedAgentsImplConfig
+from .config import DEFAULT_SYSTEM_PROMPT, LightspeedAgentsImplConfig
 
 logger = get_logger(name=__name__, category="agents")
 
@@ -88,7 +91,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
     async def create_openai_response(
         self,
         request: CreateResponseRequest,
-    ) -> OpenAIResponseObject:
+    ) -> OpenAIResponseObject | AsyncIterator[OpenAIResponseObjectStream]:
         """
         Create an OpenAI response with optional tool filtering.
 
@@ -243,7 +246,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                 if endpoint_tools:
                     if isinstance(tool, dict):
                         tool["allowed_tools"] = endpoint_tools
-                    else:
+                    elif isinstance(tool, OpenAIResponseInputToolMCP):
                         tool.allowed_tools = endpoint_tools
                     result.append(tool)
                 else:
@@ -360,20 +363,26 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             "return an empty list when no relevant tools found."
         )
 
+        system_prompt = self.config.tools_filter.system_prompt or DEFAULT_SYSTEM_PROMPT
         request = OpenAIChatCompletionRequestWithExtraBody(
             model=tools_filter_model_id,
             messages=[
-                OpenAISystemMessageParam(
-                    role="system", content=self.config.tools_filter.system_prompt
-                ),
+                OpenAISystemMessageParam(role="system", content=system_prompt),
                 OpenAIUserMessageParam(role="user", content=filter_prompt),
             ],
             stream=False,
             temperature=0.1,
         )
         response = await self.inference_api.openai_chat_completion(request)
+        if isinstance(response, AsyncIterator) and not hasattr(response, "choices"):
+            logger.warning("Tool filtering received an unexpected streaming response")
+            return tools
 
-        content: str = response.choices[0].message.content
+        completion = cast(Any, response)
+        content = completion.choices[0].message.content
+        if content is None:
+            logger.warning("Tool filtering received a response without content")
+            return tools
         logger.debug("LLM filter response: %s", content)
 
         filtered_tool_names = list(
@@ -422,13 +431,17 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                     "mcp_call",
                     "mcp_approval_request",
                 ):
-                    if hasattr(item, "name") and item.name:
-                        tool_names.add(item.name)
+                    item_name = getattr(item, "name", None)
+                    if isinstance(item_name, str):
+                        tool_names.add(item_name)
                 # Also check for nested tool_calls (legacy format)
-                elif hasattr(item, "tool_calls") and item.tool_calls:
-                    for tool_call in item.tool_calls:
-                        if hasattr(tool_call, "name"):
-                            tool_names.add(tool_call.name)
+                else:
+                    tool_calls = getattr(item, "tool_calls", None)
+                    if tool_calls:
+                        for tool_call in tool_calls:
+                            tool_name = getattr(tool_call, "name", None)
+                            if isinstance(tool_name, str):
+                                tool_names.add(tool_name)
             logger.info("Previously called tools: %s", tool_names)
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.warning("Failed to extract previously called tools: %s", e)
@@ -563,11 +576,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                     {
                         "tool_name": tool_def.name,
                         "description": tool_def.description or "",
-                        "parameters": (
-                            tool_def.parameters
-                            if hasattr(tool_def, "parameters")
-                            else {}
-                        ),
+                        "parameters": tool_def.input_schema or {},
                         "endpoint": endpoint,  # Track which MCP server this tool belongs to
                     }
                 )

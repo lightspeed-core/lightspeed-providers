@@ -14,6 +14,7 @@ from llama_stack_api import (
     Safety,
     Shield,
     ShieldsProtocolPrivate,
+    ShieldStore,
 )
 from llama_stack_api.inference import (
     OpenAIAssistantMessageParam,
@@ -41,6 +42,8 @@ log = logging.getLogger(__name__)
 
 class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
     """Redaction shield that mutates messages with inline rules."""
+
+    shield_store: ShieldStore
 
     def __init__(self, config: RedactionShieldConfig, deps: dict[str, Any]) -> None:
         """
