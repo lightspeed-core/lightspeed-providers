@@ -31,7 +31,7 @@ class PatternReplacement(BaseModel):
         except re.error as e:
             raise ValueError(
                 f"Invalid regular expression pattern '{self.pattern}': {e}"
-            )
+            ) from e
         return self
 
 
