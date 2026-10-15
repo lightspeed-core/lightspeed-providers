@@ -20,6 +20,7 @@ from llama_stack_api import (
     VectorIO,
 )
 from llama_stack_api.agents import CreateResponseRequest
+from llama_stack_api.common.content_types import URL
 from llama_stack_api.conversations import ListItemsRequest
 from llama_stack_api.inference import (
     OpenAIChatCompletionRequestWithExtraBody,
@@ -530,8 +531,6 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             if not server_url:
                 logger.warning("MCP tool config missing server_url")
                 return tool_defs
-
-            from llama_stack_api.common.content_types import URL
 
             mcp_endpoint = URL(uri=server_url)
             # Note: llama-stack 0.4.x ignores the mcp_endpoint parameter and
