@@ -9,7 +9,7 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
-from ogx_api.vector_io import EmbeddedChunk
+from ogx_api.vector_io import ChunkMetadata, EmbeddedChunk
 from ogx_api.vector_stores import VectorStore as VectorDB
 from pytest_mock import MockerFixture
 
@@ -149,11 +149,10 @@ def _make_chunk(metadata: dict[str, Any]) -> EmbeddedChunk:
         chunk_id="doc_chunk_0",
         content="original content",
         metadata=metadata,
-        chunk_metadata=metadata,
+        chunk_metadata=ChunkMetadata(chunk_id="doc_chunk_0"),
         embedding=[],
         embedding_model=EMBEDDING_MODEL,
         embedding_dimension=EMBEDDING_DIM,
-        metadata_token_count=None,
     )
 
 
@@ -191,7 +190,7 @@ class TestGetChunkBoundaryAndBudget:
     def test_orphan_chunk_uses_orphan_budget(
         self, solr_index_with_family: SolrIndex
     ) -> None:
-        """Test that a chunk missing all family field values is flagged as orphan and gets orphan budget."""
+        """Test that a family-less chunk is an orphan with the orphan budget."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 5})
         schema = solr_index_with_family.chunk_window_config
         assert schema is not None
@@ -245,7 +244,7 @@ class TestAssembleExpandedChunk:
         assert result.content == "Only this."
 
     def test_expansion_metadata_flags_set(self, solr_index: SolrIndex) -> None:
-        """Test that chunk_window_expanded, chunk_window_size, and matched_chunk_index are written."""
+        """Test that chunk-window expansion metadata is written."""
         chunk = _make_chunk({"parent_id": "doc1", "chunk_index": 2})
         selected = [{"chunk": "a", "num_tokens": 5}, {"chunk": "b", "num_tokens": 5}]
         assert solr_index.chunk_window_config is not None
@@ -341,7 +340,7 @@ class TestSelectContextChunksInWindow:
     async def test_window_fitting_budget_returned_directly(
         self, solr_index: SolrIndex, mocker: MockerFixture
     ) -> None:
-        """Test that context chunks fitting within the token budget are returned without expansion."""
+        """Test that a within-budget context window is returned unchanged."""
         window = [
             {"chunk_index": i, "chunk": f"c{i}", "num_tokens": 50} for i in range(5)
         ]
@@ -394,7 +393,7 @@ class TestSelectContextChunksInWindow:
     async def test_empty_fetch_returns_none(
         self, solr_index: SolrIndex, mocker: MockerFixture
     ) -> None:
-        """Test that an empty context chunk fetch returns None to signal fallback to original chunk."""
+        """Test that an empty context fetch signals fallback to the original chunk."""
         mocker.patch.object(
             solr_index, "_fetch_context_chunks", AsyncMock(return_value=[])
         )
@@ -416,7 +415,7 @@ class TestSelectContextChunksInWindow:
     async def test_match_index_absent_from_window_returns_none(
         self, solr_index: SolrIndex, mocker: MockerFixture
     ) -> None:
-        """Test that a matched chunk absent from the fetched window returns None to signal fallback."""
+        """Test that a missing matched chunk signals fallback to the original chunk."""
         chunks = [{"chunk_index": 99, "chunk": "x", "num_tokens": 1000}]
         mocker.patch.object(
             solr_index, "_fetch_context_chunks", AsyncMock(return_value=chunks)
