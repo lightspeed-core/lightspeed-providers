@@ -40,6 +40,8 @@ logger = get_logger(name=__name__, category="agents")
 class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
     """Inline agent Lightspeed provider implementation."""
 
+    # The base provider constructor defines this dependency-injection signature.
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         config: LightspeedAgentsImplConfig,
@@ -93,7 +95,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         before passing to the base agent implementation.
 
         Returns:
-            OpenAIResponseObject: The generated OpenAI-style response object.
+            The generated OpenAI-style response object, or an asynchronous stream
+            of response events when streaming is requested.
         """
         # Apply temperature override if configured
         temperature = request.temperature
@@ -143,6 +146,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         # Call parent with modified request
         return await super().create_openai_response(modified_request)
 
+    # This accepts the Responses API's `input` terminology.
+    # pylint: disable=redefined-builtin
     def _extract_user_prompt(self, input: str | list[OpenAIResponseInput]) -> str:
         """
         Flatten the polymorphic input arg into a plain string for the LLM prompt.
@@ -256,6 +261,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                 result.append(tool)
         return result
 
+    # API-shaped inputs and early exits keep filtering failures non-fatal.
+    # pylint: disable=redefined-builtin,too-many-locals,too-many-return-statements
     async def _filter_tools_for_response(
         self,
         input: str | list[OpenAIResponseInput],
@@ -386,6 +393,8 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
         )
         return result
 
+    # Supports both current response items and legacy nested tool-call records.
+    # pylint: disable=too-many-nested-blocks
     async def _get_previously_called_tools(self, conversation_id: str) -> set[str]:
         """
         Extract tool names that were called in previous conversation turns.
