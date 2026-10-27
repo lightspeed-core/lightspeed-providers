@@ -4,7 +4,9 @@
 # General
 # =============================================================================
 language: en-US
-tone_instructions: ''
+tone_instructions: >-
+  Prefer concise responses (high information density, low fluff).
+  This is an AI-powered assistant that provides answers to product questions using backend LLM services, agents, and RAG databases.
 early_access: false
 enable_free_tier: true
 inheritance: false
@@ -15,6 +17,9 @@ inheritance: false
 reviews:
   profile: assertive
   request_changes_workflow: false
+  
+  allow_author_approval: true
+  
   high_level_summary: true
   high_level_summary_instructions: ''
   high_level_summary_placeholder: '@coderabbitai summary'
@@ -22,7 +27,9 @@ reviews:
   auto_title_placeholder: '@coderabbitai'
   auto_title_instructions: ''
   review_status: true
+  review_info: true
   review_details: true
+  review_progress: true
   commit_status: true
   fail_commit_status: false
   collapse_walkthrough: false
@@ -34,9 +41,11 @@ reviews:
   related_prs: true
   suggested_labels: true
   labeling_instructions: []
+  mutually_exclusive_groups: {}
   auto_apply_labels: false
   suggested_reviewers: true
   auto_assign_reviewers: false
+  suggested_reviewers_instructions: []
   in_progress_fortune: true
   poem: false
   enable_prompt_for_ai_agents: true
@@ -46,6 +55,10 @@ reviews:
   disable_cache: false
   slop_detection:
     enabled: true
+    include_all_authors: false
+  # ---------------------------------------------------------------------------
+  # Auto review
+  # ---------------------------------------------------------------------------
   auto_review:
     enabled: true
     description_keyword: ''
@@ -67,6 +80,12 @@ reviews:
       enabled: true
     simplify:
       enabled: true
+    autofix:
+      enabled: true
+    fix_ci:
+      enabled: true
+    resolve_merge_conflict:
+      enabled: true
     custom: []
 
   # ---------------------------------------------------------------------------
@@ -82,16 +101,40 @@ reviews:
       requirements: ''
     description:
       mode: warning
-
     issue_assessment:
       mode: warning
-    custom_checks: []
+    custom_checks:
+      - name: 'Performance and Algorithmic Complexity'
+        mode: error
+        instructions: |
+          BLOCKING. Flag only meaningful performance regressions:
+          1. O(n^2)+ algorithms on non-trivial inputs (handlers, K8s list operations).
+          2. N+1 patterns: list-then-query-per-item (K8s API, DB).
+          3. Expensive work inside loops (API calls, JSON parsing, regex compilation).
+          4. Unbounded growth: caches, watchers, buffers without eviction/limits.
+          5. Missing pagination/limits on List operations or API endpoints.
+
+          Per issue: file, lines, risk, fix category. If clean, mark PASSED.
+
+      - name: 'Security and Secret Handling'
+        mode: error
+        instructions: |
+          BLOCKING. Flag:
+          1. Secrets/tokens logged in plaintext or hardcoded in source.
+          2. Missing auth/authz on API endpoints.
+          3. Injection vulnerabilities (SQL, command, path traversal).
+          4. Sensitive data leaked in API responses, WebSocket messages, or logs.
+          5. K8s Secrets and RH secrets missing OwnerReferences.
+
+          Per violation: file, lines, risk. If clean, mark PASSED.
 
   # ---------------------------------------------------------------------------
   # Tools
   # ---------------------------------------------------------------------------
+  post_merge_actions: []
   tools:
     ast-grep:
+      enabled: true
       rule_dirs: []
       util_dirs: []
       essential_rules: true
@@ -142,8 +185,13 @@ reviews:
       enabled: true
     eslint:
       enabled: true
+      e18e:
+        enabled: true
     flake8:
       enabled: true
+    fbinfer:
+      enabled: true
+      enable_java: false
     fortitudeLint:
       enabled: true
     rubocop:
@@ -160,6 +208,10 @@ reviews:
       enabled: true
     cppcheck:
       enabled: true
+    vale:
+      enabled: true
+    verilator:
+      enabled: true
     opengrep:
       enabled: true
     semgrep:
@@ -169,6 +221,8 @@ reviews:
     clippy:
       enabled: true
     sqlfluff:
+      enabled: true
+    squawk:
       enabled: true
     trivy:
       enabled: true
@@ -194,11 +248,19 @@ reviews:
       enabled: true
     osvScanner:
       enabled: true
+    oasdiff:
+      enabled: true
+    reactDoctor:
+      enabled: true
+    presidio:
+      enabled: true
     blinter:
       enabled: true
     smartyLint:
       enabled: true
     emberTemplateLint:
+      enabled: true
+    skillspector:
       enabled: true
     psscriptanalyzer:
       enabled: true
@@ -213,6 +275,7 @@ chat:
   integrations:
     jira:
       usage: auto
+      issue_template: ''
     linear:
       usage: auto
 
@@ -228,11 +291,13 @@ knowledge_base:
     filePatterns: []
   learnings:
     scope: auto
+    approval_delay: 0
   issues:
     scope: auto
   jira:
     usage: auto
     project_keys: []
+    excluded_project_keys: []
   linear:
     usage: auto
     team_keys: []
@@ -241,6 +306,8 @@ knowledge_base:
   mcp:
     usage: auto
     disabled_servers: []
+  automatic_linking_mode: disabled
+  automatic_repository_linking: false
   linked_repositories: []
 
 # =============================================================================
@@ -252,9 +319,13 @@ code_generation:
     path_instructions: []
   unit_tests:
     path_instructions: []
+
+# =============================================================================
+# Issue enrichment
+# =============================================================================
 issue_enrichment:
   auto_enrich:
-    enabled: false
+    enabled: true
   planning:
     enabled: true
     auto_planning:
