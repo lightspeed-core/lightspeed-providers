@@ -36,12 +36,20 @@
 
 ## TLDR;
 
+NOTE: Please Create an RFE for new features before you continue working on PR
+
 1. Create your own fork of the repo
 2. Make changes to the code in your fork
 3. Run unit tests
 4. Check the code with linters
 5. Submit PR from your fork to main branch of the project repo
 
+
+## New feature requests
+
+1. Create an RFE: If you haven’t already, please create an RFE (Request for Enhancement) in the LCORE project (Red Hat contributions) or GitHub repository (external contributions). This helps us track the feature and ensures it is visible to the team.
+2. RFE Vetting: Your RFE will be vetted by Pavel Tisnovsky and Stefan Bunciak to evaluate the requirement and alignment with our project goals.
+3. Tests & Documentation: Please ensure that your feature implementation includes the necessary integration tests and comprehensive documentation covering the functionality and configuration options
 
 ## Prerequisites
 
@@ -95,7 +103,11 @@ Happy hacking!
 
 ## PR description
 
-* Jira ticket needs to be added into PR title, for example: `LCORE-740: type hints for models unit tests`
+* PR titles must start with a JIRA issue key prefix or the target branch of a backport in brackets. CI enforces this via
+  `pr-title-checker` (config: `.github/pr-title-checker-config.json`).
+  Allowed prefixes: `LCORE-`, `RSPEED-`, `MGTM-`, `OLS-`, `RHIDP-`, `LEADS-`,
+  `CWFHEALTH-`, `[release/`
+    - for example: `LCORE-740: type hints for models unit tests`
 * Fill-in all relevant information in the PR template
     - unused parts of PR template (like information about testing etc.) can be deleted
 * Please note that CodeRabbitAI will create a summary of your pull request
@@ -142,6 +154,61 @@ Happy hacking!
   separate large refactors or formatting changes into their own PRs, and add
   concise descriptions that state the PR’s intent and any necessary migration
   or rollout steps.
+
+
+
+## Backports
+
+We use [cherry_picker](https://pypi.org/project/cherry-picker/) to backport
+merged pull requests to release branches. See the
+[cherry_picker documentation](https://cherry-picker.readthedocs.io/) for full
+details.
+
+### Installation
+
+```bash
+pip install --user cherry_picker
+```
+
+### Usage
+
+After a pull request has been merged to `main`, you can backport it to one or
+more release branches:
+
+```bash
+# backport to a single release branch
+cherry_picker <commit-sha> release/0.6
+
+# backport to multiple release branches
+cherry_picker <commit-sha> release/0.5 release/0.6
+```
+
+`cherry_picker` will create a new branch, cherry-pick the commit, and open a
+pull request against the target release branch.
+
+If the commit you want to backport is a **merge commit**, append `^-` to the
+hash so that `cherry_picker` applies the correct parent diff:
+
+```bash
+cherry_picker <merge-commit-sha>^- release/0.6
+```
+
+If there are conflicts, `cherry_picker` will pause and let you resolve them.
+After resolving:
+
+```bash
+git add .
+cherry_picker --continue
+```
+
+To abort a backport in progress:
+
+```bash
+cherry_picker --abort
+```
+
+See the [branching documentation](docs/branching.md) for more details on our
+branching strategy and release workflow.
 
 
 
