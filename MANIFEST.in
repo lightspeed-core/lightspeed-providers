@@ -1,2 +1,2 @@
-recursive-include resources *.yaml
+recursive-include lightspeed_stack_providers/resources *.yaml
 include README.md
