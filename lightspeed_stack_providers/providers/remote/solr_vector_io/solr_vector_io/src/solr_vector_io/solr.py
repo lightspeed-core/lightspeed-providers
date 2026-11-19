@@ -6,8 +6,8 @@ from .solr_index import OKP_SOURCE, SolrIndex
 
 __all__ = [
     "OKP_SOURCE",
-    "SolrIndex",
-    "SolrVectorIOAdapter",
     "VECTOR_DBS_PREFIX",
     "VERSION",
+    "SolrIndex",
+    "SolrVectorIOAdapter",
 ]

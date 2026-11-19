@@ -204,7 +204,7 @@ class TestCompoundFilters:
         result = _filter_to_solr_fq(filter_obj)
         expected = (
             '(status:"published" AND '
-            + '(product:"openshift_container_platform" OR product:"ansible_automation_platform"))'
+            '(product:"openshift_container_platform" OR product:"ansible_automation_platform"))'
         )
         assert result == expected
 
