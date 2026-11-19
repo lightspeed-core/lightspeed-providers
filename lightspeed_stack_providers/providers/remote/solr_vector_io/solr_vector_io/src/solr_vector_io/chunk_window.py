@@ -70,7 +70,7 @@ class ChunkWindowMixin:  # pylint: disable=too-few-public-methods
             parent_doc = docs[0]
             log.info(f"Found parent document: total_chunks={
                     parent_doc.get(schema.parent_total_chunks_field)
-                }, " f"total_tokens={parent_doc.get(schema.parent_total_tokens_field)}")
+                }, total_tokens={parent_doc.get(schema.parent_total_tokens_field)}")
             return parent_doc
 
         except Exception as e:  # pylint: disable=broad-exception-caught
