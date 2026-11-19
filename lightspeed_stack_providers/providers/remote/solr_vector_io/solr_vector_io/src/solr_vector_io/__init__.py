@@ -9,8 +9,8 @@ from .solr import SolrVectorIOAdapter
 
 __all__ = [
     "ChunkWindowConfig",
-    "SolrVectorIOConfig",
     "SolrVectorIOAdapter",
+    "SolrVectorIOConfig",
     "get_adapter_impl",
 ]
 
