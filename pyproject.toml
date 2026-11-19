@@ -20,7 +20,7 @@ keywords = [
     "RAG",
     "OKP"
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.15"
 readme = "README.md"
 license = {file = "LICENSE"}
 dependencies = [
@@ -77,8 +77,8 @@ disable = ["R0801"]
 extend-exclude = ["lightspeed_stack_providers/providers/remote/solr_vector_io/solr_vector_io/tests.py"]
 
 [tool.ruff.lint]
-extend-select = ["UP006", "UP007", "UP010", "UP017", "UP035", "RUF100", "B009", "B010", "DTZ005", "I001", "RET504", "RET505", "ANN201"]
-ignore = ["UP040", "UP047", "UP045", "BLE", "S", "C", "RUF", "SIM", "B017", "TRY004", "TRY201", "TRY203", "TRY401", "UP008", "UP012", "UP024", "UP041", "B008", "EXE001", "FURB129", "G201", "ISC004", "LOG014", "PERF402", "PIE790", "PLW1510", "PYI034", "PYI064", "RET501", "TC004"]
+extend-select = ["C", "FA", "FLY", "I", "ISC", "TID251", "UP", "RUF100", "B009", "B010", "B011", "BLE", "DTZ005", "D202", "PLR1733", "RUF022", "PLW1510", "TC004", "PIE790", "PERF402", "FURB129", "RET501", "LOG", "D413", "PT006"]
+ignore = ["UP047", "UP045", "S", "C901", "RUF", "SIM", "B017", "TRY004", "TRY201", "TRY203", "TRY401", "B008", "EXE001", "G201", "PYI034", "PYI064", "D413"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 banned-api = { "unittest" = { msg = "use pytest instead of unittest" }, "unittest.mock" = { msg = "use pytest-mock instead of unittest.mock" } }
