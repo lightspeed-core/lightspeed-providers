@@ -193,7 +193,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
             names = json.loads(list_str)
             logger.info("Filtered tool names from LLM: %s", names)
             return names
-        except Exception as exp:  # pylint: disable=broad-exception-caught
+        except json.JSONDecodeError as exp:
             logger.error("Failed to parse LLM response as JSON: %s", exp)
             return []
 
@@ -318,7 +318,9 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                     always_included_tools,
                 )
             except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.warning("Failed to retrieve conversation history: %s", e)
+                logger.warning(
+                    "Failed to retrieve conversation history: %s", e, exc_info=True
+                )
 
         tools_for_filtering, tool_to_endpoint = await self._extract_tool_definitions(
             tools
@@ -444,7 +446,9 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                                 tool_names.add(tool_name)
             logger.info("Previously called tools: %s", tool_names)
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.warning("Failed to extract previously called tools: %s", e)
+            logger.warning(
+                "Failed to extract previously called tools: %s", e, exc_info=True
+            )
         return tool_names
 
     async def _extract_tool_definitions(
@@ -587,7 +591,7 @@ class LightspeedAgentsImpl(MetaReferenceAgentsImpl):
                 server_label,
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to get MCP tool definitions: %s", e)
+            logger.error("Failed to get MCP tool definitions: %s", e, exc_info=True)
             tool_defs.append(
                 {
                     "tool_name": mcp_tool_config.get("server_label", "mcp_tool"),
