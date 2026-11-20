@@ -1,7 +1,6 @@
 """Unit tests for using Lightspeed inline agent provider implementation."""
 
 from typing import Any, cast
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
@@ -9,7 +8,7 @@ from llama_stack.providers.inline.agents.meta_reference.config import (
     AgentPersistenceConfig,
 )
 from llama_stack_api.agents import CreateResponseRequest
-from pytest_mock import AsyncMockType, MockerFixture
+from pytest_mock import AsyncMockType, MockerFixture, MockType
 
 from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.agents import (
     LightspeedAgentsImpl,
@@ -21,30 +20,30 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 
 
 @pytest.fixture(name="mock_inference_api")
-def mock_inference_api_fixture() -> AsyncMock:
+def mock_inference_api_fixture(mocker: MockerFixture) -> AsyncMockType:
     """Fixture for mocking the Inference API."""
-    return AsyncMock()
+    return mocker.AsyncMock()
 
 
 @pytest.fixture(name="mock_conversations_api")
-def mock_conversations_api_fixture() -> AsyncMockType:
+def mock_conversations_api_fixture(mocker: MockerFixture) -> AsyncMockType:
     """Fixture for mocking the Conversations API.
 
     The mock's `list_messages` coroutine is configured to return an
     empty list by default.
 
     Returns:
-        AsyncMock: Mocked Conversations API with `list_messages` returning [].
+        AsyncMockType: Mocked Conversations API with `list_messages` returning [].
     """
-    mock = AsyncMock()
+    mock = mocker.AsyncMock()
     mock.list_messages.return_value = []
     return mock
 
 
 @pytest.fixture(name="mock_tool_runtime_api")
-def mock_tool_runtime_api_fixture() -> AsyncMockType:
+def mock_tool_runtime_api_fixture(mocker: MockerFixture) -> AsyncMockType:
     """Fixture for mocking the Tool Runtime API."""
-    return AsyncMock()
+    return mocker.AsyncMock()
 
 
 @pytest.fixture(name="lightspeed_agents_impl")
@@ -90,26 +89,26 @@ def lightspeed_agents_impl_fixture(
     )
 
 
-def create_mock_chat_response(content: str) -> MagicMock:
+def create_mock_chat_response(content: str, mocker: MockerFixture) -> MockType:
     """Create a mock OpenAI chat completion response.
 
-    Builds a MagicMock shaped like an OpenAI chat completion
+    Builds a MockType shaped like an OpenAI chat completion
     containing the provided message content.
 
     Parameters:
         content (str): Text to set as choices[0].message.content on the mock response.
 
     Returns:
-        MagicMock: A mock object whose `choices` attribute
+        MockType: A mock object whose `choices` attribute
         is a list with one choice whose `message.content` equals `content`.
     """
-    mock_message = MagicMock()
+    mock_message = mocker.MagicMock()
     mock_message.content = content
 
-    mock_choice = MagicMock()
+    mock_choice = mocker.MagicMock()
     mock_choice.message = mock_message
 
-    mock_response = MagicMock()
+    mock_response = mocker.MagicMock()
     mock_response.choices = [mock_choice]
 
     return mock_response
@@ -117,27 +116,29 @@ def create_mock_chat_response(content: str) -> MagicMock:
 
 @pytest.mark.asyncio
 async def test_filter_tools_for_response_filters_correctly(
-    lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+    mock_inference_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test that _filter_tools_for_response filters tools based on LLM response."""
     # Setup mock LLM response to return filtered tool names
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
-        '["tool1"]'
+        '["tool1"]', mocker=mocker
     )
 
     # Setup mock tool runtime to return different tools per MCP server
-    # Note: MagicMock(name=...) uses name for __repr__, so set .name after creation
-    tool1_mock = MagicMock(description="Tool 1")
+    # Note: MockType(name=...) uses name for __repr__, so set .name after creation
+    tool1_mock = mocker.MagicMock(description="Tool 1")
     tool1_mock.name = "tool1"
     tool1_mock.metadata = {"endpoint": "http://test1.com"}
-    tool2_mock = MagicMock(description="Tool 2")
+    tool2_mock = mocker.MagicMock(description="Tool 2")
     tool2_mock.name = "tool2"
     tool2_mock.metadata = {"endpoint": "http://test2.com"}
     cast(
-        AsyncMock, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
+        AsyncMockType, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
     ).side_effect = [
-        MagicMock(data=[tool1_mock]),
-        MagicMock(data=[tool2_mock]),
+        mocker.MagicMock(data=[tool1_mock]),
+        mocker.MagicMock(data=[tool2_mock]),
     ]
 
     # Create MCP tools
@@ -172,7 +173,9 @@ async def test_filter_tools_for_response_filters_correctly(
 
 @pytest.mark.asyncio
 async def test_filter_tools_for_response_includes_always_included_tools(
-    lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+    mock_inference_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test that always-included tools are preserved even when not in LLM response."""
     # Configure always-included tools (uses actual tool names, not server labels)
@@ -181,22 +184,22 @@ async def test_filter_tools_for_response_includes_always_included_tools(
 
     # Setup mock LLM response to return only one tool name
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
-        '["tool1"]'
+        '["tool1"]', mocker=mocker
     )
 
     # Setup mock tool runtime to return different tools per MCP server
-    # Note: MagicMock(name=...) uses name for __repr__, so set .name after creation
-    tool1_mock = MagicMock(description="Tool 1")
+    # Note: MockType(name=...) uses name for __repr__, so set .name after creation
+    tool1_mock = mocker.MagicMock(description="Tool 1")
     tool1_mock.name = "tool1"
     tool1_mock.metadata = {"endpoint": "http://test1.com"}
-    tool2_mock = MagicMock(description="Tool 2")
+    tool2_mock = mocker.MagicMock(description="Tool 2")
     tool2_mock.name = "tool2"
     tool2_mock.metadata = {"endpoint": "http://test2.com"}
     cast(
-        AsyncMock, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
+        AsyncMockType, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
     ).side_effect = [
-        MagicMock(data=[tool1_mock]),
-        MagicMock(data=[tool2_mock]),
+        mocker.MagicMock(data=[tool1_mock]),
+        mocker.MagicMock(data=[tool2_mock]),
     ]
 
     # Create MCP tools
@@ -240,7 +243,7 @@ async def test_create_openai_response_skips_filtering_when_disabled(
     lightspeed_agents_impl.config.tools_filter.enabled = False
 
     # Mock the parent's create_openai_response
-    mock_parent_response = MagicMock()
+    mock_parent_response = mocker.MagicMock()
     mocker.patch.object(
         LightspeedAgentsImpl.__bases__[0],
         "create_openai_response",
@@ -274,7 +277,9 @@ async def test_create_openai_response_skips_filtering_when_disabled(
 
 @pytest.mark.asyncio
 async def test_filter_tools_for_response_skips_filtering_below_threshold(
-    lightspeed_agents_impl: LightspeedAgentsImpl, mock_inference_api: AsyncMockType
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+    mock_inference_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test that _filter_tools_for_response skips filtering when tools are below threshold."""
     assert lightspeed_agents_impl.config.tools_filter is not None
@@ -282,15 +287,15 @@ async def test_filter_tools_for_response_skips_filtering_below_threshold(
 
     # Setup mock tool runtime to return few tools (below threshold)
     # Setup mock tool runtime to return few tools (below threshold)
-    tool1_mock = MagicMock(description="Tool 1")
+    tool1_mock = mocker.MagicMock(description="Tool 1")
     tool1_mock.name = "tool1"
-    tool2_mock = MagicMock(description="Tool 2")
+    tool2_mock = mocker.MagicMock(description="Tool 2")
     tool2_mock.name = "tool2"
     cast(
-        AsyncMock, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
+        AsyncMockType, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
     ).side_effect = [
-        MagicMock(data=[tool1_mock]),
-        MagicMock(data=[tool2_mock]),
+        mocker.MagicMock(data=[tool1_mock]),
+        mocker.MagicMock(data=[tool2_mock]),
     ]
 
     tools = [
@@ -315,15 +320,17 @@ async def test_filter_tools_for_response_skips_filtering_below_threshold(
 
 @pytest.mark.asyncio
 async def test_get_previously_called_tools_extracts_function_calls(
-    lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+    mock_conversations_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test that _get_previously_called_tools extracts tool names from function_call items."""
     # Mock conversation items with function_call type
-    mock_item1 = MagicMock()
+    mock_item1 = mocker.MagicMock()
     mock_item1.type = "function_call"
     mock_item1.name = "get_weather"
 
-    mock_item2 = MagicMock()
+    mock_item2 = mocker.MagicMock()
     mock_item2.type = "function_call"
     mock_item2.name = "get_temperature"
 
@@ -339,15 +346,17 @@ async def test_get_previously_called_tools_extracts_function_calls(
 
 @pytest.mark.asyncio
 async def test_get_previously_called_tools_extracts_mcp_calls(
-    lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+    mock_conversations_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test that _get_previously_called_tools extracts tool names from mcp_call items."""
     # Mock conversation items with mcp_call type
-    mock_item1 = MagicMock()
+    mock_item1 = mocker.MagicMock()
     mock_item1.type = "mcp_call"
     mock_item1.name = "mcp_tool1"
 
-    mock_item2 = MagicMock()
+    mock_item2 = mocker.MagicMock()
     mock_item2.type = "mcp_call"
     mock_item2.name = "mcp_tool2"
 
@@ -363,11 +372,13 @@ async def test_get_previously_called_tools_extracts_mcp_calls(
 
 @pytest.mark.asyncio
 async def test_get_previously_called_tools_extracts_mcp_approval_requests(
-    lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+    mock_conversations_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test if _get_previously_called_tools extracts tool names from mcp_approval_request items."""
     # Mock conversation items with mcp_approval_request type
-    mock_item = MagicMock()
+    mock_item = mocker.MagicMock()
     mock_item.type = "mcp_approval_request"
     mock_item.name = "sensitive_tool"
 
@@ -383,24 +394,26 @@ async def test_get_previously_called_tools_extracts_mcp_approval_requests(
 
 @pytest.mark.asyncio
 async def test_get_previously_called_tools_handles_mixed_types(
-    lightspeed_agents_impl: LightspeedAgentsImpl, mock_conversations_api: AsyncMockType
+    lightspeed_agents_impl: LightspeedAgentsImpl,
+    mock_conversations_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test that _get_previously_called_tools extracts tool names from mixed item types."""
     # Mock conversation items with different types
-    function_item = MagicMock()
+    function_item = mocker.MagicMock()
     function_item.type = "function_call"
     function_item.name = "func_tool"
 
-    mcp_item = MagicMock()
+    mcp_item = mocker.MagicMock()
     mcp_item.type = "mcp_call"
     mcp_item.name = "mcp_tool"
 
-    approval_item = MagicMock()
+    approval_item = mocker.MagicMock()
     approval_item.type = "mcp_approval_request"
     approval_item.name = "approval_tool"
 
     # Non-tool item (should be ignored)
-    message_item = MagicMock()
+    message_item = mocker.MagicMock()
     message_item.type = "message"
 
     mock_conversations_api.list_items.return_value = [
@@ -423,31 +436,32 @@ async def test_filter_tools_preserves_previously_called_tools(
     lightspeed_agents_impl: LightspeedAgentsImpl,
     mock_inference_api: AsyncMockType,
     mock_conversations_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test that previously called tools are preserved even when LLM returns empty list."""
     # Setup conversation with previously called MCP tools
-    mock_item = MagicMock()
+    mock_item = mocker.MagicMock()
     mock_item.type = "mcp_call"
     mock_item.name = "previously_used_tool"
     mock_conversations_api.list_items.return_value = [mock_item]
 
     # Setup mock LLM response to return empty list
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
-        "[]"
+        "[]", mocker=mocker
     )
 
     # Setup mock tool runtime to return tools
-    tool1_mock = MagicMock(description="Previously used tool")
+    tool1_mock = mocker.MagicMock(description="Previously used tool")
     tool1_mock.name = "previously_used_tool"
     tool1_mock.metadata = {"endpoint": "http://test1.com"}
-    tool2_mock = MagicMock(description="Other tool")
+    tool2_mock = mocker.MagicMock(description="Other tool")
     tool2_mock.name = "other_tool"
     tool2_mock.metadata = {"endpoint": "http://test2.com"}
     cast(
-        AsyncMock, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
+        AsyncMockType, lightspeed_agents_impl.tool_runtime_api.list_runtime_tools
     ).side_effect = [
-        MagicMock(data=[tool1_mock]),
-        MagicMock(data=[tool2_mock]),
+        mocker.MagicMock(data=[tool1_mock]),
+        mocker.MagicMock(data=[tool2_mock]),
     ]
 
     # Create MCP tools
