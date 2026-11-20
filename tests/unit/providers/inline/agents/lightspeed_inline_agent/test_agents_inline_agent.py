@@ -1,7 +1,6 @@
 """Unit tests for Lightspeed inline agent provider implementation."""
 
 from typing import Any, cast
-from unittest.mock import AsyncMock
 
 import pytest
 from llama_stack.core.storage.datatypes import KVStoreReference, ResponsesStoreReference
@@ -20,19 +19,19 @@ from lightspeed_stack_providers.providers.inline.agents.lightspeed_inline_agent.
 
 
 @pytest.fixture(name="mock_inference_api")
-def mock_inference_api_fixture() -> AsyncMockType:
+def mock_inference_api_fixture(mocker: MockerFixture) -> AsyncMockType:
     """Fixture for mocking the Inference API."""
-    return AsyncMock()
+    return mocker.AsyncMock()
 
 
 @pytest.fixture(name="mock_conversations_api")
-def mock_conversations_api_fixture() -> AsyncMockType:
+def mock_conversations_api_fixture(mocker: MockerFixture) -> AsyncMockType:
     """Fixture for mocking the Conversations API.
 
     Returns:
-        AsyncMock: An AsyncMock configured so `list_messages` returns an empty list.
+        AsyncMockType: An AsyncMockType configured so `list_messages` returns an empty list.
     """
-    mock = AsyncMock()
+    mock = mocker.AsyncMock()
     mock.list_messages.return_value = []
     return mock
 
