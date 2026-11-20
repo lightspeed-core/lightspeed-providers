@@ -6,7 +6,6 @@ _select_context_chunks_in_window without requiring a running Solr instance.
 """
 
 from typing import Any
-from unittest.mock import AsyncMock
 
 import pytest
 from ogx_api.vector_io import ChunkMetadata, EmbeddedChunk
@@ -320,7 +319,9 @@ class TestSelectContextChunksInWindow:
             {"chunk_index": i, "chunk": f"c{i}", "num_tokens": 10} for i in range(3)
         ]
         mocker.patch.object(
-            solr_index, "_fetch_context_chunks", AsyncMock(return_value=all_chunks)
+            solr_index,
+            "_fetch_context_chunks",
+            mocker.AsyncMock(return_value=all_chunks),
         )
         assert solr_index.chunk_window_config is not None
         result = await solr_index._select_context_chunks_in_window(
@@ -345,7 +346,7 @@ class TestSelectContextChunksInWindow:
             {"chunk_index": i, "chunk": f"c{i}", "num_tokens": 50} for i in range(5)
         ]
         mocker.patch.object(
-            solr_index, "_fetch_context_chunks", AsyncMock(return_value=window)
+            solr_index, "_fetch_context_chunks", mocker.AsyncMock(return_value=window)
         )
         assert solr_index.chunk_window_config is not None
         result = await solr_index._select_context_chunks_in_window(
@@ -370,7 +371,9 @@ class TestSelectContextChunksInWindow:
             {"chunk_index": i, "chunk": f"c{i}", "num_tokens": 1000} for i in range(5)
         ]
         mocker.patch.object(
-            solr_index, "_fetch_context_chunks", AsyncMock(return_value=big_window)
+            solr_index,
+            "_fetch_context_chunks",
+            mocker.AsyncMock(return_value=big_window),
         )
         mocker.patch.object(
             solr_index, "_expand_chunk_window", return_value=big_window[:2]
@@ -395,7 +398,7 @@ class TestSelectContextChunksInWindow:
     ) -> None:
         """Test that an empty context fetch signals fallback to the original chunk."""
         mocker.patch.object(
-            solr_index, "_fetch_context_chunks", AsyncMock(return_value=[])
+            solr_index, "_fetch_context_chunks", mocker.AsyncMock(return_value=[])
         )
         assert solr_index.chunk_window_config is not None
         result = await solr_index._select_context_chunks_in_window(
@@ -418,7 +421,7 @@ class TestSelectContextChunksInWindow:
         """Test that a missing matched chunk signals fallback to the original chunk."""
         chunks = [{"chunk_index": 99, "chunk": "x", "num_tokens": 1000}]
         mocker.patch.object(
-            solr_index, "_fetch_context_chunks", AsyncMock(return_value=chunks)
+            solr_index, "_fetch_context_chunks", mocker.AsyncMock(return_value=chunks)
         )
         assert solr_index.chunk_window_config is not None
         result = await solr_index._select_context_chunks_in_window(
