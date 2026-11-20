@@ -96,7 +96,7 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
             except re.error as e:
                 log.error("Invalid regex pattern '%s': %s", rule.pattern, e)
             except Exception as e:  # pylint: disable=broad-exception-caught
-                log.error("Error compiling rule %s: %s", rule.pattern, e)
+                log.error("Error compiling rule %s: %s", rule.pattern, e, exc_info=True)
 
         log.info("Compiled %s redaction rules", len(compiled_rules))
         return compiled_rules
@@ -245,7 +245,12 @@ class RedactionShieldImpl(Safety, ShieldsProtocolPrivate):
                     applied_rules.append(rule["original_pattern"])
 
             except Exception as e:  # pylint:disable=broad-exception-caught
-                log.debug("Error applying rule %s: %s", rule["original_pattern"], e)
+                log.debug(
+                    "Error applying rule %s: %s",
+                    rule["original_pattern"],
+                    e,
+                    exc_info=True,
+                )
 
         if applied_rules:
             log.debug("Applied %s redaction rules to content", len(applied_rules))
