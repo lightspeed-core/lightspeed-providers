@@ -74,7 +74,9 @@ class ChunkWindowMixin:  # pylint: disable=too-few-public-methods
             return parent_doc
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            log.error(f"Error fetching parent metadata for {parent_id}: {e}")
+            log.error(
+                f"Error fetching parent metadata for {parent_id}: {e}", exc_info=True
+            )
             return None
 
     async def _fetch_context_chunks(
@@ -166,7 +168,9 @@ class ChunkWindowMixin:  # pylint: disable=too-few-public-methods
             return chunks
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            log.error(f"Error fetching context chunks for {parent_id}: {e}")
+            log.error(
+                f"Error fetching context chunks for {parent_id}: {e}", exc_info=True
+            )
             return []
 
     def _get_chunk_boundary_and_budget(

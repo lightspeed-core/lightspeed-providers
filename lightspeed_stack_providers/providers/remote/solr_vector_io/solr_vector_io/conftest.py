@@ -52,7 +52,7 @@ def check_solr_running() -> Generator:
             f"Solr may be starting up or experiencing issues.",
             returncode=1,
         )
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"\n✗ FAILED: Unexpected error checking Solr at {SOLR_URL}")
         print(f"  Error: {type(e).__name__}: {e}")
         pytest.exit(f"Unexpected error checking Solr: {e}", returncode=1)
