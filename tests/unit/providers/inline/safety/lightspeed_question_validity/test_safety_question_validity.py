@@ -2,13 +2,12 @@
 
 from string import Template
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from llama_stack_api import RunModerationRequest, RunShieldRequest
 from llama_stack_api.inference import OpenAIUserMessageParam
 from llama_stack_api.safety import RunShieldResponse, SafetyViolation, ViolationLevel
-from pytest_mock import MockerFixture
+from pytest_mock import AsyncMockType, MockerFixture, MockType
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (
     SUBJECT_ALLOWED,
@@ -19,10 +18,10 @@ from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_vali
 
 
 @pytest.fixture(name="mock_inference_api")
-def mock_inference_api_fixture() -> AsyncMock:
+def mock_inference_api_fixture(mocker: MockerFixture) -> AsyncMockType:
     """Fixture for mocking the Inference API.
 
-    Provide a pytest fixture that supplies an AsyncMock
+    Provide a pytest fixture that supplies an AsyncMockType
     representing the inference API client for tests.
 
     This mock is intended to stand in for the real inference API
@@ -30,14 +29,14 @@ def mock_inference_api_fixture() -> AsyncMock:
     responses or raise exceptions.
 
     Returns:
-        AsyncMock: An asynchronous mock object that mimics the inference API client.
+        AsyncMockType: An asynchronous mock object that mimics the inference API client.
     """
-    return AsyncMock()
+    return mocker.AsyncMock()
 
 
 @pytest.fixture(name="question_validity_runner")
 def question_validity_runner_fixture(
-    mock_inference_api: AsyncMock,
+    mock_inference_api: AsyncMockType,
 ) -> QuestionValidityRunner:
     """Fixture for creating a QuestionValidityRunner instance."""
     model_id = "test_model"
@@ -53,22 +52,22 @@ def question_validity_runner_fixture(
     )
 
 
-def create_mock_chat_response(content: str) -> MagicMock:
+def create_mock_chat_response(content: str, mocker: MockerFixture) -> MockType:
     """Create a mock OpenAI chat completion response.
 
     Parameters:
         content (str): The message content to place at response.choices[0].message.content.
 
     Returns:
-        MagicMock: A mock response where `choices[0].message.content == content`.
+        MockType: A mock response where `choices[0].message.content == content`.
     """
-    mock_message = MagicMock()
+    mock_message = mocker.MagicMock()
     mock_message.content = content
 
-    mock_choice = MagicMock()
+    mock_choice = mocker.MagicMock()
     mock_choice.message = mock_message
 
-    mock_response = MagicMock()
+    mock_response = mocker.MagicMock()
     mock_response.choices = [mock_choice]
 
     return mock_response
@@ -110,14 +109,16 @@ def test_get_shield_response_rejected(
 
 @pytest.mark.asyncio
 async def test_run_allowed(
-    question_validity_runner: QuestionValidityRunner, mock_inference_api: AsyncMock
+    question_validity_runner: QuestionValidityRunner,
+    mock_inference_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test the run method for an allowed question."""
     message = OpenAIUserMessageParam(
         role="user", content="How do I create a Kubernetes service?"
     )
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
-        SUBJECT_ALLOWED
+        SUBJECT_ALLOWED, mocker=mocker
     )
 
     response = await question_validity_runner.run(message)
@@ -128,12 +129,14 @@ async def test_run_allowed(
 
 @pytest.mark.asyncio
 async def test_run_rejected(
-    question_validity_runner: QuestionValidityRunner, mock_inference_api: AsyncMock
+    question_validity_runner: QuestionValidityRunner,
+    mock_inference_api: AsyncMockType,
+    mocker: MockerFixture,
 ) -> None:
     """Test the run method for a rejected question."""
     message = OpenAIUserMessageParam(role="user", content="What is the weather today?")
     mock_inference_api.openai_chat_completion.return_value = create_mock_chat_response(
-        SUBJECT_REJECTED
+        SUBJECT_REJECTED, mocker=mocker
     )
 
     response = await question_validity_runner.run(message)
@@ -144,7 +147,7 @@ async def test_run_rejected(
 
 @pytest.fixture(name="question_validity_shield_implementation")
 def question_validity_shield_impl(
-    mock_inference_api: AsyncMock,
+    mock_inference_api: AsyncMockType,
 ) -> QuestionValidityShieldImpl:
     """Fixture for creating a QuestionValidityShieldImpl instance."""
     # pylint: disable=import-outside-toplevel
