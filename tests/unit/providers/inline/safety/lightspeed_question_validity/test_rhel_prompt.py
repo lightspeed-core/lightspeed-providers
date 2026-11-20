@@ -9,11 +9,11 @@ Validates that the RHEL classification prompt:
 # pylint: disable=too-few-public-methods
 
 from string import Template
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from llama_stack_api.inference import OpenAIUserMessageParam
 from llama_stack_api.safety import SafetyViolation, ViolationLevel
+from pytest_mock import MockerFixture, MockType
 
 from lightspeed_stack_providers.providers.inline.safety.lightspeed_question_validity.safety import (
     SUBJECT_ALLOWED,
@@ -98,7 +98,7 @@ RHEL_INVALID_QUESTION_RESPONSE = (
 
 
 @pytest.fixture(name="rhel_runner")
-def rhel_runner_fixture() -> QuestionValidityRunner:
+def rhel_runner_fixture(mocker: MockerFixture) -> QuestionValidityRunner:
     """Create a QuestionValidityRunner configured with the RHEL prompt.
 
     Returns:
@@ -109,7 +109,7 @@ def rhel_runner_fixture() -> QuestionValidityRunner:
         model_id="test_model",
         model_prompt_template=Template(RHEL_MODEL_PROMPT),
         invalid_question_response=RHEL_INVALID_QUESTION_RESPONSE,
-        inference_api=AsyncMock(),
+        inference_api=mocker.AsyncMock(),
     )
 
 
@@ -218,20 +218,20 @@ class TestRhelShieldResponses:
 # --- Async run tests with mocked LLM ---
 
 
-def _mock_llm_response(content: str) -> MagicMock:
+def _mock_llm_response(content: str, mocker: MockerFixture) -> MockType:
     """Create a mock OpenAI chat completion response.
 
     Parameters:
         content: The text to place at ``response.choices[0].message.content``.
 
     Returns:
-        MagicMock: A mock response mimicking the OpenAI chat completion format.
+        MockType: A mock response mimicking the OpenAI chat completion format.
     """
-    mock_message = MagicMock()
+    mock_message = mocker.MagicMock()
     mock_message.content = content
-    mock_choice = MagicMock()
+    mock_choice = mocker.MagicMock()
     mock_choice.message = mock_message
-    mock_response = MagicMock()
+    mock_response = mocker.MagicMock()
     mock_response.choices = [mock_choice]
     return mock_response
 
@@ -268,15 +268,15 @@ class TestRhelOnTopicQuestions:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("question", ON_TOPIC_QUESTIONS)
-    async def test_on_topic_allowed(self, question: str) -> None:
+    async def test_on_topic_allowed(self, question: str, mocker: MockerFixture) -> None:
         """On-topic RHEL questions should pass the shield.
 
         Parameters:
             question: The RHEL-related question to classify.
         """
-        mock_api = AsyncMock()
+        mock_api = mocker.AsyncMock()
         mock_api.openai_chat_completion.return_value = _mock_llm_response(
-            SUBJECT_ALLOWED
+            SUBJECT_ALLOWED, mocker=mocker
         )
 
         runner = QuestionValidityRunner(
@@ -319,15 +319,17 @@ class TestRhelOffTopicQuestions:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("question", OFF_TOPIC_QUESTIONS)
-    async def test_off_topic_rejected(self, question: str) -> None:
+    async def test_off_topic_rejected(
+        self, question: str, mocker: MockerFixture
+    ) -> None:
         """Off-topic questions should be blocked by the shield.
 
         Parameters:
             question: The off-topic question to classify.
         """
-        mock_api = AsyncMock()
+        mock_api = mocker.AsyncMock()
         mock_api.openai_chat_completion.return_value = _mock_llm_response(
-            SUBJECT_REJECTED
+            SUBJECT_REJECTED, mocker=mocker
         )
 
         runner = QuestionValidityRunner(
@@ -374,15 +376,17 @@ class TestRhelPentestAdversarialExamples:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("question", ADVERSARIAL_QUESTIONS)
-    async def test_adversarial_rejected(self, question: str) -> None:
+    async def test_adversarial_rejected(
+        self, question: str, mocker: MockerFixture
+    ) -> None:
         """Adversarial pentest examples should be blocked.
 
         Parameters:
             question: The adversarial prompt to classify.
         """
-        mock_api = AsyncMock()
+        mock_api = mocker.AsyncMock()
         mock_api.openai_chat_completion.return_value = _mock_llm_response(
-            SUBJECT_REJECTED
+            SUBJECT_REJECTED, mocker=mocker
         )
 
         runner = QuestionValidityRunner(
